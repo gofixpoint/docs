@@ -1,0 +1,60 @@
+/*
+ * Dark mode contrast overrides
+ *
+ * Warm dark palette on #1C1917 background.
+ * All rules scoped under .dark so light mode is unaffected.
+ *
+ * Palette:
+ *   Background:  #1C1917
+ *   Surface:     #292524
+ *   Text:        #F5F0E8  (cream)
+ *   Primary CTA: #4A7FBF  (lightened navy)
+ *   Border:      #3D3833
+ */
+
+/* ── Sidebar ─────────────────────────────────────────────── */
+
+/* Group headings ("Getting started", "Customization", etc.) */
+.dark .sidebar-group-header {
+  color: #F5F0E8 !important;
+}
+
+/* Inactive sidebar links */
+.dark .sidebar-group a {
+  color: #A8A29E !important;
+}
+.dark .sidebar-group a:hover {
+  color: #F5F0E8 !important;
+}
+
+/* ── Main content ────────────────────────────────────────── */
+
+/* Prose body text (paragraphs, list items) */
+.dark .prose p,
+.dark .prose li {
+  color: #F5F0E8 !important;
+}
+
+/* Section description text */
+.dark .mdx-content > .antialiased {
+  color: #F5F0E8 !important;
+}
+
+/* Card description text */
+.dark .prose.font-normal {
+  color: #F5F0E8 !important;
+}
+
+/* Card icons */
+.dark a .lucide {
+  color: #4A7FBF !important;
+}
+
+/* ── Cards & surfaces ────────────────────────────────────── */
+
+/* Card backgrounds */
+.dark .mdx-content a[class*="block"],
+.dark .mdx-content a[class*="rounded"] {
+  background-color: #292524 !important;
+  border-color: #3D3833 !important;
+}
