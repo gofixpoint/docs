@@ -1,11 +1,27 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Amika",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#25437F",
+    "light": "#25437F",
+    "dark": "#4D77CB"
+  },
+  "background": {
+    "color": {
+      "light": "#F9F8F6",
+      "dark": "#0F172A"
+    }
+  },
+  "fonts": {
+    "heading": {
+      "family": "Plus Jakarta Sans",
+      "weight": 700
+    },
+    "body": {
+      "family": "IBM Plex Sans",
+      "weight": 400
+    }
   },
   "favicon": "/favicon.svg",
   "navigation": {
