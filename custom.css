@@ -1,0 +1,50 @@
+/*
+ * Dark mode contrast overrides
+ *
+ * Improves WCAG AA contrast for text on the #0F172A dark background.
+ * All rules scoped under .dark so light mode is unaffected.
+ *
+ * Color targets (all pass WCAG AA against #0F172A):
+ *   #CBD5E1 (slate-300) — body/description text  ~7.5:1
+ *   #94A3B8 (slate-400) — sidebar inactive items  ~4.6:1
+ *   #E2E8F0 (slate-200) — sidebar group headings  ~11:1
+ *   #7B9AD9 (brand accent) — card icons            ~6.2:1
+ */
+
+/* ── Sidebar ─────────────────────────────────────────────── */
+
+/* Group headings ("Getting started", "Customization", etc.) */
+.dark .sidebar-group-header {
+  color: #E2E8F0 !important;
+}
+
+/* Inactive sidebar links */
+.dark .sidebar-group a {
+  color: #94A3B8 !important;
+}
+.dark .sidebar-group a:hover {
+  color: #CBD5E1 !important;
+}
+
+/* ── Main content ────────────────────────────────────────── */
+
+/* Prose body text (paragraphs, list items) */
+.dark .prose p,
+.dark .prose li {
+  color: #CBD5E1 !important;
+}
+
+/* Section description text ("Get your documentation site up and running...") */
+.dark .mdx-content > .antialiased {
+  color: #CBD5E1 !important;
+}
+
+/* Card description text */
+.dark .prose.font-normal {
+  color: #CBD5E1 !important;
+}
+
+/* Card icons */
+.dark a .lucide {
+  color: #7B9AD9 !important;
+}
