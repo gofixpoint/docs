@@ -1,0 +1,47 @@
+---
+title: "Architecture roadmap"
+description: "Current capabilities and planned system evolution."
+---
+
+This roadmap summarizes technical direction from the architecture planning docs.
+
+## Invariants
+
+1. POSIX remains the primary interface for agents.
+2. Filesystem-level access control remains the safety boundary.
+
+## Current state
+
+### Data plane
+
+- Batch materialization is production-ready.
+- Script output sync to host paths is available today.
+
+### Execution plane
+
+- Docker-backed local sandboxes are available.
+- Mount permissions support `ro`, `rw`, and `rwcopy`.
+
+## In progress
+
+- Connector framework for SaaS and storage backends.
+- Improved Linux and macOS compatibility.
+
+## Planned
+
+- Live sync engine for incremental bidirectional updates.
+- Network-mountable filesystem for remote sandbox providers.
+- Per-agent mount policies with isolated data views.
+- Lazy-loading file strategies for faster sandbox startup.
+
+## Security pipeline direction
+
+Amika is evolving toward a filter pipeline:
+
+1. Inbound redaction and tokenization
+2. Agent file access inside constrained mounts
+3. Outbound validation and approval before write-back
+
+## Long-term vision
+
+Amika aims to create semantic data views for agents, so workflows are organized by intent instead of source system boundaries.

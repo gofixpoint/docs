@@ -1,94 +1,78 @@
 ---
-title: 'Development'
-description: 'Preview changes locally to update your docs'
+title: "Install and run"
+description: "Set up Amika locally for development and testing."
 ---
 
-<Info>
-  **Prerequisites**:
-  - Node.js version 19 or higher
-  - A docs repository with a `docs.json` file
-</Info>
+Use this guide when you want to run Amika from source.
 
-Follow these steps to install and run Mintlify on your operating system.
+## Prerequisites
 
-<Steps>
-<Step title="Install the Mintlify CLI">
+- macOS
+- Go 1.21 or later
+- Docker
+- `make`
 
-```bash
-npm i -g mint
-```
-</Step>
-
-<Step title="Preview locally">
-
-Navigate to your docs directory where your `docs.json` file is located, and run the following command:
+## Build the binaries
 
 ```bash
-mint dev
+git clone https://github.com/gofixpoint/amika.git
+cd amika
+make build
 ```
 
-A local preview of your documentation will be available at `http://localhost:3000`.
+This build generates:
 
-</Step>
-</Steps>
+- `./dist/amika` (CLI)
+- `./dist/amika-server` (HTTP API server)
 
-## Custom ports
-
-By default, Mintlify uses port 3000. You can customize the port Mintlify runs on by using the `--port` flag. For example, to run Mintlify on port 3333, use this command:
+## Verify Docker access
 
 ```bash
-mint dev --port 3333
+docker info
 ```
 
-If you attempt to run Mintlify on a port that's already in use, it will use the next available port:
-
-```md
-Port 3000 is already in use. Trying 3001 instead.
-```
-
-## Mintlify versions
-
-Please note that each CLI release is associated with a specific version of Mintlify. If your local preview does not align with the production version, please update the CLI:
+## Run common commands
 
 ```bash
-npm mint update
+# Run one-off materialization
+./dist/amika materialize --cmd "echo ok > health.txt" --destdir /tmp/amika-out
+
+# Create a sandbox with the default preset
+./dist/amika sandbox create --yes
+
+# List tracked sandboxes and volumes
+./dist/amika sandbox list
+./dist/amika volume list
 ```
 
-## Validating links
-
-The CLI can assist with validating links in your documentation. To identify any broken links, use the following command:
+## Run the HTTP API server
 
 ```bash
-mint broken-links
+./dist/amika-server
 ```
 
-## Deployment
+By default, the server listens on `:8080`.
 
-If the deployment is successful, you should see the following:
+To change the port:
 
-<Frame>
-  <img src="/images/checks-passed.png" alt="Screenshot of a deployment confirmation message that says All checks have passed." style={{ borderRadius: '0.5rem' }} />
-</Frame>
-
-## Code formatting
-
-We suggest using extensions on your IDE to recognize and format MDX. If you're a VSCode user, consider the [MDX VSCode extension](https://marketplace.visualstudio.com/items?itemName=unifiedjs.vscode-mdx) for syntax highlighting, and [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) for code formatting.
+```bash
+PORT=9090 ./dist/amika-server
+```
 
 ## Troubleshooting
 
 <AccordionGroup>
-  <Accordion title='Error: Could not load the "sharp" module using the darwin-arm64 runtime'>
-
-    This may be due to an outdated version of node. Try the following:
-    1. Remove the currently-installed version of the CLI: `npm remove -g mint`
-    2. Upgrade to Node v19 or higher.
-    3. Reinstall the CLI: `npm i -g mint`
+  <Accordion title="Docker command fails">
+    Confirm Docker Desktop is running and your user can access the Docker socket.
   </Accordion>
+  <Accordion title="Preset image appears outdated">
+    Remove the local preset image and rerun your command.
 
-  <Accordion title="Issue: Encountering an unknown error">
-  
-    Solution: Go to the root of your device and delete the `~/.mintlify` folder. Then run `mint dev` again.
+    ```bash
+    docker rmi amika/coder:latest
+    ```
+  </Accordion>
+  <Accordion title="You need full flag details">
+    Open the [CLI reference](/reference/cli-reference).
   </Accordion>
 </AccordionGroup>
-
-Curious about what changed in the latest CLI version? Check out the [CLI changelog](https://www.npmjs.com/package/mintlify?activeTab=versions).

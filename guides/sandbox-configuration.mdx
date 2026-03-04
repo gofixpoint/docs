@@ -1,0 +1,71 @@
+---
+title: "Sandbox configuration"
+description: "Configure setup scripts and credential auto-mounting."
+---
+
+Use sandbox configuration to prepare agent environments before work starts.
+
+## Setup scripts
+
+Use `--setup-script` to mount a local script at `/opt/setup.sh`.
+
+Amika runs this script before the container command starts.
+
+### Example
+
+```bash
+# sandbox create
+amika sandbox create --name dev-box --setup-script ./install-deps.sh
+
+# materialize
+amika materialize --setup-script ./install-deps.sh --cmd "echo done" --destdir /tmp/out
+```
+
+### Script requirements
+
+- Make the script executable with `chmod +x`.
+- Exit with status code `0` on success.
+- Keep setup deterministic so sandbox startup stays predictable.
+
+```bash
+#!/bin/bash
+set -e
+
+apt-get update
+apt-get install -y ripgrep
+pip install numpy
+```
+
+<Warning>
+If the setup script exits non-zero, the container command does not run.
+</Warning>
+
+## Agent credential auto-mounting
+
+Amika auto-discovers credential files on your host and mounts them as `rwcopy`.
+
+This gives agents access to credentials inside the sandbox without modifying host files.
+
+### Supported files
+
+**Claude Code**
+- `~/.claude.json.api`
+- `~/.claude.json`
+- `~/.claude/.credentials.json`
+- `~/.claude-oauth-credentials.json`
+
+**Codex**
+- `~/.codex/auth.json`
+
+**OpenCode**
+- `~/.local/share/opencode/auth.json`
+- `~/.local/state/opencode/model.json`
+
+Only files that exist on your host are mounted.
+
+Inside containers, these files appear under `/home/amika/` with matching relative paths.
+
+## Related docs
+
+- [Presets](/guides/presets)
+- [Auth extract](/guides/auth-extract)

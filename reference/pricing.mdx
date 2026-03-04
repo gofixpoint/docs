@@ -1,0 +1,53 @@
+---
+title: "Pricing"
+description: "Plan pricing, billing units, and managed sandbox rates."
+---
+
+This page reflects the public pricing model on `amika.dev/pricing`.
+
+## Plan pricing
+
+| Plan | Price | Included users | Included sessions | Overage | Stored sessions | Automation definitions |
+| --- | --- | --- | --- | --- | --- | --- |
+| Starter | `$200/mo` | 2 | 500/month | `$0.30/session` | 1,000 | 5 |
+| Team | `$500/mo` | 5 | 2,500/month | `$0.20/session` | 5,000 | 20 |
+| Growth | `$1,000/mo` | 12 | 10,000/month | `$0.10/session` | 20,000 | 60 |
+| Enterprise | Custom | Unlimited | Custom | Volume discount | Unlimited | Unlimited |
+
+## Pricing units
+
+- **Coding session**: One task run where an agent executes in an isolated sandbox and produces a diff or PR.
+- **Session overage**: Billable sessions above the monthly included amount.
+- **Session storage**: Number of historical sessions retained.
+- **Automation definition**: Configured event-based or scheduled automation template.
+
+## Sandbox costs (Fixpoint-managed)
+
+Bring-your-own deployments use your own cloud pricing.
+
+For Fixpoint-managed sandboxes:
+
+| Unit | Per hour | Per second |
+| --- | --- | --- |
+| Compute (vCPU) | `$0.1008` | `$0.000028` |
+| Memory (GiB) | `$0.0324` | `$0.000009` |
+| Storage (GiB) | `$0.00216` | `$0.00000006` |
+
+## AI token costs
+
+You bring your own LLM keys.
+
+Amika does not mark up model token costs.
+
+## Forward deployed services
+
+Amika also offers implementation support for:
+
+- Sandbox environment setup
+- Tool integrations (`GitHub`, `Linear`, `Sentry`, `Datadog`, `Slack`)
+- Automation rollout playbooks
+- Connector handoff documentation
+
+<Tip>
+For the latest commercial terms, use the live pricing page at `https://www.amika.dev/pricing`.
+</Tip>

@@ -3,9 +3,9 @@
   "theme": "mint",
   "name": "Amika",
   "colors": {
-    "primary": "#25437F",
-    "light": "#4A7FBF",
-    "dark": "#4D77CB"
+    "primary": "#16A34A",
+    "light": "#4ADE80",
+    "dark": "#15803D"
   },
   "background": {
     "color": {
@@ -27,58 +27,63 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Get started",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Overview",
             "pages": [
               "index",
               "quickstart",
               "development"
             ]
-          },
+          }
+        ]
+      },
+      {
+        "tab": "Guides",
+        "groups": [
           {
-            "group": "Customization",
+            "group": "Sandboxes and environments",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "guides/sandbox-configuration",
+              "guides/presets"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Authentication",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "guides/auth-extract"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "CLI and API",
             "pages": [
-              "api-reference/introduction"
+              "reference/cli-reference",
+              "reference/http-api"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "System reference",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "reference/storage",
+              "reference/pricing"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Architecture",
+        "groups": [
+          {
+            "group": "System design",
+            "pages": [
+              "architecture/overview",
+              "architecture/roadmap"
             ]
           }
         ]
@@ -87,33 +92,34 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
+          "anchor": "Website",
+          "href": "https://www.amika.dev",
           "icon": "book-open-cover"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "Pricing",
+          "href": "https://www.amika.dev/pricing",
+          "icon": "badge-dollar-sign"
+        },
+        {
+          "anchor": "GitHub",
+          "href": "https://github.com/gofixpoint/amika",
+          "icon": "github"
         }
       ]
     }
   },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "Discord",
+        "href": "https://discord.gg/xDXk4KjGWg"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "label": "Book a demo",
+      "href": "https://cal.com/amika-ai/demo"
     }
   },
   "contextual": {
@@ -130,9 +136,7 @@
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/gofixpoint/amika"
     }
   }
 }
