@@ -31,3 +31,7 @@
 
 {/* Define what should and shouldn't be documented */}
 {/* Example: Don't document internal admin features */}
+
+## Cursor Cloud specific instructions
+
+See [AGENTS.cursor.md](AGENTS.cursor.md) for Cursor Cloud environment details.
