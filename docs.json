@@ -4,13 +4,13 @@
   "name": "Amika",
   "colors": {
     "primary": "#25437F",
-    "light": "#7B9AD9",
+    "light": "#4A7FBF",
     "dark": "#4D77CB"
   },
   "background": {
     "color": {
       "light": "#F9F8F6",
-      "dark": "#0F172A"
+      "dark": "#1C1917"
     }
   },
   "fonts": {
