@@ -49,6 +49,18 @@ docker rmi amika/coder:latest
 
 The next command that uses `coder` rebuilds the image.
 
+## Setup scripts
+
+Both presets run `/opt/setup.sh` before the main command.
+
+Use `--setup-script` to inject your setup logic when creating a sandbox:
+
+```bash
+amika sandbox create --setup-script ./install-deps.sh
+```
+
+See [Sandbox configuration](/guides/sandbox-configuration) for details.
+
 ## Custom image prefix
 
 Use `AMIKA_PRESET_IMAGE_PREFIX` to change naming for generated preset images.
@@ -58,6 +70,12 @@ export AMIKA_PRESET_IMAGE_PREFIX=myregistry/amika
 ```
 
 This changes `amika/coder:latest` to `myregistry/amika-coder:latest`.
+
+## Agent credential auto-mounting
+
+When you create a sandbox or run materialize, Amika auto-discovers and mounts supported credential files as `rwcopy` snapshots.
+
+This gives agents credentials inside the container without modifying host source files.
 
 ## Related docs
 

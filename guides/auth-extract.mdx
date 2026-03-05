@@ -22,16 +22,16 @@ amika auth extract --no-oauth
 
 Amika reads sources in priority order.
 
-| Priority | Source | Files |
-| --- | --- | --- |
-| 500 | Claude API key | `~/.claude.json.api`, `~/.claude.json` |
-| 400 | Claude OAuth | `~/.claude/.credentials.json`, `~/.claude-oauth-credentials.json` |
-| 300 | Codex | `~/.codex/auth.json` |
-| 290 | Amika env cache | `${XDG_CACHE_HOME}/amika/env-cache.json` |
-| 280 | Amika keychain | `${XDG_DATA_HOME}/amika/keychain.json` |
-| 270 | Amika OAuth | `${XDG_STATE_HOME}/amika/oauth.json` |
-| 200 | OpenCode | `~/.local/share/opencode/auth.json` |
-| 100 | Amp | `~/.amp/config.json` |
+| Priority | Source | Files | Providers |
+| --- | --- | --- | --- |
+| 500 | Claude API key | `~/.claude.json.api`, `~/.claude.json` | Anthropic |
+| 400 | Claude OAuth | `~/.claude/.credentials.json`, `~/.claude-oauth-credentials.json` | Anthropic |
+| 300 | Codex | `~/.codex/auth.json` | OpenAI |
+| 290 | Amika env cache | `${XDG_CACHE_HOME}/amika/env-cache.json` | Any |
+| 280 | Amika keychain | `${XDG_DATA_HOME}/amika/keychain.json` | Any |
+| 270 | Amika OAuth | `${XDG_STATE_HOME}/amika/oauth.json` | Any |
+| 200 | OpenCode | `~/.local/share/opencode/auth.json` | Any |
+| 100 | Amp | `~/.amp/config.json` | Anthropic |
 
 Higher-priority sources win when multiple files provide the same provider key.
 
@@ -41,6 +41,15 @@ Amika normalizes provider names and exports common aliases:
 
 - Anthropic keys output as both `ANTHROPIC_API_KEY` and `CLAUDE_API_KEY`.
 - OpenAI keys output as both `OPENAI_API_KEY` and `CODEX_API_KEY`.
+
+Example output:
+
+```bash
+ANTHROPIC_API_KEY='sk-ant-...'
+CLAUDE_API_KEY='sk-ant-...'
+OPENAI_API_KEY='sk-...'
+CODEX_API_KEY='sk-...'
+```
 
 ## Flags
 

@@ -46,7 +46,8 @@
             "group": "Sandboxes and environments",
             "pages": [
               "guides/sandbox-configuration",
-              "guides/presets"
+              "guides/presets",
+              "guides/development-testing"
             ]
           },
           {

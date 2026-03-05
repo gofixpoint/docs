@@ -1,0 +1,79 @@
+---
+title: "Development testing"
+description: "Run Amika tests locally with make targets and coverage checks."
+---
+
+Use this guide when you want CI-like confidence before opening a PR.
+
+## Test pyramid
+
+1. Unit tests: fast and deterministic.
+2. Integration tests: behavior across runtime boundaries.
+3. Contract tests: CLI contracts and user-visible behavior.
+4. Docker-backed integration tests: opt-in suites.
+
+## Make targets
+
+| Target | What it runs |
+| --- | --- |
+| `make test` | `go test ./...` |
+| `make test-unit` | Unit tests only |
+| `make test-integration` | `go test ./test/integration/...` |
+| `make test-contract` | `go test ./test/contract/...` |
+| `make test-all` | Unit + integration + contract |
+| `make test-expensive` | Docker integration + expensive rebuild tests |
+| `make coverage` | Coverage gate checks |
+| `make ci` | Full CI target set |
+
+## Recommended command flow
+
+1. `make build`
+2. `make test-unit`
+3. `make test-integration`
+4. `make test-contract`
+5. `make coverage`
+
+For non-Docker suites only:
+
+```bash
+make test-all
+```
+
+## Docker-backed integration tests (opt-in)
+
+Enable Docker integration mode:
+
+```bash
+AMIKA_RUN_DOCKER_INTEGRATION=1 make test-unit
+AMIKA_RUN_DOCKER_INTEGRATION=1 make test-integration
+```
+
+## Expensive preset rebuild tests (opt-in)
+
+The simplest path:
+
+```bash
+make test-expensive
+```
+
+Run a single expensive test directly:
+
+```bash
+AMIKA_RUN_DOCKER_INTEGRATION=1 AMIKA_RUN_EXPENSIVE_TESTS=1 \
+  go test ./cmd/amika -run TestTopMaterialize_PresetAgentsAvailableOnPath -count=1
+```
+
+## Coverage gates
+
+Coverage thresholds are configured in `test/coverage-baseline.env`.
+
+Current defaults:
+
+- `AMIKA_MIN_INTERNAL_COVERAGE=70.0`
+- `AMIKA_MIN_CMD_COVERAGE=35.0`
+
+Override temporarily:
+
+```bash
+AMIKA_MIN_INTERNAL_COVERAGE=72.0 AMIKA_MIN_CMD_COVERAGE=36.0 make coverage
+```

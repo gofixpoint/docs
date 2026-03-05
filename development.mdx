@@ -7,16 +7,18 @@ Use this guide when you want to run Amika from source.
 
 ## Prerequisites
 
-- macOS
 - Go 1.21 or later
 - Docker
+- macOS (primary supported contributor platform)
 - `make`
+- `rsync`
 
 ## Build the binaries
 
 ```bash
 git clone https://github.com/gofixpoint/amika.git
 cd amika
+make setup
 make build
 ```
 
@@ -24,6 +26,13 @@ This build generates:
 
 - `./dist/amika` (CLI)
 - `./dist/amika-server` (HTTP API server)
+
+Wrapper scripts also auto-build for local development:
+
+```bash
+bin/amika --help
+bin/amika-server
+```
 
 ## Verify Docker access
 
@@ -34,11 +43,8 @@ docker info
 ## Run common commands
 
 ```bash
-# Run one-off materialization
-./dist/amika materialize --cmd "echo ok > health.txt" --destdir /tmp/amika-out
-
-# Create a sandbox with the default preset
-./dist/amika sandbox create --yes
+# Create a sandbox from current git repo
+./dist/amika sandbox create --git --connect
 
 # List tracked sandboxes and volumes
 ./dist/amika sandbox list
@@ -59,6 +65,26 @@ To change the port:
 PORT=9090 ./dist/amika-server
 ```
 
+## Run development checks
+
+```bash
+make ci
+```
+
+Common individual targets:
+
+```bash
+make build
+make build-cli
+make build-server
+make test
+make vet
+make fmt
+make lint
+```
+
+For detailed test pyramid and opt-in Docker test modes, see [Development testing](/guides/development-testing).
+
 ## Troubleshooting
 
 <AccordionGroup>
@@ -74,5 +100,8 @@ PORT=9090 ./dist/amika-server
   </Accordion>
   <Accordion title="You need full flag details">
     Open the [CLI reference](/reference/cli-reference).
+  </Accordion>
+  <Accordion title="Lint fails on exported symbol comments">
+    `make lint` uses `revive` and enforces doc comments for exported symbols.
   </Accordion>
 </AccordionGroup>

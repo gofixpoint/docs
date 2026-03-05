@@ -3,17 +3,20 @@ title: "Introduction"
 description: "Learn what Amika does and where to start."
 ---
 
-Amika gives your team background coding agents with sandboxed execution and full codebase context.
+Amika is an open-source CLI and HTTP API for running coding agents in sandboxes.
 
-Use this documentation to set up the CLI, configure sandboxes, and run production workflows.
+Use this documentation to set up agent sandboxes, configure credentials and presets, and run workflows over CLI or HTTP.
+
+Amika is currently in beta.
 
 ## What you can do with Amika
 
-Amika combines three core capabilities:
+Amika combines these core capabilities:
 
-- Materialize data from your tools into files.
-- Run coding agents in isolated sandboxes.
-- Control filesystem access with `ro`, `rw`, and `rwcopy` mounts.
+- Preset environments with Claude Code, Codex, and OpenCode.
+- Automatic credential discovery and mounting from host config files.
+- Git repo cloning and mounting with `--git`.
+- Setup scripts and published ports for live preview workflows.
 
 ## Start here
 
@@ -23,6 +26,9 @@ Amika combines three core capabilities:
   </Card>
   <Card title="Install and run" icon="terminal" href="/development">
     Install prerequisites and run Amika locally.
+  </Card>
+  <Card title="Development testing" icon="flask-conical" href="/guides/development-testing">
+    Run unit, integration, contract, and coverage checks.
   </Card>
   <Card title="CLI reference" icon="square-terminal" href="/reference/cli-reference">
     Browse command syntax, key flags, and examples.

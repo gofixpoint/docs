@@ -36,6 +36,12 @@ apt-get install -y ripgrep
 pip install numpy
 ```
 
+### How it works
+
+Preset images include a no-op `/opt/setup.sh` and an entrypoint that runs it before `CMD`.
+
+When you pass `--setup-script`, your file is mounted over the no-op script.
+
 <Warning>
 If the setup script exits non-zero, the container command does not run.
 </Warning>

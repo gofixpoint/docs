@@ -5,52 +5,52 @@ description: "Build Amika and run your first sandbox workflow."
 
 This quickstart walks you through a minimal Amika flow:
 
-1. Build the CLI.
-2. Materialize files.
-3. Create and connect to a sandbox.
+1. Build Amika.
+2. Create your first sandbox from a git repo.
+3. Run an agent inside the sandbox.
 
 ## Prerequisites
 
-- macOS
+- macOS or Linux
 - Go 1.21 or later
 - Docker
 
 <Info>
-Amika is alpha software and currently targets macOS.
+Amika is in beta. CLI flags and APIs may change.
 </Info>
 
-## Step 1: Build the CLI
+## Step 1: Build Amika
 
 ```bash
 git clone https://github.com/gofixpoint/amika.git
 cd amika
-make build-cli
+make build
 ```
 
-## Step 2: Materialize output files
+## Step 2: Create your first sandbox
 
-Run a simple command in an ephemeral container and copy outputs to a host directory.
+Run this inside a git repository. `--git` mounts the repo root into the sandbox.
 
 ```bash
-./dist/amika materialize \
-  --cmd "echo hello > greeting.txt" \
-  --destdir /tmp/amika-demo
-
-cat /tmp/amika-demo/greeting.txt
+./dist/amika sandbox create --name my-sandbox --git --connect
 ```
 
-## Step 3: Create a sandbox
+Inside the sandbox, your shell starts in `/home/amika/workspace/{repo}`.
 
-Create a Docker-backed sandbox and mount materialized data.
+## Step 3: Run a coding agent in the sandbox
 
 ```bash
-./dist/amika sandbox create \
-  --name my-sandbox \
-  --mount /tmp/amika-demo:/workspace/data:ro \
-  --connect
+# Run from inside the sandbox shell
+claude "Add unit tests for the auth module"
 ```
 
-You now have an isolated environment where an agent can read `/workspace/data` without modifying host files.
+## Optional: run agents in parallel
+
+```bash
+./dist/amika sandbox create --name task-1 --git
+./dist/amika sandbox create --name task-2 --git
+./dist/amika sandbox list
+```
 
 ## Next steps
 
@@ -61,6 +61,9 @@ You now have an isolated environment where an agent can read `/workspace/data` w
   <Card title="Presets" icon="package" href="/guides/presets">
     Pick preset images like `coder` and `claude`.
   </Card>
+  <Card title="Development testing" icon="flask-conical" href="/guides/development-testing">
+    Run `make test-*` and coverage checks locally.
+  </Card>
   <Card title="Auth extract" icon="key-round" href="/guides/auth-extract">
     Export discovered keys for Claude, Codex, and OpenCode.
   </Card>
@@ -70,5 +73,5 @@ You now have an isolated environment where an agent can read `/workspace/data` w
 </CardGroup>
 
 <Tip>
-Use `amika sandbox list` and `amika volume list` to inspect state after your first run.
+Use `amika sandbox list` and `amika volume list` to inspect active sandboxes and tracked volumes.
 </Tip>

@@ -3,7 +3,7 @@ title: "Architecture overview"
 description: "Core Amika concepts and system layout."
 ---
 
-Amika is a Go CLI and HTTP server that materializes external data as files and mounts those files into Docker-backed sandboxes.
+Amika is an open-source CLI and HTTP API for running coding agents in sandboxes.
 
 ## Core concepts
 
@@ -19,7 +19,7 @@ Amika is a Go CLI and HTTP server that materializes external data as files and m
 | --- | --- |
 | `amika materialize` | Run command/script and copy output files |
 | `amika sandbox create/list/connect/delete` | Manage persistent sandboxes |
-| `amika volume list/delete` | Manage tracked volumes |
+| `amika volume list/delete` | Manage tracked volumes created by `rwcopy` mounts |
 | `amika auth extract` | Discover and print credentials |
 | `amika-server` | Expose API over HTTP |
 
@@ -41,7 +41,6 @@ pkg/amika            # Shared service API
 | --- | --- |
 | Docker | `materialize`, `sandbox`, `volume` |
 | `rsync` | `materialize` output copy |
-| `bindfs` + macFUSE | Legacy v0 mount flow |
 
 ## State storage
 
