@@ -1,28 +1,37 @@
 ---
 title: "Introduction"
-description: "Learn what Amika does and where to start."
+description: "Infra to build your software factory."
 ---
 
-Amika is an open-source CLI and HTTP API for running coding agents in sandboxes.
+Amika is the lego bricks to build your software factory and the infra to run it.
+We let users spin up multiplayer sandboxes pre-loaded with any coding agent, and
+build autonomous background agents that run any code-generation jobs you can
+think of.
 
-Use this documentation to set up agent sandboxes, configure credentials and presets, and run workflows over CLI or HTTP.
+You can control agents via CLI, web UI, and HTTP API. Amika is designed to let
+you flexibly transition between automated AI agent workflows and human-steered
+vibe coding with Codex, Claude Code, OpenCode, etc.
 
-Amika is currently in beta.
+Amika is currently in beta. The platform is invite-only, but we have open-source
+tools at https://github.com/gofixpoint/amika. These docs focus on the open
+source tools.
 
 ## What you can do with Amika
 
 Amika combines these core capabilities:
 
-- Preset environments with Claude Code, Codex, and OpenCode.
-- Automatic credential discovery and mounting from host config files.
-- Git repo cloning and mounting with `--git`.
-- Setup scripts and published ports for live preview workflows.
+- Run sandboxes loaded with any coding agent and set up with a per-sandbox dev environment
+- Clone one or more Git repos onto the sandbox
+- Programatically control the sandboxed agents for code-gen jobs
+- Record the entire agent chat session as additional context and attach alongside the Git commits
+- Expose any TCP or UDP port to preview changes to the app, database, backend, whatever!
+- Run arbitrary "materialization" scripts to collect context data from elsewhere and output it onto the sandbox's filesystem
 
 ## Start here
 
 <CardGroup cols={2}>
   <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Build the CLI and run your first `materialize` and `sandbox create` commands.
+    Build the CLI and run your first `sandbox create` commands.
   </Card>
   <Card title="Install and run" icon="terminal" href="/development">
     Install prerequisites and run Amika locally.
