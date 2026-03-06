@@ -23,7 +23,12 @@
       "weight": 400
     }
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon.ico",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg",
+
+  },
   "navigation": {
     "tabs": [
       {
