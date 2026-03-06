@@ -3,9 +3,9 @@
   "theme": "mint",
   "name": "Amika",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#4ADE80",
-    "dark": "#15803D"
+    "primary": "#25437F",
+    "light": "#4A7FBF",
+    "dark": "#4D77CB"
   },
   "background": {
     "color": {
