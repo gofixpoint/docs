@@ -1,0 +1,49 @@
+---
+title: "Architecture overview"
+description: "Core Amika concepts and system layout."
+---
+
+Amika is an open-source CLI and HTTP API for running coding agents in sandboxes.
+
+## Core concepts
+
+- **Docker-backed sandboxes**: Isolated, persistent containers for agent execution.
+- **Materialization**: Ephemeral containers run scripts or commands and copy outputs to host paths.
+- **Mount modes**: `ro`, `rw`, and `rwcopy` define how agents can access data.
+- **Credential discovery**: Amika discovers local coding-agent credentials and mounts snapshots into containers.
+- **Preset images**: Bundled images (`coder`, `claude`) with common tooling.
+
+## Command surface
+
+| Command | Purpose |
+| --- | --- |
+| `amika materialize` | Run command/script and copy output files |
+| `amika sandbox create/list/connect/delete` | Manage persistent sandboxes |
+| `amika volume list/delete` | Manage tracked volumes created by `rwcopy` mounts |
+| `amika auth extract` | Discover and print credentials |
+| `amika-server` | Expose API over HTTP |
+
+## Package layout
+
+```text
+cmd/amika            # CLI entrypoints
+cmd/amika-server     # HTTP server entrypoint
+internal/sandbox     # Sandbox + Docker operations
+internal/auth        # Credential discovery
+internal/agentconfig # Agent config auto-mounting
+internal/httpapi     # REST handlers
+pkg/amika            # Shared service API
+```
+
+## Dependencies
+
+| Tool | Required by |
+| --- | --- |
+| Docker | `materialize`, `sandbox`, `volume` |
+| `rsync` | `materialize` output copy |
+
+## State storage
+
+State files are stored in XDG paths by default.
+
+See [Storage paths](/reference/storage) for exact locations.

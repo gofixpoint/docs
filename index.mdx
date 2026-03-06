@@ -1,97 +1,60 @@
 ---
 title: "Introduction"
-description: "Welcome to the new home for your documentation"
+description: "Infra to build your software factory."
 ---
 
-## Setting up
+Amika is infra for building your software factory. Spin up multiplayer sandboxes
+pre-loaded with any coding agent, and run autonomous background agents for
+code-generation jobs.
 
-Get your documentation site up and running in minutes.
+Control agents via CLI, web UI, or HTTP API. Seamlessly switch between automated
+agent workflows and human-steered vibe coding with Codex, Claude Code, OpenCode,
+and more.
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+Amika is currently in beta and invite-only. Open-source tools are available at
+https://github.com/gofixpoint/amika. These docs focus on the open-source tools.
 
-## Make it yours
+## What you can do with Amika
 
-Design a docs site that looks great and empowers your users.
+Amika combines these core capabilities:
 
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+- Run sandboxes loaded with any coding agent and set up with a per-sandbox dev environment
+- Clone one or more Git repos onto the sandbox
+- Programatically control the sandboxed agents for code-gen jobs
+- Record the entire agent chat session as additional context and attach alongside the Git commits
+- Expose any TCP or UDP port to preview changes to the app, database, backend, whatever!
+- Run arbitrary "materialization" scripts to collect context data from elsewhere and output it onto the sandbox's filesystem
+
+## Start here
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Build the CLI and run your first `sandbox create` commands.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Install and run" icon="terminal" href="/development">
+    Install prerequisites and run Amika locally.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Development testing" icon="flask-conical" href="/guides/development-testing">
+    Run unit, integration, contract, and coverage checks.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="CLI reference" icon="square-terminal" href="/reference/cli-reference">
+    Browse command syntax, key flags, and examples.
   </Card>
-</Columns>
+  <Card title="Pricing" icon="dollar-sign" href="https://www.amika.dev/pricing">
+    Compare plan tiers, billing units, and managed sandbox costs.
+  </Card>
+</CardGroup>
 
-## Create beautiful pages
+## Product links
 
-Everything you need to create world-class documentation.
-
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+<CardGroup cols={3}>
+  <Card title="Website" icon="globe" href="https://www.amika.dev">
+    Read product overview and use cases.
   </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
+  <Card title="Pricing" icon="dollar-sign" href="https://www.amika.dev/pricing">
+    Compare plan tiers and billing units.
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
+  <Card title="GitHub" icon="github" href="https://github.com/gofixpoint/amika">
+    View source code and contribute.
   </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+</CardGroup>

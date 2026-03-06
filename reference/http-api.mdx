@@ -1,0 +1,40 @@
+---
+title: "HTTP API reference"
+description: "Endpoints exposed by amika-server."
+---
+
+`amika-server` exposes the Amika service over REST.
+
+The server serves OpenAPI metadata at `/openapi.json` and interactive docs at `/docs`.
+
+## Start the server
+
+```bash
+amika-server
+```
+
+By default, the server listens on `:8080`.
+
+## Endpoints
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/v1/health` | Health check |
+| `GET` | `/v1/sandboxes` | List sandboxes |
+| `POST` | `/v1/sandboxes` | Create sandbox |
+| `DELETE` | `/v1/sandboxes/{name}` | Delete sandbox |
+| `GET` | `/v1/volumes` | List volumes |
+| `DELETE` | `/v1/volumes/{name}` | Delete volume |
+| `POST` | `/v1/auth/extract` | Extract credentials |
+| `POST` | `/v1/materialize` | Run materialization |
+
+## API-only request field
+
+`POST /v1/sandboxes` accepts `SetupScriptText`, which lets you send setup script content inline.
+
+This field is mutually exclusive with file-path based `SetupScript`.
+
+## Related docs
+
+- [CLI reference](/reference/cli-reference)
+- [Sandbox configuration](/guides/sandbox-configuration)

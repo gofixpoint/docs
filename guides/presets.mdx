@@ -1,0 +1,83 @@
+---
+title: "Presets"
+description: "Choose and manage Amika preset images."
+---
+
+Presets are Docker images with tools preinstalled for coding agent workflows.
+
+## Available presets
+
+### `coder` (default)
+
+- Image: `amika/coder:latest`
+- Base: Ubuntu 24.04
+- Tools: Git, curl, zsh, build essentials, Python, Node.js 22, `pnpm`, TypeScript, `tsx`
+- Agent CLIs: Claude Code, Codex, OpenCode
+
+### `claude`
+
+- Image: `amika/claude:latest`
+- Base: Ubuntu 24.04
+- Tools: Git, curl, zsh, build essentials, Python, Node.js 22, `pnpm`, TypeScript, `tsx`
+- Agent CLIs: Claude Code
+
+## Use a preset
+
+```bash
+# Explicit preset
+amika sandbox create --preset coder
+amika sandbox create --preset claude
+
+# Default behavior (coder)
+amika sandbox create
+
+# Use preset in materialize
+amika materialize --preset claude --cmd "claude --help" --destdir /tmp/out
+```
+
+`--preset` and `--image` are mutually exclusive.
+
+## Auto-build behavior
+
+Preset images build automatically the first time you use them.
+
+If you want to force a rebuild:
+
+```bash
+docker rmi amika/coder:latest
+```
+
+The next command that uses `coder` rebuilds the image.
+
+## Setup scripts
+
+Both presets run `/opt/setup.sh` before the main command.
+
+Use `--setup-script` to inject your setup logic when creating a sandbox:
+
+```bash
+amika sandbox create --setup-script ./install-deps.sh
+```
+
+See [Sandbox configuration](/guides/sandbox-configuration) for details.
+
+## Custom image prefix
+
+Use `AMIKA_PRESET_IMAGE_PREFIX` to change naming for generated preset images.
+
+```bash
+export AMIKA_PRESET_IMAGE_PREFIX=myregistry/amika
+```
+
+This changes `amika/coder:latest` to `myregistry/amika-coder:latest`.
+
+## Agent credential auto-mounting
+
+When you create a sandbox or run materialize, Amika auto-discovers and mounts supported credential files as `rwcopy` snapshots.
+
+This gives agents credentials inside the container without modifying host source files.
+
+## Related docs
+
+- [Sandbox configuration](/guides/sandbox-configuration)
+- [CLI reference](/reference/cli-reference)

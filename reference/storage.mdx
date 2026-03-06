@@ -1,0 +1,39 @@
+---
+title: "Storage paths"
+description: "Where Amika stores state, caches, and file-mount copies."
+---
+
+Amika stores local state using XDG base directories.
+
+## Credential discovery files
+
+Amika reads these files when present:
+
+- `${XDG_CACHE_HOME:-~/.cache}/amika/env-cache.json`
+- `${XDG_DATA_HOME:-~/.local/share}/amika/keychain.json`
+- `${XDG_STATE_HOME:-~/.local/state}/amika/oauth.json`
+
+## State files
+
+By default:
+
+- `${XDG_STATE_HOME:-~/.local/state}/amika/sandboxes.jsonl`
+- `${XDG_STATE_HOME:-~/.local/state}/amika/volumes.jsonl`
+- `${XDG_STATE_HOME:-~/.local/state}/amika/rwcopy-mounts.jsonl`
+- `${XDG_STATE_HOME:-~/.local/state}/amika/mounts.jsonl` (legacy `v0` commands only)
+
+If `AMIKA_STATE_DIRECTORY` is set:
+
+- `${AMIKA_STATE_DIRECTORY}/sandboxes.jsonl`
+- `${AMIKA_STATE_DIRECTORY}/volumes.jsonl`
+- `${AMIKA_STATE_DIRECTORY}/rwcopy-mounts.jsonl`
+- `${AMIKA_STATE_DIRECTORY}/mounts.jsonl` (legacy `v0` commands only)
+
+## File mount copies (`rwcopy` files)
+
+When you mount individual files with `rwcopy`, Amika writes local copies to:
+
+- `${XDG_STATE_HOME:-~/.local/state}/amika/rwcopy-mounts.d/`
+- `${AMIKA_STATE_DIRECTORY}/rwcopy-mounts.d/` when overridden
+
+These copies are removed when related sandboxes are deleted with volume cleanup.

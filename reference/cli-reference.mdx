@@ -1,0 +1,168 @@
+---
+title: "CLI reference"
+description: "Commands, flags, and examples for the Amika CLI."
+---
+
+Use this page as the command index for `amika` and `amika-server`.
+
+## `amika sandbox`
+
+Manage Docker-backed persistent sandboxes with bind mounts and named volumes.
+
+### Create
+
+```bash
+amika sandbox create --yes
+amika sandbox create --name dev-sandbox --mount ./src:/workspace/src:ro --mount ./out:/workspace/out
+amika sandbox create --name dev-sandbox --git
+amika sandbox create --name dev-sandbox --git --no-clean
+amika sandbox create --name dev-sandbox --git ./src
+amika sandbox create --name claude-box --preset claude
+amika sandbox create --name custom-box --image myimage:latest
+amika sandbox create --name dev-sandbox --env MY_KEY=my_value
+amika sandbox create --name dev-sandbox --connect
+amika sandbox create --name dev-sandbox --setup-script ./install-deps.sh
+amika sandbox create --name dev-sandbox --port 8080:8080
+amika sandbox create --name dev-sandbox --port 3000:3000 --port-host-ip 0.0.0.0
+```
+
+### Common create flags
+
+| Flag | Description |
+| --- | --- |
+| `--name <name>` | Sandbox name (auto-generated if omitted) |
+| `--provider <name>` | Sandbox provider (`docker` only today) |
+| `--preset <name>` | Preset image |
+| `--image <image>` | Custom image |
+| `--mount <spec>` | Host mount `source:target[:mode]` |
+| `--volume <spec>` | Existing volume `name:target[:mode]` |
+| `--git [path]` | Mount git repo root into sandbox |
+| `--no-clean` | Include untracked/uncommitted files with `--git` |
+| `--env <KEY=VALUE>` | Environment variable |
+| `--port <host:container[/protocol]>` | Publish port |
+| `--port-host-ip <ip>` | Host bind IP for published ports |
+| `--setup-script <path>` | Startup setup script |
+| `--yes` | Skip confirmation |
+| `--connect` | Connect after create |
+
+### List
+
+```bash
+amika sandbox list
+```
+
+Output columns: `NAME`, `PROVIDER`, `IMAGE`, `PORTS`, `CREATED`.
+
+### Connect
+
+```bash
+amika sandbox connect dev-sandbox
+amika sandbox connect dev-sandbox --shell bash
+```
+
+### Delete
+
+```bash
+amika sandbox delete dev-sandbox
+amika sandbox delete sandbox-1 sandbox-2
+amika sandbox delete dev-sandbox --delete-volumes
+amika sandbox delete dev-sandbox --keep-volumes
+```
+
+Delete flags:
+
+| Flag | Description |
+| --- | --- |
+| `--delete-volumes` | Delete associated unreferenced volumes |
+| `--keep-volumes` | Keep associated volumes without prompting |
+
+## Mount modes
+
+| Mode | Behavior |
+| --- | --- |
+| `ro` | Read-only bind mount |
+| `rw` | Read-write bind mount (syncs writes back) |
+| `rwcopy` | Snapshot in a Docker volume (default for `--mount`) |
+
+## `amika materialize`
+
+Run a script or command in an ephemeral Docker container and copy output files to a destination.
+
+```bash
+amika materialize --script ./pull-data.sh --destdir ./output
+amika materialize --cmd "curl -s https://api.example.com/data > result.json" --destdir ./output
+amika materialize --script ./transform.sh --outdir /app/results --destdir ./output
+amika materialize -i --cmd claude --mount $(pwd):/workspace --env ANTHROPIC_API_KEY=...
+amika materialize --preset claude --cmd "claude --help" --destdir /tmp/out
+amika materialize --setup-script ./install-deps.sh --cmd "echo done" --destdir /tmp/out
+```
+
+Exactly one of `--script` or `--cmd` is required.
+
+### Key flags
+
+| Flag | Description |
+| --- | --- |
+| `--script <path>` | Script to execute |
+| `--cmd <string>` | Inline shell command |
+| `--destdir <path>` | Host destination for copied output (required) |
+| `--outdir <path>` | Container directory to copy from |
+| `--preset <name>` | Preset image (`coder`, `claude`) |
+| `--image <image>` | Custom Docker image |
+| `--mount <spec>` | Mount `source:target[:mode]` |
+| `--env <KEY=VALUE>` | Set container environment variable |
+| `--setup-script <path>` | Mount startup script at `/opt/setup.sh` |
+| `-i`, `--interactive` | Run with TTY |
+
+Pass script args after `--`:
+
+```bash
+amika materialize --script ./gen.sh --destdir /tmp/dest -- arg1 arg2
+```
+
+## `amika volume`
+
+Manage tracked volumes.
+
+```bash
+amika volume list
+amika volume delete my-volume
+amika volume delete my-volume --force
+```
+
+Volume list output columns: `NAME`, `TYPE`, `CREATED`, `IN_USE`, `SANDBOXES`, `SOURCE`.
+
+## `amika auth extract`
+
+Discover local coding-agent credentials and print shell assignments.
+
+```bash
+amika auth extract
+eval "$(amika auth extract --export)"
+amika auth extract --no-oauth
+```
+
+See [Auth extract](/guides/auth-extract) for source details.
+
+## `amika-server`
+
+Run the HTTP API server.
+
+```bash
+amika-server
+amika-server -addr :9090
+PORT=9090 amika-server
+```
+
+The server exposes OpenAPI docs at `/openapi.json` and `/docs`.
+
+See [HTTP API reference](/reference/http-api) for endpoint details.
+
+## Environment variables
+
+| Variable | Description |
+| --- | --- |
+| `AMIKA_STATE_DIRECTORY` | Override default state directory |
+| `AMIKA_PRESET_IMAGE_PREFIX` | Override preset image prefix |
+| `AMIKA_RUN_EXPENSIVE_TESTS` | Enable expensive integration tests |
+| `PORT` | Set `amika-server` listen address |
