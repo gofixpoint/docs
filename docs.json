@@ -71,8 +71,7 @@
           {
             "group": "System reference",
             "pages": [
-              "reference/storage",
-              "reference/pricing"
+              "reference/storage"
             ]
           }
         ]
@@ -100,7 +99,7 @@
         {
           "anchor": "Pricing",
           "href": "https://www.amika.dev/pricing",
-          "icon": "badge-dollar-sign"
+          "icon": "dollar-sign"
         },
         {
           "anchor": "GitHub",
