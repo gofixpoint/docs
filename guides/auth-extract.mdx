@@ -4,6 +4,8 @@ description: "Discover and export local coding-agent credentials."
 ---
 
 `amika auth extract` discovers local credentials and prints shell assignments.
+You can use this to copy coding agent credentials into Amika's web UI so you can
+spin up ready-to-go sandboxes from the web.
 
 ## Quick start
 
@@ -50,6 +52,20 @@ CLAUDE_API_KEY='sk-ant-...'
 OPENAI_API_KEY='sk-...'
 CODEX_API_KEY='sk-...'
 ```
+
+## Provider canonicalization
+
+Provider names are normalized before deduplication:
+
+- `claude`, `anthropic` → `anthropic`
+- `codex`, `openai` → `openai`
+- Other providers are lowercased, with separators normalized to hyphens
+
+## OAuth token handling
+
+OAuth sources (`claude_oauth`, `amika_oauth`, Codex OAuth, OpenCode OAuth) are included by default. Use `--no-oauth` to skip them.
+
+OAuth tokens with an `expiresAt` or `expires` timestamp are skipped if expired.
 
 ## Flags
 
