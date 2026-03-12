@@ -20,19 +20,47 @@ By default, the server listens on `:8080`.
 | Method | Path | Description |
 | --- | --- | --- |
 | `GET` | `/v1/health` | Health check |
-| `GET` | `/v1/sandboxes` | List sandboxes |
-| `POST` | `/v1/sandboxes` | Create sandbox |
-| `DELETE` | `/v1/sandboxes/{name}` | Delete sandbox |
-| `GET` | `/v1/volumes` | List volumes |
-| `DELETE` | `/v1/volumes/{name}` | Delete volume |
-| `POST` | `/v1/auth/extract` | Extract credentials |
-| `POST` | `/v1/materialize` | Run materialization |
+| `GET` | `/v1/sandboxes` | List all tracked sandboxes |
+| `POST` | `/v1/sandboxes` | Create a new sandbox |
+| `DELETE` | `/v1/sandboxes/{name}` | Delete a sandbox by name |
+| `GET` | `/v1/volumes` | List all tracked volumes |
+| `DELETE` | `/v1/volumes/{name}` | Delete a volume by name |
+| `POST` | `/v1/auth/extract` | Extract local coding-agent credentials |
+| `POST` | `/v1/materialize` | Run a script/command in an ephemeral container and copy output |
 
-## API-only request field
+## Port publishing
 
-`POST /v1/sandboxes` accepts `SetupScriptText`, which lets you send setup script content inline.
+The `Ports` field on `POST /v1/sandboxes` accepts an array of port binding objects. It is the HTTP API equivalent of the `--port` and `--port-host-ip` CLI flags.
 
-This field is mutually exclusive with file-path based `SetupScript`.
+```json
+{
+  "Ports": [
+    {
+      "HostIP": "127.0.0.1",
+      "HostPort": 8080,
+      "ContainerPort": 80,
+      "Protocol": "tcp"
+    },
+    { "HostPort": 5432, "ContainerPort": 5432, "Protocol": "tcp" }
+  ]
+}
+```
+
+| Field | Required | Default | Description |
+| --- | --- | --- | --- |
+| `HostPort` | yes | | Port on the host (1–65535) |
+| `ContainerPort` | yes | | Port inside the container (1–65535) |
+| `Protocol` | no | `"tcp"` | `"tcp"` or `"udp"` |
+| `HostIP` | no | `127.0.0.1` | Host IP to bind the port. Use `"0.0.0.0"` to bind all interfaces |
+
+Duplicate bindings (same `HostIP:HostPort/Protocol`) are rejected with a 400 error.
+
+## API-only fields
+
+The HTTP API accepts some fields that are not available as CLI flags:
+
+- **`SetupScriptText`** (on `POST /v1/sandboxes`): Inline setup script content as a string. Amika writes it to a temporary file and mounts it as `/usr/local/etc/amikad/setup/setup.sh`. Mutually exclusive with `SetupScript` (file path).
+- **`GitRepo`** (on `POST /v1/sandboxes`): URL of a git repository to clone into the sandbox. The repo is cloned on the host, copied into a Docker volume, and mounted at `/home/amika/workspace/<repo-name>`. Supported schemes: `https://`, `http://`, `ssh://`, `file:///` (absolute paths only), and SCP-style (`git@host:path`). See [Sandbox configuration](/guides/sandbox-configuration) for details.
 
 ## Related docs
 

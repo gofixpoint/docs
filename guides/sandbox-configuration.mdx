@@ -1,13 +1,13 @@
 ---
 title: "Sandbox configuration"
-description: "Configure setup scripts and credential auto-mounting."
+description: "Configure setup scripts, git cloning, per-repo settings, and credential auto-mounting."
 ---
 
 Use sandbox configuration to prepare agent environments before work starts.
 
 ## Setup scripts
 
-Use `--setup-script` to mount a local script at `/opt/setup.sh`.
+Use `--setup-script` to mount a local script at `/usr/local/etc/amikad/setup/setup.sh`.
 
 Amika runs this script before the container command starts.
 
@@ -38,13 +38,106 @@ pip install numpy
 
 ### How it works
 
-Preset images include a no-op `/opt/setup.sh` and an entrypoint that runs it before `CMD`.
+Preset images include a no-op `/usr/local/etc/amikad/setup/setup.sh` and an entrypoint that runs it before `CMD`.
 
 When you pass `--setup-script`, your file is mounted over the no-op script.
 
 <Warning>
 If the setup script exits non-zero, the container command does not run.
 </Warning>
+
+## Git repository cloning
+
+The `--git` CLI flag and the `GitRepo` HTTP API field clone a git repository into a Docker volume mounted at `/home/amika/workspace/<repo-name>` inside the sandbox.
+
+### CLI (`--git`)
+
+`--git` clones the local repository containing the current working directory (or a given path). It always sources from a local git repo on the host.
+
+```bash
+# Clone the current repo (clean clone)
+amika sandbox create --git
+
+# Include untracked/uncommitted files
+amika sandbox create --git --no-clean
+
+# Clone the repo containing a specific path
+amika sandbox create --git ./src
+```
+
+### HTTP API (`GitRepo`)
+
+The `GitRepo` field on `POST /v1/sandboxes` accepts a URL pointing to any remote or local git repository. Supported URL schemes:
+
+| Scheme | Example |
+| --- | --- |
+| `https://` | `https://github.com/octocat/Hello-World.git` |
+| `http://` | `http://git.example.com/repo.git` |
+| `ssh://` | `ssh://git@github.com/org/proj.git` |
+| `file:///` | `file:///home/user/local-repo.git` (must be absolute) |
+| SCP-style | `git@github.com:org/proj.git` |
+
+```bash
+curl -X POST http://localhost:8080/v1/sandboxes \
+  -H 'Content-Type: application/json' \
+  -d '{"GitRepo": "https://github.com/octocat/Hello-World.git"}'
+```
+
+The repository is cloned on the host, copied into a named Docker volume, and mounted read-write at `/home/amika/workspace/<repo-name>`.
+
+<Note>
+- `file://` URLs must use three slashes (`file:///absolute/path`). Relative paths are rejected.
+- The volume name is derived from the sandbox name and repo name, e.g. `amika-git-teal-tokyo-Hello-World-<timestamp>`.
+- Deleting the sandbox does not automatically delete the git volume; use `amika volume delete` when you no longer need it.
+</Note>
+
+## Per-repo configuration
+
+When you use `--git`, Amika looks for a `.amika/config.toml` file at the root of the repository and applies it automatically. This lets you commit sandbox configuration alongside your code so every collaborator gets the same environment without passing extra flags.
+
+### File location
+
+```
+<repo-root>/
+  .amika/
+    config.toml
+```
+
+### Supported fields
+
+```toml
+[lifecycle]
+# Path to an executable that is mounted into the container at
+# /usr/local/etc/amikad/setup/setup.sh.
+# Relative paths are resolved from the repository root.
+setup_script = "scripts/setup.sh"
+```
+
+**Path resolution:** if the value is a relative path it is resolved from the repository root (the directory containing `.git`). Absolute paths are used as-is.
+
+### Interaction with `--setup-script`
+
+`--setup-script` always takes priority. When that flag is passed explicitly, `.amika/config.toml` is not consulted for the setup script.
+
+| Flags passed | Source used |
+| --- | --- |
+| `--git` only | `.amika/config.toml` (if present) |
+| `--git --setup-script /path/script.sh` | `--setup-script` flag |
+| `--setup-script /path/script.sh` (no `--git`) | `--setup-script` flag |
+
+### Example
+
+Given this repository layout:
+
+```
+my-project/
+  .amika/
+    config.toml       # setup_script = "scripts/setup.sh"
+  scripts/
+    setup.sh          # must be executable (chmod +x)
+```
+
+Running `amika sandbox create --git` from anywhere inside `my-project` will automatically mount `scripts/setup.sh` to `/usr/local/etc/amikad/setup/setup.sh` in the container.
 
 ## Agent credential auto-mounting
 
