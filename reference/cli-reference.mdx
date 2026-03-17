@@ -3,7 +3,7 @@ title: "CLI reference"
 description: "Commands, flags, and examples for the Amika CLI."
 ---
 
-Use this page as the command index for `amika` and `amika-server`.
+Use this page as the command index for the `amika` CLI.
 
 ## `amika sandbox`
 
@@ -238,25 +238,6 @@ Pass script args after `--`:
 amika materialize --script ./gen.sh --destdir /tmp/dest -- arg1 arg2
 ```
 
-## `amika-server`
-
-HTTP server that exposes the Amika API as a REST service.
-
-```bash
-amika-server
-amika-server -addr :9090
-PORT=9090 amika-server
-```
-
-| Flag / Env | Default | Description |
-| --- | --- | --- |
-| `-addr <host:port>` | `:8080` | HTTP listen address |
-| `PORT` (env) | | Override listen address (mutually exclusive with `-addr`) |
-
-The server provides OpenAPI documentation at `/openapi.json` and `/docs`.
-
-See [HTTP API reference](/reference/http-api) for endpoint details.
-
 ## Environment variables
 
 | Variable | Description |
@@ -266,4 +247,3 @@ See [HTTP API reference](/reference/http-api) for endpoint details.
 | `AMIKA_API_URL` | Override the remote API base URL (default: `https://app.amika.dev`). Used by sandbox commands when operating on remote sandboxes |
 | `AMIKA_WORKOS_CLIENT_ID` | Override the default WorkOS client ID for `amika auth login`. If you change `AMIKA_API_URL`, you likely need to update this too |
 | `AMIKA_RUN_EXPENSIVE_TESTS` | Enable expensive integration tests |
-| `PORT` | Set `amika-server` listen address |
