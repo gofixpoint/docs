@@ -62,8 +62,7 @@
           {
             "group": "CLI and API",
             "pages": [
-              "reference/cli-reference",
-              "reference/http-api"
+              "reference/cli-reference"
             ]
           },
           {
