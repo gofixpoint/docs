@@ -32,20 +32,15 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Get started",
+        "tab": "Guides",
         "groups": [
           {
-            "group": "Overview",
+            "group": "Getting started",
             "pages": [
               "index",
               "quickstart"
             ]
-          }
-        ]
-      },
-      {
-        "tab": "Guides",
-        "groups": [
+          },
           {
             "group": "Sandboxes and environments",
             "pages": [
