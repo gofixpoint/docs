@@ -7,12 +7,12 @@ Amika is infra for building your software factory. Spin up multiplayer sandboxes
 pre-loaded with any coding agent, and run autonomous background agents for
 code-generation jobs.
 
-Control agents via CLI, web UI, or HTTP API. Seamlessly switch between automated
-agent workflows and human-steered vibe coding with Codex, Claude Code, OpenCode,
-and more.
+Control agents via CLI, web UI, or HTTP API. Seamlessly switch between
+programmaticly automated agent workflows and human-steered vibe coding with
+Codex, Claude Code, OpenCode, and more.
 
 Amika is currently in beta and invite-only. Open-source tools are available at
-https://github.com/gofixpoint/amika. These docs focus on the open-source tools.
+https://github.com/gofixpoint/amika.
 
 ## What you can do with Amika
 
@@ -21,18 +21,18 @@ Amika combines these core capabilities:
 - Run sandboxes loaded with any coding agent and set up with a per-sandbox dev environment
 - Clone one or more Git repos onto the sandbox
 - Programatically control the sandboxed agents for code-gen jobs
-- Record the entire agent chat session as additional context and attach alongside the Git commits
 - Expose any TCP or UDP port to preview changes to the app, database, backend, whatever!
-- Run arbitrary "materialization" scripts to collect context data from elsewhere and output it onto the sandbox's filesystem
+- Record the entire agent chat session as additional context and attach alongside the Git commits *(coming soon)*
+- Run arbitrary "materialization" scripts to collect context data from elsewhere and output it onto the sandbox's filesystem *(coming soon)*
 
 ## Start here
 
 <CardGroup cols={2}>
   <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Build the CLI and run your first `sandbox create` commands.
+    Install the CLI and create your first sandbox.
   </Card>
-  <Card title="Install and run" icon="terminal" href="/development">
-    Install prerequisites and run Amika locally.
+  <Card title="Sandbox configuration" icon="sliders-horizontal" href="/guides/sandbox-configuration">
+    Configure setup scripts and credential auto-mounting.
   </Card>
   <Card title="CLI reference" icon="square-terminal" href="/reference/cli-reference">
     Browse command syntax, key flags, and examples.
