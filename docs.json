@@ -57,7 +57,7 @@
           {
             "group": "Authentication",
             "pages": [
-              "guides/auth-extract"
+              "guides/authentication"
             ]
           }
         ]
