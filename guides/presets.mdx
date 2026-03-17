@@ -61,6 +61,25 @@ amika sandbox create --setup-script ./install-deps.sh
 
 See [Sandbox configuration](/guides/sandbox-configuration) for details.
 
+## Container directory layout
+
+Preset images provision parallel `amikad` and `amika` directories inside the container:
+
+- `/usr/lib/amikad` and `/usr/lib/amika`
+- `/usr/local/etc/amikad` and `/usr/local/etc/amika`
+- `/var/lib/amikad` and `/var/lib/amika`
+- `/var/log/amikad` and `/var/log/amika`
+- `/run/amikad` and `/run/amika`
+- `/tmp/amikad` and `/tmp/amika`
+
+Use `amikad` paths for Amika-managed daemon and system files. Use `amika` paths for user-managed Amika content.
+
+The user-supplied setup hook remains at `/usr/local/etc/amikad/setup/setup.sh`.
+
+## Reserved ports
+
+Preset images reserve container ports **60899–60999** for Amika internal services (e.g. OpenCode web on 60998, amikad daemon on 60999). See [Sandbox configuration](/guides/sandbox-configuration#reserved-ports) for the full allocation table.
+
 ## Custom image prefix
 
 Use `AMIKA_PRESET_IMAGE_PREFIX` to change naming for generated preset images.
