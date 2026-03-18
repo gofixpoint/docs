@@ -32,21 +32,15 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Get started",
-        "groups": [
-          {
-            "group": "Overview",
-            "pages": [
-              "index",
-              "quickstart",
-              "development"
-            ]
-          }
-        ]
-      },
-      {
         "tab": "Guides",
         "groups": [
+          {
+            "group": "Getting started",
+            "pages": [
+              "index",
+              "quickstart"
+            ]
+          },
           {
             "group": "Sandboxes and environments",
             "pages": [
@@ -57,7 +51,7 @@
           {
             "group": "Authentication",
             "pages": [
-              "guides/auth-extract"
+              "guides/authentication"
             ]
           }
         ]
@@ -68,8 +62,7 @@
           {
             "group": "CLI and API",
             "pages": [
-              "reference/cli-reference",
-              "reference/http-api"
+              "reference/cli-reference"
             ]
           },
           {

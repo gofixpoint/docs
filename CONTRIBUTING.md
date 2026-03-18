@@ -1,34 +1,28 @@
-> **Customize this file**: Tailor this template to your project by noting specific contribution types you're looking for, adding a Code of Conduct, or adjusting the writing guidelines to match your style.
+# Contributing
 
-# Contribute to the documentation
+Thanks for helping improve the Amika docs!
 
-Thank you for your interest in contributing to our documentation! This guide will help you get started.
+## Quick start
 
-## How to contribute
-
-### Option 1: Edit directly on GitHub
-
-1. Navigate to the page you want to edit
-2. Click the "Edit this file" button (the pencil icon)
-3. Make your changes and submit a pull request
-
-### Option 2: Local development
-
-1. Fork and clone this repository
-2. Install the Mintlify CLI: `npm i -g mint`
-3. Create a branch for your changes
-4. Make changes
-5. Navigate to the docs directory and run `mint dev`
-6. Preview your changes at `http://localhost:3000`
-7. Commit your changes and submit a pull request
-
-For more details on local development, see our [development guide](development.mdx).
+1. Fork and clone this repository.
+2. Create a branch for your changes.
+3. Preview locally with `npx mintlify@latest dev`.
+4. Commit your changes and open a pull request.
 
 ## Writing guidelines
 
-- **Use active voice**: "Run the command" not "The command should be run"
-- **Address the reader directly**: Use "you" instead of "the user"
-- **Keep sentences concise**: Aim for one idea per sentence
-- **Lead with the goal**: Start instructions with what the user wants to accomplish
-- **Use consistent terminology**: Don't alternate between synonyms for the same concept
-- **Include examples**: Show, don't just tell
+- Use active voice: "Run the command" not "The command should be run".
+- Address the reader directly with "you".
+- Keep sentences concise — one idea per sentence.
+- Include examples wherever possible.
+- Use consistent terminology (don't alternate between synonyms).
+
+## Syncing from source
+
+Most docs content originates in the [amika](https://github.com/gofixpoint/amika) repo under `docs/`. When updating reference or guide pages, check the source docs for the latest content.
+
+## File conventions
+
+- All docs pages use `.mdx` extension.
+- File names use kebab-case (e.g. `cli-reference.mdx`).
+- New pages must be added to the `navigation` section in `docs.json` to appear on the site.

@@ -1,13 +1,62 @@
 ---
-title: "Auth extract"
-description: "Discover and export local coding-agent credentials."
+title: "Authentication"
+description: "Login flow, session management, and credential discovery."
 ---
 
-`amika auth extract` discovers local credentials and prints shell assignments.
+## Login
+
+`amika auth login` authenticates with Amika using the WorkOS Device Authorization Flow.
+
+### Quick start
+
+```bash
+# Log in (opens browser)
+amika auth login
+
+# Check login status
+amika auth status
+
+# Log out
+amika auth logout
+```
+
+### How it works
+
+1. The CLI requests a device code from WorkOS.
+2. A user code is displayed and the browser opens for you to authorize.
+3. The CLI polls WorkOS until you complete authorization.
+4. The session (access token, refresh token, email, org) is saved to `${XDG_STATE_HOME}/amika/workos-session.json`.
+5. Access tokens are automatically refreshed when they are within 60 seconds of expiry.
+
+### Session storage
+
+The session file is stored at `~/.local/state/amika/workos-session.json` by default (following XDG Base Directory conventions). File permissions are set to `0600`.
+
+The path can be overridden with the `AMIKA_STATE_DIRECTORY` environment variable.
+
+### Related commands
+
+| Command | Description |
+| --- | --- |
+| `amika auth status` | Show current login status (email and org) |
+| `amika auth logout` | Remove the saved session |
+
+### Environment variables
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `AMIKA_API_URL` | `https://app.amika.dev` | Override the remote API base URL. Used by sandbox commands when operating on remote sandboxes |
+| `AMIKA_WORKOS_CLIENT_ID` | | Override the default WorkOS client ID. If you change `AMIKA_API_URL`, you likely need to update this variable too |
+
+---
+
+## Credential discovery
+
+`amika auth extract` discovers locally stored API credentials from multiple coding agent tools and prints them as shell environment assignments.
 You can use this to copy coding agent credentials into Amika's web UI so you can
 spin up ready-to-go sandboxes from the web.
 
-## Quick start
+### Quick start
 
 ```bash
 # Print detected assignments
@@ -20,7 +69,7 @@ eval "$(amika auth extract --export)"
 amika auth extract --no-oauth
 ```
 
-## Supported sources
+### Supported sources
 
 Amika reads sources in priority order.
 
@@ -37,7 +86,7 @@ Amika reads sources in priority order.
 
 Higher-priority sources win when multiple files provide the same provider key.
 
-## Output mapping
+### Output mapping
 
 Amika normalizes provider names and exports common aliases:
 
@@ -53,7 +102,7 @@ OPENAI_API_KEY='sk-...'
 CODEX_API_KEY='sk-...'
 ```
 
-## Provider canonicalization
+### Provider canonicalization
 
 Provider names are normalized before deduplication:
 
@@ -61,13 +110,13 @@ Provider names are normalized before deduplication:
 - `codex`, `openai` → `openai`
 - Other providers are lowercased, with separators normalized to hyphens
 
-## OAuth token handling
+### OAuth token handling
 
 OAuth sources (`claude_oauth`, `amika_oauth`, Codex OAuth, OpenCode OAuth) are included by default. Use `--no-oauth` to skip them.
 
 OAuth tokens with an `expiresAt` or `expires` timestamp are skipped if expired.
 
-## Flags
+### Flags
 
 | Flag | Default | Description |
 | --- | --- | --- |

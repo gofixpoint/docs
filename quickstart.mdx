@@ -1,43 +1,55 @@
 ---
 title: "Quickstart"
-description: "Build Amika and run your first sandbox workflow."
+description: "Install the CLI and create your first sandbox."
 ---
 
 This quickstart walks you through a minimal Amika flow:
 
-1. Build Amika.
-2. Create your first sandbox from a git repo.
-3. Run an agent inside the sandbox.
+1. Install the CLI.
+2. Log in to Amika.
+3. Create your first sandbox from a git repo.
+4. Run an agent inside the sandbox.
 
 ## Prerequisites
 
 - macOS or Linux
-- Go 1.21 or later
 - Docker
 
 <Info>
 Amika is in beta. CLI flags and APIs may change.
 </Info>
 
-## Step 1: Build Amika
+## Step 1: Install the CLI
 
 ```bash
-git clone https://github.com/gofixpoint/amika.git
-cd amika
-make build
+curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install.sh | sh
 ```
 
-## Step 2: Create your first sandbox
+## Step 2: Log in
+
+Authenticate with Amika using the WorkOS device authorization flow. This opens your browser for approval.
+
+```bash
+amika auth login
+```
+
+Verify your session:
+
+```bash
+amika auth status
+```
+
+## Step 3: Create your first sandbox
 
 Run this inside a git repository. `--git` mounts the repo root into the sandbox.
 
 ```bash
-./dist/amika sandbox create --name my-sandbox --git --connect
+amika sandbox create --name my-sandbox --git --connect
 ```
 
 Inside the sandbox, your shell starts in `/home/amika/workspace/{repo}`.
 
-## Step 3: Run a coding agent in the sandbox
+## Step 4: Run a coding agent in the sandbox
 
 ```bash
 # Run from inside the sandbox shell
@@ -47,10 +59,14 @@ claude "Add unit tests for the auth module"
 ## Optional: run agents in parallel
 
 ```bash
-./dist/amika sandbox create --name task-1 --git
-./dist/amika sandbox create --name task-2 --git
-./dist/amika sandbox list
+amika sandbox create --name task-1 --git
+amika sandbox create --name task-2 --git
+amika sandbox list
 ```
+
+<Tip>
+Use `amika sandbox list` and `amika volume list` to inspect active sandboxes and tracked volumes.
+</Tip>
 
 ## Next steps
 
@@ -61,14 +77,10 @@ claude "Add unit tests for the auth module"
   <Card title="Presets" icon="package" href="/guides/presets">
     Pick preset images like `coder` and `claude`.
   </Card>
-  <Card title="Auth extract" icon="key-round" href="/guides/auth-extract">
+  <Card title="Authentication" icon="key-round" href="/guides/authentication">
     Export discovered keys for Claude, Codex, and OpenCode.
   </Card>
   <Card title="CLI reference" icon="square-terminal" href="/reference/cli-reference">
     See full command and flag documentation.
   </Card>
 </CardGroup>
-
-<Tip>
-Use `amika sandbox list` and `amika volume list` to inspect active sandboxes and tracked volumes.
-</Tip>
