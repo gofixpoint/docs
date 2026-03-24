@@ -27,6 +27,7 @@ By default, the server listens on `:8080`.
 | `DELETE` | `/v1/volumes/{name}` | Delete a volume by name |
 | `POST` | `/v1/auth/extract` | Extract local coding-agent credentials |
 | `POST` | `/v1/materialize` | Run a script/command in an ephemeral container and copy output |
+| `GET` | `/v1/services` | List services across sandboxes |
 
 ## Port publishing
 
@@ -54,6 +55,40 @@ The `Ports` field on `POST /v1/sandboxes` accepts an array of port binding objec
 | `HostIP` | no | `127.0.0.1` | Host IP to bind the port. Use `"0.0.0.0"` to bind all interfaces |
 
 Duplicate bindings (same `HostIP:HostPort/Protocol`) are rejected with a 400 error.
+
+## Services
+
+`GET /v1/services` returns services declared across sandboxes. Sandbox responses from `GET /v1/sandboxes` and `POST /v1/sandboxes` also include a `Services` field when services are configured.
+
+### Query parameters
+
+| Parameter | Required | Description |
+| --- | --- | --- |
+| `sandbox_name` | no | Filter to services for a specific sandbox |
+
+### Response
+
+```json
+{
+  "Items": [
+    {
+      "Service": "api",
+      "SandboxName": "teal-tokyo",
+      "Ports": [
+        {
+          "HostIP": "127.0.0.1",
+          "HostPort": 4838,
+          "ContainerPort": 4838,
+          "Protocol": "tcp",
+          "URL": "http://localhost:4838"
+        }
+      ]
+    }
+  ]
+}
+```
+
+See [Services](/guides/services) for how to declare services in `.amika/config.toml`.
 
 ## API-only fields
 

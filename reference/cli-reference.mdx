@@ -87,6 +87,10 @@ amika sandbox create --name dev-sandbox --port 3000:3000 --port-host-ip 0.0.0.0
 | `--connect` | `false` | Connect to the sandbox shell immediately after creation |
 | `--setup-script <path>` | | Mount a local script to `/usr/local/etc/amikad/setup/setup.sh` |
 
+<Note>
+When `--git` is used with a repo that contains `.amika/config.toml` service declarations, those service ports are published automatically. If a `--port` flag conflicts with a service port (same container port and protocol), the command returns an error. See [Services](/guides/services) for details.
+</Note>
+
 ### Mount modes
 
 | Mode | Behavior |
@@ -150,6 +154,25 @@ Volume list output columns: `NAME`, `TYPE`, `CREATED`, `IN_USE`, `SANDBOXES`, `S
 | Flag | Default | Description |
 | --- | --- | --- |
 | `--force` | `false` | Delete volume even if still referenced by sandboxes |
+
+## `amika service`
+
+Manage services declared in sandbox configurations.
+
+### List
+
+```bash
+amika service list
+amika service list --sandbox-name dev-sandbox
+```
+
+Output columns: `SERVICE`, `SANDBOX`, `PORTS`, `URL`.
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--sandbox-name <name>` | (none) | Filter services to a specific sandbox |
+
+See [Services](/guides/services) for how to declare services in `.amika/config.toml`.
 
 ## `amika auth`
 

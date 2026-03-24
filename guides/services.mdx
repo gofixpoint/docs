@@ -1,0 +1,173 @@
+---
+title: "Services"
+description: "Declare named services with port mappings and URL schemes for your sandboxes."
+---
+
+Services let you declare network-facing components in `.amika/config.toml` so that sandboxes automatically publish the right ports and generate URLs when they start.
+
+## Defining services in config.toml
+
+Add `[services.<name>]` sections alongside the existing `[lifecycle]` section. Each section declares a named service with optional port bindings and URL scheme.
+
+```toml
+[lifecycle]
+setup_script = "scripts/setup.sh"
+
+[services.api]
+port = 4838
+url_scheme = "http"
+
+[services.frontend]
+ports = [3000, "3001/tcp"]
+url_scheme = [
+  { port = 3000, scheme = "https" },
+]
+
+[services.sidecar]
+port = "9090/tcp"
+```
+
+### Fields
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `port` | integer or `"port/protocol"` string | no | Single port declaration |
+| `ports` | list of integer or `"port/protocol"` string | no | Multiple port declarations |
+| `url_scheme` | string or list of `{port, scheme}` tables | no | URL generation for specific ports |
+
+`port` and `ports` are mutually exclusive. A service may omit both to act as a metadata-only entry with no port bindings.
+
+### Port format
+
+Each port value is either:
+
+- **Integer** — interpreted as `containerPort/tcp` (TCP is the default protocol).
+- **String** `"containerPort/protocol"` — sets the protocol explicitly, e.g. `"4982/udp"`.
+
+```toml
+# These are equivalent
+port = 4838
+port = "4838/tcp"
+```
+
+### url_scheme
+
+`url_scheme` controls whether Amika generates a URL for a port after resolution. Allowed scheme values are `"http"` and `"https"`.
+
+**Single-port services** accept a string or a list:
+
+```toml
+# String form — scheme applies to the declared port
+[services.api]
+port = 4838
+url_scheme = "http"
+
+# List form — equivalent to the above
+[services.api]
+port = 4838
+url_scheme = [{ port = 4838, scheme = "http" }]
+```
+
+**Multi-port services** must use the list form. Only ports listed get URLs:
+
+```toml
+[services.web]
+ports = [4211, "9872/tcp", "4982/udp"]
+url_scheme = [
+  { port = 4211, scheme = "http" },
+  { port = "9872/tcp", scheme = "https" },
+]
+# 4982/udp gets no URL
+```
+
+When `url_scheme` is omitted, no URLs are generated for the service.
+
+## Validation rules
+
+Amika validates service definitions when parsing `.amika/config.toml`:
+
+- **Port range:** port numbers must be 1–65535.
+- **Protocol:** must be `tcp` or `udp`.
+- **Mutual exclusivity:** specifying both `port` and `ports` on the same service is an error.
+- **Uniqueness:** no duplicate `(containerPort, protocol)` pair across all services in the file.
+- **url_scheme entries** must reference a port declared in the same service. Duplicate port entries within `url_scheme` are rejected.
+
+<Warning>
+Container ports **60899–60999** are reserved for internal Amika services and are rejected in service declarations. See [Reserved ports](/guides/sandbox-configuration#reserved-ports) for details.
+</Warning>
+
+If validation fails, Amika logs a warning and treats the file as having no service definitions. The `[lifecycle]` section is still applied normally.
+
+## Port resolution
+
+When you run `amika sandbox create --git` and the repository contains service declarations, Amika resolves host ports for each service port:
+
+1. **Direct mirror** — try binding `hostPort = containerPort`. If the port is available on the host, use it.
+2. **Random fallback** — if the direct mirror is taken, bind to port 0 and let the OS assign an available port.
+
+The host IP defaults to `127.0.0.1` (same as `--port-host-ip`).
+
+For ports with a `url_scheme`, Amika generates a URL at resolution time:
+
+```
+<scheme>://localhost:<hostPort>
+```
+
+Resolved ports and URLs are visible in `amika sandbox list` and API responses.
+
+<Note>
+URL generation only applies to TCP ports. UDP ports with a `url_scheme` do not produce runtime URLs.
+</Note>
+
+## Merging with --port flags
+
+When `--port` flags are passed alongside `--git`, the two sets of port bindings are combined:
+
+```bash
+# --port publishes 5432; service config publishes its own ports
+amika sandbox create --git --port 5432:5432
+```
+
+If a container port/protocol pair appears in both `--port` flags and a service declaration, Amika returns an error — there is no silent override.
+
+## Listing services
+
+Use `amika service list` to see services across all sandboxes:
+
+```bash
+amika service list
+amika service list --sandbox-name teal-tokyo
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--sandbox-name <name>` | (none) | Filter services to a specific sandbox |
+
+Output columns: `SERVICE`, `SANDBOX`, `PORTS`, `URL`.
+
+```
+SERVICE    SANDBOX       PORTS                            URL
+api        teal-tokyo    127.0.0.1:4838->4838/tcp         http://localhost:4838
+metrics    teal-tokyo    127.0.0.1:9090->9090/tcp         -
+frontend   blue-paris    127.0.0.1:3000->3000/tcp         https://localhost:3000
+```
+
+## Services on the hosted platform
+
+On the hosted Amika platform, service definitions can also be managed through the web UI or the platform API.
+
+**Resolution precedence** — when creating a sandbox for a repository, the platform resolves service definitions in this order:
+
+1. **Database** — if any service definitions have been saved via the UI or API, use those exclusively.
+2. **Repository config** — if no database definitions exist, parse `[services.*]` sections from `.amika/config.toml`.
+3. **Default** — if neither source defines services, proceed with no service definitions.
+
+<Tip>
+**DB-wins-all:** when you save _any_ service definition via the UI, it overrides _all_ TOML-defined services for that repository. The UI pre-populates from TOML when you first edit, but from that point forward the database is the sole source.
+</Tip>
+
+## Related docs
+
+- [Sandbox configuration](/guides/sandbox-configuration) — lifecycle scripts, git cloning, reserved ports
+- [CLI reference](/reference/cli-reference) — full command and flag index
+- [HTTP API reference](/reference/http-api) — REST endpoints for sandboxes and services
