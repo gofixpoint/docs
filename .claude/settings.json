@@ -26,6 +26,17 @@
             "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-commit-attribution.py\""
           }
         ]
+      },
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-plan-continue.py\"",
+            "timeout": 1800,
+            "statusMessage": "Reviewing plan..."
+          }
+        ]
       }
     ],
     "PreToolUse": [
