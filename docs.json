@@ -45,6 +45,7 @@
             "group": "Sandboxes and environments",
             "pages": [
               "guides/sandbox-configuration",
+              "guides/services",
               "guides/presets"
             ]
           },
@@ -62,7 +63,8 @@
           {
             "group": "CLI and API",
             "pages": [
-              "reference/cli-reference"
+              "reference/cli-reference",
+              "reference/http-api"
             ]
           },
           {

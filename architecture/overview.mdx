@@ -11,6 +11,7 @@ Amika is an open-source CLI and HTTP API for running coding agents in sandboxes.
 - **Mount modes**: `ro`, `rw`, and `rwcopy` define how agents can access data.
 - **Credential discovery**: Amika discovers local coding-agent credentials and mounts snapshots into containers.
 - **Preset images**: Bundled images (`coder`, `claude`) with common tooling.
+- **Services**: Named network-facing components with port mappings and URL schemes, declared in `.amika/config.toml`.
 - **Materialization**: Ephemeral containers run scripts or commands and copy outputs to host paths.
 
 ## Command surface
@@ -20,6 +21,7 @@ Amika is an open-source CLI and HTTP API for running coding agents in sandboxes.
 | `amika sandbox create/list/connect/delete` | Manage persistent sandboxes |
 | `amika volume list/delete` | Manage tracked volumes created by `rwcopy` mounts |
 | `amika auth extract` | Discover and print credentials |
+| `amika service list` | List services declared in sandbox configs |
 | `amika materialize` | Run command/script and copy output files |
 | `amika-server` | Expose API over HTTP |
 

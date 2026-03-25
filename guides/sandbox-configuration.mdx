@@ -1,6 +1,6 @@
 ---
 title: "Sandbox configuration"
-description: "Configure setup scripts, git cloning, per-repo settings, and credential auto-mounting."
+description: "Configure setup scripts, git cloning, per-repo settings, services, and credential auto-mounting."
 ---
 
 Use sandbox configuration to prepare agent environments before work starts.
@@ -111,7 +111,13 @@ When you use `--git`, Amika looks for a `.amika/config.toml` file at the root of
 # /usr/local/etc/amikad/setup/setup.sh.
 # Relative paths are resolved from the repository root.
 setup_script = "scripts/setup.sh"
+
+[services.api]
+port = 4838
+url_scheme = "http"
 ```
+
+You can also declare named services with port bindings in the same file. See [Services](/guides/services) for the full `[services.<name>]` reference.
 
 **Path resolution:** if the value is a relative path it is resolved from the repository root (the directory containing `.git`). Absolute paths are used as-is.
 
@@ -178,5 +184,6 @@ The OpenCode web server starts automatically on port 60998 when OpenCode is inst
 
 ## Related docs
 
+- [Services](/guides/services)
 - [Presets](/guides/presets)
 - [Authentication](/guides/authentication)
