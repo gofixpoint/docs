@@ -1,0 +1,6 @@
+[lifecycle]
+setup_script = ".amika/setup.sh"
+
+[services.docs]
+port = 3000
+url_scheme = "http"
