@@ -7,7 +7,7 @@ description: "Commands, flags, and examples for the amika-server binary."
 
 *You only need to run this if you are self-hosting a "local-docker" control plane.*
 
-HTTP server that exposes the Amika API as a REST service.
+Server that exposes the Amika API as a service.
 
 ```bash
 amika-server
@@ -17,9 +17,7 @@ PORT=9090 amika-server
 
 | Flag / Env | Default | Description |
 | --- | --- | --- |
-| `-addr <host:port>` | `:8080` | HTTP listen address |
+| `-addr <host:port>` | `:8080` | Listen address |
 | `PORT` (env) | | Override listen address (mutually exclusive with `-addr`) |
 
 The server provides OpenAPI documentation at `/openapi.json` and `/docs`.
-
-See [HTTP API reference](/reference/http-api) for endpoint details.
