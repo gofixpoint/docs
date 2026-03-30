@@ -24,6 +24,7 @@ amika materialize --setup-script ./install-deps.sh --cmd "echo done" --destdir /
 ### Script requirements
 
 - Make the script executable with `chmod +x`.
+- Setup scripts run with the working directory set to the agent's working directory (`$AMIKA_AGENT_CWD`).
 - Exit with status code `0` on success.
 - Keep setup deterministic so sandbox startup stays predictable.
 
@@ -91,6 +92,12 @@ When you use `--git`, Amika looks for a `.amika/config.toml` file at the root of
 # Relative paths are resolved from the repository root.
 setup_script = "scripts/setup.sh"
 
+[env]
+# Plain environment variables
+DATABASE_HOST = "localhost"
+# Secret references — resolved from the remote secrets store
+ANTHROPIC_API_KEY = { secret = "my-anthropic-key" }
+
 [services.api]
 port = 4838
 url_scheme = "http"
@@ -123,6 +130,25 @@ my-project/
 ```
 
 Running `amika sandbox create --git` from anywhere inside `my-project` will automatically mount `scripts/setup.sh` to `/usr/local/etc/amikad/setup/setup.sh` in the container.
+
+### `[env]` — Environment variables
+
+The `[env]` section declares environment variables that are set inside the sandbox. Values can be plain strings or references to secrets stored in the remote Amika secrets store.
+
+```toml
+[env]
+# Plain string — set as-is
+DATABASE_HOST = "localhost"
+
+# Secret reference — resolved from the remote secrets store at sandbox creation
+ANTHROPIC_API_KEY = { secret = "my-anthropic-key" }
+```
+
+Secrets referenced with `{ secret = "name" }` must be pushed to the remote store before sandbox creation, either via `amika secret push` or through the web UI.
+
+### Branch selection
+
+When `--branch` is specified on `amika sandbox create`, the `.amika/config.toml` file is read from that branch rather than the repository's default branch. This allows different branches to have different sandbox configurations.
 
 ## Agent credential auto-mounting
 
