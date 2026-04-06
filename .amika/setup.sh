@@ -2,7 +2,7 @@
 set -e
 
 # Install Mintlify CLI globally so `mintlify` is available
-npm install -g mintlify@latest
+sudo npm install -g mintlify@latest
 
 # Start the Mintlify dev server in the background on port 3000
 cd /home/amika/workspace/docs
