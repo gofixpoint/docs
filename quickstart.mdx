@@ -39,7 +39,24 @@ Verify your session:
 amika auth status
 ```
 
-## Step 3: Create your first sandbox
+## Step 3: Set up agent credentials
+
+This pushes your local Claude Code OAuth credentials to the Amika secrets store.
+Then, sandboxes will auto-use this credential so you don't need to log in again
+(unless you specify otherwise).
+
+```bash
+amika secret claude push --type oauth
+```
+
+## Step 4: Set up your Github PAT
+
+We use Github personal access tokens (PATs) to give your agent access to your
+selected Github repositories and to let them push commits or make pull requests.
+
+Go to the [Git settings](https://app.amika.dev/settings#git) and configure your PAT.
+
+## Step 5: Create your first sandbox
 
 Run this inside a git repository. `--git` mounts the repo root into the sandbox.
 
@@ -49,9 +66,11 @@ amika sandbox create --name my-sandbox --git --connect
 
 Inside the sandbox, your shell starts in `/home/amika/workspace/{repo}`.
 
-## Step 4: Run a coding agent in the sandbox
+## Step 6: Run a coding agent in the sandbox
 
 ```bash
+amika sandbox connect --name my-sandbox
+
 # Run from inside the sandbox shell
 claude "Add unit tests for the auth module"
 ```
