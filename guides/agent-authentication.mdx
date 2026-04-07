@@ -1,7 +1,33 @@
 ---
 title: "Agent Authentication"
-description: "Discover, manage, and inject coding agent credentials into Amika sandboxes."
+description: "Set up coding agent authentication and credentials for your sandboxes."
 ---
+
+## Agent credential setup
+
+For remote sandboxes, you can push Claude Code credentials to the Amika secrets store and have them automatically injected at sandbox creation time. This avoids manual authentication inside the sandbox.
+
+### Workflow
+
+1. **Push credentials** from your local machine:
+
+```bash
+# Interactive discovery (scans Claude config files and macOS keychain)
+amika secret claude push
+
+# Or specify directly
+amika secret claude push --type api_key --value sk-ant-xxx
+```
+
+2. **Inject when creating a sandbox** — select a credential via the web UI, or use the `--secret` flag:
+
+```bash
+amika sandbox create --git --remote --secret env:ANTHROPIC_API_KEY=my-claude-key
+```
+
+3. Claude Code is pre-authenticated inside the sandbox — no manual login needed.
+
+See [CLI reference](/reference/cli-reference) for the full `amika secret claude push/list/delete` flag reference.
 
 ## Credential discovery
 
@@ -80,29 +106,3 @@ OAuth tokens with an `expiresAt` or `expires` timestamp are skipped if expired.
 <Tip>
 Use `--homedir` in CI or test environments when you need deterministic credential fixtures.
 </Tip>
-
-## Remote credential management
-
-For remote sandboxes, you can push Claude Code credentials to the Amika secrets store and have them automatically injected at sandbox creation time. This avoids manual authentication inside the sandbox.
-
-### Workflow
-
-1. **Push credentials** from your local machine:
-
-```bash
-# Interactive discovery (scans Claude config files and macOS keychain)
-amika secret claude push
-
-# Or specify directly
-amika secret claude push --type api_key --value sk-ant-xxx
-```
-
-2. **Inject when creating a sandbox** — select a credential via the web UI, or use the `--secret` flag:
-
-```bash
-amika sandbox create --git --remote --secret env:ANTHROPIC_API_KEY=my-claude-key
-```
-
-3. Claude Code is pre-authenticated inside the sandbox — no manual login needed.
-
-See [CLI reference](/reference/cli-reference) for the full `amika secret claude push/list/delete` flag reference.

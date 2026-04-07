@@ -28,12 +28,6 @@ amika auth logout
 4. The session (access token, refresh token, email, org) is saved to `${XDG_STATE_HOME}/amika/workos-session.json`.
 5. Access tokens are automatically refreshed when they are within 60 seconds of expiry.
 
-### Session storage
-
-The session file is stored at `~/.local/state/amika/workos-session.json` by default (following XDG Base Directory conventions). File permissions are set to `0600`.
-
-The path can be overridden with the `AMIKA_STATE_DIRECTORY` environment variable.
-
 ### Related commands
 
 | Command | Description |
