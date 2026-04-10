@@ -7,7 +7,18 @@ You can use a coding agent (Claude Code, Codex, OpenCode, or similar) to analyze
 
 ## How it works
 
-Copy the prompt below into your coding agent while inside your repository. The agent will:
+Create a sandbox loaded with the repo you are setting up.
+
+In CLI:
+
+```bash
+cd /path/to/repo
+amika sandbox create --git --no-setup
+```
+
+Or, go to https://app.amika.dev/sandbox and create a sandbox for your repo, then connect to it.
+
+In the sandbox, navigate to the git repo, and copy the prompt below into your coding agent. The agent will:
 
 1. **Investigate** your repo to discover languages, frameworks, services, ports, and environment variables.
 2. **Ask you** to confirm its findings and answer a few questions about your preferences.
@@ -72,9 +83,9 @@ After investigating, present your findings to the user and ask them to confirm o
 Explain the available Amika presets and recommend one:
 
 - **`coder`** (default) — Ubuntu 24.04 with Git, curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx. Includes Claude Code, Codex, and OpenCode agent CLIs.
-- **`claude`** — Same base tools as `coder`, but only includes Claude Code (no Codex or OpenCode).
+- **`coder-dind`** — Same base tools as `coder`, but also configures Docker in Docker (dind) to allow running containerized services.
 
-Both presets use the same Ubuntu 24.04 base and development tools. The only difference is which AI agent CLIs are preinstalled. Recommend `coder` unless the user only uses Claude Code.
+Both presets use the same Ubuntu 24.04 base and development tools. The only difference is which AI agent CLIs are preinstalled. Recommend `coder` unless the user requires Docker or containerization.
 
 Note: The preset is selected at sandbox creation time (`amika sandbox create --preset coder`), not in config.toml. But the user should know which preset to use since it determines what's pre-installed and affects what the setup script needs to install.
 
