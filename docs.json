@@ -71,6 +71,12 @@
             ]
           },
           {
+            "group": "Configuration",
+            "pages": [
+              "reference/config-toml"
+            ]
+          },
+          {
             "group": "System reference",
             "pages": [
               "reference/storage"
