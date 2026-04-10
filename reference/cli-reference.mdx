@@ -18,7 +18,7 @@ These flags apply to all `sandbox` subcommands (`create`, `list`, `connect`, `st
 | `--local` | `false` | Only operate on local sandboxes |
 | `--remote` | `false` | Only operate on remote sandboxes |
 
-When neither flag is set, the default behavior depends on login state: if you are logged in, both local and remote sandboxes are shown; otherwise only local.
+When neither flag is set, commands default to remote mode. Use `--local` to operate on local sandboxes only.
 
 `--local` and `--remote` are mutually exclusive.
 
@@ -94,6 +94,8 @@ amika sandbox create --name dev-sandbox --git --remote \
 | `--connect` | `false` | Connect to the sandbox shell immediately after creation |
 | `--setup-script <path>` | | Mount a local script to `/usr/local/etc/amikad/setup/setup.sh` |
 | `--branch <name>` | | Git branch to clone (defaults to the repo's default branch). Used with `--git` |
+| `--size <size>` | `m` | Sandbox resource size: `xs` or `m`. Remote sandboxes only |
+| `--no-setup` | `false` | Skip the setup script (ignore both `--setup-script` and `.amika/config.toml` setup) |
 | `--secret <spec>` | | Inject a remote secret (`env:FOO=SECRET_NAME` or `env:SECRET_NAME`). Repeatable. Requires `--remote` |
 
 <Note>
@@ -114,8 +116,11 @@ When `--git` is used with a repo that contains `.amika/config.toml` service decl
 
 ### List
 
+Aliases: `ls`
+
 ```bash
 amika sandbox list
+amika sandbox ls
 ```
 
 Output columns: `NAME`, `STATE`, `LOCATION`, `PROVIDER`, `IMAGE`, `BRANCH`, `PORTS`, `CREATED`.
@@ -138,8 +143,11 @@ The shell starts in `/home/amika`.
 
 ### Delete
 
+Aliases: `rm`, `remove`
+
 ```bash
 amika sandbox delete dev-sandbox
+amika sandbox rm dev-sandbox
 amika sandbox delete sandbox-1 sandbox-2
 amika sandbox delete dev-sandbox --delete-volumes
 amika sandbox delete dev-sandbox --keep-volumes
@@ -147,6 +155,7 @@ amika sandbox delete dev-sandbox --keep-volumes
 
 | Flag | Default | Description |
 | --- | --- | --- |
+| `--force` | `false` | Skip confirmation prompt |
 | `--delete-volumes` | `false` | Delete associated volumes that are no longer referenced by other sandboxes |
 | `--keep-volumes` | `false` | Keep associated volumes without prompting |
 
@@ -229,18 +238,33 @@ amika sandbox agent-send my-sandbox "Review this code" --agent codex
 | `--no-wait` | `false` | Send the instruction and return immediately without waiting |
 | `--workdir <path>` | `$AMIKA_AGENT_CWD` | Working directory inside the container |
 | `--agent <name>` | `claude` | Agent CLI to use |
+| `--session-id <id>` | | Resume an existing agent session. Remote sandboxes only |
+| `--new-session` | `false` | Start a new agent session instead of resuming. Remote sandboxes only |
 
 ## `amika volume`
 
 Manage tracked Docker volumes used by sandboxes.
 
+### List
+
+Aliases: `ls`
+
 ```bash
 amika volume list
-amika volume delete my-volume
-amika volume delete my-volume --force
+amika volume ls
 ```
 
-Volume list output columns: `NAME`, `TYPE`, `CREATED`, `IN_USE`, `SANDBOXES`, `SOURCE`.
+Output columns: `NAME`, `TYPE`, `CREATED`, `IN_USE`, `SANDBOXES`, `SOURCE`.
+
+### Delete
+
+Aliases: `rm`, `remove`
+
+```bash
+amika volume delete my-volume
+amika volume rm my-volume
+amika volume delete my-volume --force
+```
 
 | Flag | Default | Description |
 | --- | --- | --- |
@@ -252,8 +276,11 @@ Manage services declared in sandbox configurations.
 
 ### List
 
+Aliases: `ls`
+
 ```bash
 amika service list
+amika service ls
 amika service list --sandbox-name dev-sandbox
 ```
 
@@ -395,20 +422,26 @@ amika secret claude push --type api_key
 
 #### `amika secret claude list`
 
+Aliases: `ls`
+
 List pushed Claude credentials.
 
 ```bash
 amika secret claude list
+amika secret claude ls
 ```
 
 Output columns: `ID`, `NAME`, `TYPE`.
 
 #### `amika secret claude delete`
 
+Aliases: `rm`
+
 Delete a Claude credential by ID.
 
 ```bash
 amika secret claude delete <id>
+amika secret claude rm <id>
 ```
 
 ## `amika materialize`
@@ -455,4 +488,5 @@ amika materialize --script ./gen.sh --destdir /tmp/dest -- arg1 arg2
 | `AMIKA_PRESET_IMAGE_PREFIX` | Override the Docker image name prefix for presets |
 | `AMIKA_API_URL` | Override the remote API base URL (default: `https://app.amika.dev`). Used by sandbox commands when operating on remote sandboxes |
 | `AMIKA_WORKOS_CLIENT_ID` | Override the default WorkOS client ID for `amika auth login`. If you change `AMIKA_API_URL`, you likely need to update this too |
+| `AMIKA_API_KEY` | Static bearer token for API authentication. When set, takes precedence over the WorkOS session from `amika auth login` |
 | `AMIKA_RUN_EXPENSIVE_TESTS` | Enable expensive integration tests |
