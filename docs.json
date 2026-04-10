@@ -43,8 +43,9 @@
             ]
           },
           {
-            "group": "Sandboxes and environments",
+            "group": "Sandboxes and Repositories",
             "pages": [
+              "guides/repository-configuration",
               "guides/sandbox-configuration",
               "guides/services",
               "guides/presets"
