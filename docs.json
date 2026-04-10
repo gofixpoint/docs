@@ -38,12 +38,14 @@
             "group": "Getting started",
             "pages": [
               "index",
-              "quickstart"
+              "quickstart",
+              "install"
             ]
           },
           {
-            "group": "Sandboxes and environments",
+            "group": "Sandboxes and Repositories",
             "pages": [
+              "guides/repository-configuration",
               "guides/sandbox-configuration",
               "guides/services",
               "guides/presets"
@@ -66,6 +68,12 @@
             "pages": [
               "reference/cli-reference",
               "reference/http-api"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "reference/config-toml"
             ]
           },
           {

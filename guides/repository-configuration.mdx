@@ -1,0 +1,164 @@
+---
+title: "Repository configuration"
+description: "Configure sandbox defaults for a repository with .amika/config.toml."
+---
+
+Repository configuration lets you commit sandbox settings alongside your code in `.amika/config.toml`. When a sandbox is created from a repository, Amika reads this file and applies the settings automatically — every collaborator gets the same environment without passing extra flags.
+
+## File location
+
+```
+<repo-root>/
+  .amika/
+    config.toml
+```
+
+Amika looks for this file at the root of the repository whenever you use `--git` with `amika sandbox create`, or when creating a sandbox from a repository on the hosted platform.
+
+## Configuration resolution
+
+Repository configuration acts as a template for sandboxes. Settings can come from multiple sources, and Amika resolves them in priority order:
+
+| Priority | Source | Description |
+| --- | --- | --- |
+| 1 (highest) | **API request / CLI flags** | Values provided at sandbox creation time |
+| 2 | **Database** | Values saved via the web UI |
+| 3 | **`.amika/config.toml`** | Committed in the repository |
+| 4 (lowest) | **Built-in default** | Fallback when nothing else is configured |
+
+The first non-empty value wins. Each configuration dimension (setup script, env vars, services, sandbox settings) is resolved independently.
+
+<Tip>
+When you save a setting via the web UI, it overrides the corresponding `.amika/config.toml` value for all future sandboxes. The UI shows a notice when a value originates from the TOML file.
+</Tip>
+
+## `[lifecycle]` — Setup script
+
+Declare a setup script that runs before the container command starts. The path is relative to the repository root.
+
+```toml
+[lifecycle]
+setup_script = "scripts/setup.sh"
+```
+
+The script is mounted into the container at `/usr/local/etc/amikad/setup/setup.sh` and runs with the working directory set to the agent's working directory (`$AMIKA_AGENT_CWD`).
+
+**Requirements:**
+- The script must be executable (`chmod +x`).
+- Exit with status code `0` on success. A non-zero exit prevents the container command from running.
+
+**CLI override:** passing `--setup-script` to `amika sandbox create` takes priority over the TOML value.
+
+| Flags passed | Source used |
+| --- | --- |
+| `--git` only | `.amika/config.toml` (if present) |
+| `--git --setup-script ./script.sh` | `--setup-script` flag |
+| `--setup-script ./script.sh` (no `--git`) | `--setup-script` flag |
+
+## `[env]` — Environment variables
+
+Declare environment variables that are set inside the sandbox. Values can be plain strings or references to secrets in the Amika secrets store.
+
+```toml
+[env]
+# Plain string — set as-is
+DATABASE_HOST = "localhost"
+NODE_ENV = "production"
+
+# Secret reference — resolved at sandbox creation
+ANTHROPIC_API_KEY = { secret = "my-anthropic-key" }
+```
+
+Variable names must be `UPPER_SNAKE_CASE`.
+
+Secrets referenced with `{ secret = "name" }` must exist in the remote secrets store before sandbox creation. Push them with `amika secret push` or through the web UI.
+
+**Merge semantics:** environment variables are merged per-key. Database entries override TOML entries with the same name, but TOML-only entries are preserved.
+
+## `[services.<name>]` — Service definitions
+
+Declare named services with port bindings and URL schemes. See [Services](/guides/services) for the full reference.
+
+```toml
+[services.api]
+port = 4838
+url_scheme = "http"
+
+[services.frontend]
+ports = [3000, "3001/tcp"]
+url_scheme = [
+  { port = 3000, scheme = "https" },
+]
+```
+
+**Merge semantics:** if any service definitions are saved via the web UI, those are used exclusively and TOML definitions are ignored (DB-wins-all).
+
+## `[sandbox]` — Sandbox settings
+
+Set default sandbox preset and size for the repository.
+
+```toml
+[sandbox]
+preset = "coder"       # "coder" or "coder-dind"
+size = "m"             # "m" or "xs"
+```
+
+| Field | Values | Description |
+| --- | --- | --- |
+| `preset` | `coder`, `coder-dind` | Base image preset. `coder-dind` includes Docker-in-Docker support. |
+| `size` | `xs`, `m` | Sandbox resource allocation. |
+
+These values are used as defaults when creating a sandbox from this repository. They can be overridden at creation time via the web UI or API.
+
+## Branch selection
+
+When `--branch` is specified on `amika sandbox create`, the `.amika/config.toml` file is read from that branch rather than the repository's default branch. This allows different branches to carry different sandbox configurations.
+
+```bash
+amika sandbox create --git --branch feature/new-api
+```
+
+## Example
+
+Given this repository layout:
+
+```
+my-project/
+  .amika/
+    config.toml
+    setup.sh
+  src/
+    ...
+```
+
+With this `config.toml`:
+
+```toml
+[lifecycle]
+setup_script = ".amika/setup.sh"
+
+[env]
+NODE_ENV = "development"
+API_KEY = { secret = "my-api-key" }
+
+[services.web]
+port = 3000
+url_scheme = "http"
+
+[sandbox]
+preset = "coder"
+size = "m"
+```
+
+Running `amika sandbox create --git` from anywhere inside `my-project` will:
+1. Clone the repository into the sandbox.
+2. Mount `.amika/setup.sh` as the setup script.
+3. Set `NODE_ENV=development` and resolve `API_KEY` from the secrets store.
+4. Publish port 3000 with an HTTP URL.
+5. Use the `coder` preset with medium resource allocation.
+
+## Related docs
+
+- [Sandbox configuration](/guides/sandbox-configuration) — CLI flags, credential mounting, reserved ports
+- [Services](/guides/services) — full `[services.<name>]` reference
+- [config.toml reference](/reference/config-toml) — exhaustive field reference

@@ -1,0 +1,67 @@
+---
+title: "Install"
+description: "Install the Amika CLI."
+---
+
+## CLI
+
+The Amika CLI is a single binary that runs on macOS and Linux.
+
+### Quick install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install.sh | sh
+```
+
+This downloads the latest release, verifies its SHA-256 checksum, and installs it to `/usr/local/bin`.
+
+### Verify the installation
+
+```bash
+amika --version
+```
+
+### Options
+
+#### Install a specific version
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install.sh | sh -s -- --install-version 0.5.0
+```
+
+#### Custom install directory
+
+Set `AMIKA_INSTALL_DIR` to install somewhere other than `/usr/local/bin`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install.sh | AMIKA_INSTALL_DIR=~/.local/bin sh
+```
+
+Make sure the directory is on your `PATH`.
+
+#### Dry run
+
+Preview what the installer would do without downloading or installing anything:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install.sh | sh -s -- --dry-run
+```
+
+### Supported platforms
+
+| OS    | Architecture       |
+|-------|--------------------|
+| Linux | x86_64, arm64      |
+| macOS | x86_64 (Intel), arm64 (Apple Silicon) |
+
+### Build from source
+
+```bash
+git clone https://github.com/gofixpoint/amika.git && cd amika
+make build-cli
+# Binary is at dist/amika
+```
+
+## SDKs
+
+SDK packages for Python, TypeScript, and Go are coming soon. In the meantime, you can use the [CLI](/reference/cli-reference) or the [HTTP API](/reference/http-api) directly.

@@ -13,7 +13,7 @@ This quickstart walks you through a minimal Amika flow:
 ## Prerequisites
 
 - macOS or Linux
-- Docker
+- Docker (only required if running local sandboxes)
 
 <Info>
 Amika is in beta. CLI flags and APIs may change.
@@ -24,6 +24,8 @@ Amika is in beta. CLI flags and APIs may change.
 ```bash
 curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install.sh | sh
 ```
+
+See [Install](/install) for more options (custom install directory, specific versions, building from source).
 
 ## Step 2: Log in
 
@@ -69,7 +71,7 @@ Inside the sandbox, your shell starts in `/home/amika/workspace/{repo}`.
 ## Step 6: Run a coding agent in the sandbox
 
 ```bash
-amika sandbox connect --name my-sandbox
+amika sandbox connect my-sandbox
 
 # Run from inside the sandbox shell
 claude "Add unit tests for the auth module"
@@ -90,8 +92,8 @@ Use `amika sandbox list` and `amika volume list` to inspect active sandboxes and
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Sandbox configuration" icon="sliders-horizontal" href="/guides/sandbox-configuration">
-    Configure setup scripts and credential auto-mounting.
+  <Card title="Repository configuration" icon="sliders-horizontal" href="/guides/repository-configuration">
+    Configure sandbox defaults with .amika/config.toml.
   </Card>
   <Card title="Presets" icon="package" href="/guides/presets">
     Pick preset images like `coder` and `claude`.

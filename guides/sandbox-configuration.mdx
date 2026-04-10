@@ -1,24 +1,16 @@
 ---
 title: "Sandbox configuration"
-description: "Configure setup scripts, git cloning, per-repo settings, services, and credential auto-mounting."
+description: "Configure sandboxes with CLI flags, credential mounting, and runtime settings."
 ---
 
-Use sandbox configuration to prepare agent environments before work starts.
+Sandbox configuration controls the runtime environment of individual sandboxes. Many settings can be defined in a [repository configuration](/guides/repository-configuration) and applied automatically, but you can also override or extend them with CLI flags and platform settings.
 
 ## Setup scripts
 
-Use `--setup-script` to mount a local script at `/usr/local/etc/amikad/setup/setup.sh`.
-
-Amika runs this script before the container command starts.
-
-### Example
+Use `--setup-script` to mount a script at `/usr/local/etc/amikad/setup/setup.sh`. Amika runs this script before the container command starts.
 
 ```bash
-# sandbox create
 amika sandbox create --name dev-box --setup-script ./install-deps.sh
-
-# materialize
-amika materialize --setup-script ./install-deps.sh --cmd "echo done" --destdir /tmp/out
 ```
 
 ### Script requirements
@@ -47,11 +39,13 @@ When you pass `--setup-script`, your file is mounted over the no-op script.
 If the setup script exits non-zero, the container command does not run.
 </Warning>
 
+<Tip>
+You can also define setup scripts in [`.amika/config.toml`](/guides/repository-configuration#lifecycle--setup-script) so they apply automatically when creating sandboxes from a repository. The `--setup-script` flag always takes priority.
+</Tip>
+
 ## Git repository cloning
 
-`--git` clones a git repository into a Docker volume mounted at `/home/amika/workspace/<repo-name>` inside the sandbox.
-
-`--git` clones the local repository containing the current working directory (or a given path). It always sources from a local git repo on the host.
+`--git` clones a git repository into the sandbox at `/home/amika/workspace/<repo-name>`.
 
 ```bash
 # Clone the current repo (clean clone)
@@ -62,99 +56,38 @@ amika sandbox create --git --no-clean
 
 # Clone the repo containing a specific path
 amika sandbox create --git ./src
+
+# Clone a specific branch
+amika sandbox create --git --branch feature/new-api
 ```
 
-The repository is cloned on the host, copied into a named Docker volume, and mounted read-write at `/home/amika/workspace/<repo-name>`.
+When `--git` is used, Amika also looks for a [`.amika/config.toml`](/guides/repository-configuration) file at the root of the repository and applies it automatically.
 
 <Note>
 - The volume name is derived from the sandbox name and repo name, e.g. `amika-git-teal-tokyo-Hello-World-<timestamp>`.
 - Deleting the sandbox does not automatically delete the git volume; use `amika volume delete` when you no longer need it.
 </Note>
 
-## Per-repo configuration
+## Overriding repository configuration
 
-When you use `--git`, Amika looks for a `.amika/config.toml` file at the root of the repository and applies it automatically. This lets you commit sandbox configuration alongside your code so every collaborator gets the same environment without passing extra flags.
+When a sandbox is created from a repository, settings from `.amika/config.toml` are applied as defaults. You can override any of these at creation time:
 
-### File location
+```bash
+# Override the setup script
+amika sandbox create --git --setup-script ./my-other-script.sh
 
-```
-<repo-root>/
-  .amika/
-    config.toml
-```
+# Override the preset
+amika sandbox create --git --preset coder-dind
 
-### Supported fields
-
-```toml
-[lifecycle]
-# Path to an executable that is mounted into the container at
-# /usr/local/etc/amikad/setup/setup.sh.
-# Relative paths are resolved from the repository root.
-setup_script = "scripts/setup.sh"
-
-[env]
-# Plain environment variables
-DATABASE_HOST = "localhost"
-# Secret references — resolved from the remote secrets store
-ANTHROPIC_API_KEY = { secret = "my-anthropic-key" }
-
-[services.api]
-port = 4838
-url_scheme = "http"
+# Add extra port bindings beyond what's in config.toml
+amika sandbox create --git --port 5432:5432
 ```
 
-You can also declare named services with port bindings in the same file. See [Services](/guides/services) for the full `[services.<name>]` reference.
-
-**Path resolution:** if the value is a relative path it is resolved from the repository root (the directory containing `.git`). Absolute paths are used as-is.
-
-### Interaction with `--setup-script`
-
-`--setup-script` always takes priority. When that flag is passed explicitly, `.amika/config.toml` is not consulted for the setup script.
-
-| Flags passed | Source used |
-| --- | --- |
-| `--git` only | `.amika/config.toml` (if present) |
-| `--git --setup-script /path/script.sh` | `--setup-script` flag |
-| `--setup-script /path/script.sh` (no `--git`) | `--setup-script` flag |
-
-### Example
-
-Given this repository layout:
-
-```
-my-project/
-  .amika/
-    config.toml       # setup_script = "scripts/setup.sh"
-  scripts/
-    setup.sh          # must be executable (chmod +x)
-```
-
-Running `amika sandbox create --git` from anywhere inside `my-project` will automatically mount `scripts/setup.sh` to `/usr/local/etc/amikad/setup/setup.sh` in the container.
-
-### `[env]` — Environment variables
-
-The `[env]` section declares environment variables that are set inside the sandbox. Values can be plain strings or references to secrets stored in the remote Amika secrets store.
-
-```toml
-[env]
-# Plain string — set as-is
-DATABASE_HOST = "localhost"
-
-# Secret reference — resolved from the remote secrets store at sandbox creation
-ANTHROPIC_API_KEY = { secret = "my-anthropic-key" }
-```
-
-Secrets referenced with `{ secret = "name" }` must be pushed to the remote store before sandbox creation, either via `amika secret push` or through the web UI.
-
-### Branch selection
-
-When `--branch` is specified on `amika sandbox create`, the `.amika/config.toml` file is read from that branch rather than the repository's default branch. This allows different branches to have different sandbox configurations.
+On the hosted platform, settings saved via the web UI take priority over `.amika/config.toml` values. See [configuration resolution](/guides/repository-configuration#configuration-resolution) for the full precedence order.
 
 ## Agent credential auto-mounting
 
-Amika auto-discovers credential files on your host and mounts them as `rwcopy`.
-
-This gives agents access to credentials inside the sandbox without modifying host files.
+Amika auto-discovers credential files on your host and mounts them into the sandbox. This gives agents access to credentials without modifying host files.
 
 ### Supported files
 
@@ -189,6 +122,6 @@ The OpenCode web server starts automatically on port 60998 when OpenCode is inst
 
 ## Related docs
 
-- [Services](/guides/services)
-- [Presets](/guides/presets)
-- [Authentication](/guides/authentication)
+- [Repository configuration](/guides/repository-configuration) — `.amika/config.toml` and per-repo settings
+- [Services](/guides/services) — named service definitions with port mappings
+- [Presets](/guides/presets) — preset images and container layout
