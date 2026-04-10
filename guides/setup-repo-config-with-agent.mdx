@@ -1,0 +1,332 @@
+---
+title: "Set up repo config with an agent"
+description: "Use a coding agent to analyze your repository and generate an Amika sandbox configuration automatically."
+---
+
+You can use a coding agent (Claude Code, Codex, OpenCode, or similar) to analyze your repository and generate a `.amika/config.toml` and setup script tailored to your project.
+
+## How it works
+
+Create a sandbox loaded with the repo you are setting up.
+
+In CLI:
+
+```bash
+cd /path/to/repo
+amika sandbox create --git --no-setup
+```
+
+Or, go to https://app.amika.dev/sandbox and create a sandbox for your repo, then connect to it.
+
+In the sandbox, navigate to the git repo, and copy the prompt below into your coding agent. The agent will:
+
+1. **Investigate** your repo to discover languages, frameworks, services, ports, and environment variables.
+2. **Ask you** to confirm its findings and answer a few questions about your preferences.
+3. **Generate** a `.amika/config.toml` and `.amika/scripts/setup.sh` ready for sandbox creation.
+
+## The prompt
+
+Copy and paste this prompt into your coding agent:
+
+````markdown
+# Set Up Amika Repository Configuration
+
+You are tasked with setting up an Amika sandbox configuration for this repository. Amika is infrastructure for building a software factory — it spins up sandboxed development environments pre-loaded with coding agents and your repository code. Your job is to create a `.amika/config.toml` and a setup script so that when a sandbox is created from this repo, it has all dependencies installed and dev services running.
+
+## Reference materials
+
+Before you begin, read these resources to understand how Amika configuration works:
+
+1. **Amika docs — sandbox configuration**: https://docs.amika.dev/guides/sandbox-configuration
+2. **Amika docs — services**: https://docs.amika.dev/guides/services
+3. **Amika docs — presets**: https://docs.amika.dev/guides/presets
+4. **Example config (simple repo)**: https://github.com/gofixpoint/example-repo/blob/main/.amika/config.toml
+5. **Example config (Go project)**: https://github.com/gofixpoint/amika/blob/main/.amika/config.toml
+
+If you are unable to fetch these URLs, the key facts are summarized below in the "Amika Configuration Reference" section.
+
+## Step 1: Investigate the repository
+
+Analyze this repository thoroughly before doing anything else. You need to understand:
+
+### Languages and runtimes
+- What programming languages are used? (Check file extensions, config files, lock files)
+- What versions are required? (Check `.nvmrc`, `go.mod`, `pyproject.toml`, `Gemfile`, `rust-toolchain.toml`, etc.)
+- What package managers are used? (npm, pnpm, yarn, pip, cargo, go modules, etc.)
+
+### Dev servers and services
+- What services does this project run in development? (web servers, API servers, databases, queues, etc.)
+- What ports do they listen on? (Check `package.json` scripts, Dockerfiles, docker-compose files, config files, source code for port defaults, CLI flag defaults)
+- How are services started? (e.g., `pnpm dev`, `go run ./cmd/server`, `cargo run`, `python manage.py runserver`)
+- Is there an existing Procfile, docker-compose.yml, or similar orchestration config?
+
+### Environment variables and secrets
+- What environment variables does the project use? (Check `.env.example`, `.env.sample`, source code for `os.Getenv`, `process.env`, etc.)
+- Which are required vs optional?
+- Which contain secrets (API keys, database passwords, encryption keys)?
+- What are sensible defaults for development?
+
+### Build steps
+- Are there compilation steps? (Go build, Rust build, TypeScript compilation, etc.)
+- Are there code generation steps? (protobuf, GraphQL codegen, etc.)
+- What install commands are needed? (`pnpm install`, `pip install`, `go mod download`, etc.)
+
+### Existing configuration
+- Is there already a `.amika/` directory? If so, read it and ask the user whether they want to update it or start fresh.
+- Look at `CLAUDE.md`, `README.md`, `CONTRIBUTING.md`, `Makefile`, or similar files for development setup instructions.
+
+## Step 2: Ask the user to confirm your findings
+
+After investigating, present your findings to the user and ask them to confirm or correct. Structure your questions like this:
+
+### Sandbox settings
+Explain the available sandbox presets and sizes, and recommend values:
+
+**Presets:**
+- **`coder`** (default) — Ubuntu 24.04 with Git, curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx. Includes Claude Code, Codex, and OpenCode agent CLIs.
+- **`coder-dind`** — Everything in `coder`, plus Docker-in-Docker (dind) support for running containerized services inside the sandbox.
+
+Recommend `coder` unless the project uses Docker Compose, runs containerized services locally, or otherwise requires Docker.
+
+**Sizes:**
+- **`m`** (default) — Medium resource allocation. Suitable for most projects.
+- **`xs`** — Extra-small resource allocation. Suitable for lightweight tasks like documentation or simple scripts.
+
+These values are set in the `[sandbox]` section of `.amika/config.toml` and used as defaults when creating a sandbox from this repository. They can be overridden at creation time via CLI flags or the web UI.
+
+### Services
+List the services you discovered and the ports they use. Ask the user:
+- Which of these services should be exposed in the sandbox?
+- Are there any services you missed?
+- For each service, confirm the port and whether it should have an HTTP/HTTPS URL scheme.
+
+### Missing runtimes
+Based on the preset's pre-installed tools (Git, curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx), identify what's missing that the setup script will need to install. For example:
+- Go (not included in any preset)
+- Rust (not included in any preset)
+- Java/JVM (not included in any preset)
+- Specific Node.js versions if the project requires something other than 22
+- Any other system dependencies
+
+### Environment variables
+Present the environment variables you found, categorized as:
+- **Required secrets** — values the user must provide via `amika secret push` or the web UI before creating a sandbox
+- **Required config** — values that need to be set but aren't secret (e.g., database host pointing to a shared dev instance)
+- **Optional/feature flags** — values with sensible defaults
+
+Ask the user:
+- Are any required env vars missing from your list?
+- For database/service connection strings, should these point to a shared dev instance, or will they run locally in the sandbox?
+- Are there any secrets they want to pre-configure?
+
+### Dev server startup
+Explain your plan for how the setup script will start services. Ask:
+- Should all discovered services start automatically, or just some?
+- Are there any dependencies between services (e.g., the API server must start before the frontend)?
+- Are there database migrations that need to run?
+
+## Step 3: Create the configuration
+
+After the user confirms, create the following files:
+
+### `.amika/config.toml`
+
+This is the main configuration file. It has four sections:
+
+```toml
+[sandbox]
+preset = "coder"       # "coder" or "coder-dind"
+size = "m"             # "m" or "xs"
+
+[lifecycle]
+setup_script = ".amika/scripts/setup.sh"
+
+[services.<name>]
+port = <port_number>
+url_scheme = "https"  # or "http", or omit for non-HTTP services like gRPC
+
+[env]
+PLAIN_VAR = "value"
+SECRET_VAR = { secret = "secret-name" }
+```
+
+**Rules:**
+- `preset` selects the base image: `"coder"` (default) or `"coder-dind"` (adds Docker-in-Docker). Use `coder-dind` only if the project requires Docker.
+- `size` sets the resource allocation: `"m"` (default, medium) or `"xs"` (extra-small). Use `xs` only for lightweight tasks.
+- `setup_script` is a path relative to the repo root pointing to an executable script.
+- Services expose ports from the sandbox. Each service has a name, port, and optional `url_scheme`. Only set `url_scheme` for HTTP/HTTPS services — omit it for raw TCP services like gRPC.
+- Ports 60899–60999 are reserved by Amika — do not use them.
+- Environment variables can be plain strings or secret references. Secrets must be pushed via `amika secret push` or the Amika web UI before sandbox creation. Use `{ secret = "name" }` syntax for secrets.
+
+### `.amika/scripts/setup.sh`
+
+This script runs inside the sandbox before the agent starts. It must:
+1. Be executable (`chmod +x`)
+2. Use `$AMIKA_AGENT_CWD` to reference the repo root (do NOT hardcode paths)
+3. Exit 0 on success (non-zero aborts sandbox startup)
+4. Be deterministic and idempotent
+
+**Structure the setup script in phases:**
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# --- Phase 1: Install missing system dependencies ---
+# Check what's already installed before installing anything.
+# The preset already includes: Git, curl, zsh, build essentials,
+# Python, Node.js 22, pnpm, TypeScript, tsx.
+# Only install what's missing (e.g., Go, Rust, specific tools).
+# Run independent installs in parallel with & and wait.
+
+# --- Phase 2: Install project dependencies ---
+# e.g., pnpm install, pip install -r requirements.txt, go mod download
+
+# --- Phase 3: Build/compile if necessary ---
+# e.g., go build, cargo build, tsc
+
+# --- Phase 4: Start services in the background ---
+# Use nohup and & to background services.
+# Write PID files to /tmp/amika-<service>.pid for cleanup.
+# Write logs to /var/log/amika/<service>.log (mkdir -p first).
+# If services have startup dependencies, add brief sleeps between them.
+```
+
+**Best practices for setup scripts:**
+- Always check if a tool is installed before installing it (`command -v <tool> &>/dev/null`).
+- Use architecture detection to handle both amd64 and arm64.
+- Run independent installs in parallel using `&` and `wait`.
+- For version checks, compare against the minimum required version rather than requiring an exact match.
+- Use `curl -fsSL` for downloads (fail silently on HTTP errors, show errors on other failures).
+- Install binaries to `/usr/local/bin/` using `sudo`.
+- Use `nohup <command> > /var/log/amika/<name>.log 2>&1 &` to start background services.
+- Add `mkdir -p /var/log/amika` before starting services.
+- Print clear status messages so the user can see progress.
+
+## Step 4: Verify the configuration
+
+After creating the files, verify:
+1. The setup script is executable (`chmod +x .amika/scripts/setup.sh`)
+2. The config.toml is valid TOML (no syntax errors)
+3. All ports in config.toml match what the setup script starts
+4. All environment variables referenced by the services are defined in the `[env]` section
+5. Secret references use the `{ secret = "name" }` syntax
+6. No ports fall in the reserved range 60899–60999
+
+Tell the user what secrets they need to push before creating a sandbox:
+```bash
+amika secret push --name <secret-name> --value <value>
+```
+
+And how to create a sandbox with this config:
+```bash
+amika sandbox create --git
+```
+
+---
+
+## Amika Configuration Reference
+
+This section summarizes the key configuration details in case you cannot fetch the documentation URLs above.
+
+### config.toml structure
+
+The file lives at `.amika/config.toml` in the repository root.
+
+**`[sandbox]`** — Default sandbox settings for the repository.
+- `preset` (string, default `"coder"`): The base image to use. Allowed values: `"coder"`, `"coder-dind"`.
+- `size` (string, default `"m"`): Resource allocation. Allowed values: `"xs"` (extra-small), `"m"` (medium).
+
+These values are used as defaults when creating a sandbox from this repository. They can be overridden at creation time via CLI flags or the web UI.
+
+**`[lifecycle]`** — Sandbox lifecycle hooks.
+- `setup_script` (string): Path to a setup script relative to the repo root. The script runs before the agent starts. It must be executable and exit 0 on success.
+
+**`[services.<name>]`** — Named services with port mappings.
+- `port` (integer or string): Single port binding. Integer defaults to TCP. String allows protocol: `"4838/tcp"` or `"4982/udp"`.
+- `ports` (list): Multiple port bindings. Mutually exclusive with `port`.
+- `url_scheme` (string or list): URL generation. Accepts `"http"` or `"https"`. For multi-port services, use a list of `{ port = N, scheme = "https" }` tables. Only ports listed in `url_scheme` get generated URLs.
+
+**`[env]`** — Environment variables injected into the sandbox.
+- Plain values: `DATABASE_HOST = "localhost"`
+- Secret references: `API_KEY = { secret = "my-api-key" }` — the secret must be pushed to the remote store before sandbox creation.
+
+### Presets
+
+Presets are pre-built Docker images for sandboxes. Set via the `[sandbox]` section in config.toml or overridden at creation time with `--preset`.
+
+| Preset | Image | Description | Pre-installed tools |
+|--------|-------|-------------|---------------------|
+| `coder` (default) | `amika/coder:latest` | Standard dev environment with Claude Code, Codex, and OpenCode agent CLIs | Ubuntu 24.04, Git, curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx |
+| `coder-dind` | `amika/coder-dind:latest` | Same as `coder`, plus Docker-in-Docker support for running containerized services | Same as coder + Docker |
+
+### Setup script environment
+
+- `$AMIKA_AGENT_CWD` — the path to the cloned repository inside the sandbox (typically `/home/amika/workspace/<repo-name>`)
+- Credentials for coding agents are auto-mounted from the host
+- The script runs as the `amika` user with `sudo` access
+- If the script exits non-zero, the sandbox does not start
+
+### Reserved ports
+
+Ports 60899–60999 are reserved for Amika internal services. Do not bind to them.
+
+### Sandbox creation
+
+```bash
+# Clone current repo into a sandbox (uses preset and size from config.toml)
+amika sandbox create --git
+
+# Override preset at creation time
+amika sandbox create --git --preset coder-dind
+
+# Include uncommitted/untracked files
+amika sandbox create --git --no-clean
+
+# Clone a specific branch
+amika sandbox create --git --branch my-branch
+
+# List running services
+amika service list
+```
+
+### Secrets
+
+```bash
+# Push a secret (for use in config.toml { secret = "name" } references)
+amika secret push --name my-secret --value "secret-value"
+
+# Push Claude Code credentials
+amika secret claude push --type oauth
+amika secret claude push --type api_key --value sk-ant-xxx
+```
+````
+
+## After the agent generates the config
+
+Once the agent has created your `.amika/config.toml` and setup script, you need to:
+
+1. **Push any secrets** referenced in your config:
+
+```bash
+amika secret push --name my-secret --value "the-value"
+```
+
+2. **Create a sandbox** to test the configuration:
+
+```bash
+amika sandbox create --git
+```
+
+3. **Check that services started** correctly:
+
+```bash
+amika service list
+```
+
+## Related docs
+
+- [Sandbox configuration](/guides/sandbox-configuration)
+- [Services](/guides/services)
+- [Presets](/guides/presets)
+- [Agent authentication](/guides/agent-authentication)

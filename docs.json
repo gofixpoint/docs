@@ -48,7 +48,8 @@
               "guides/repository-configuration",
               "guides/sandbox-configuration",
               "guides/services",
-              "guides/presets"
+              "guides/presets",
+              "guides/setup-repo-config-with-agent"
             ]
           },
           {
