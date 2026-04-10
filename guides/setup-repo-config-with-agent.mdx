@@ -79,15 +79,20 @@ Analyze this repository thoroughly before doing anything else. You need to under
 
 After investigating, present your findings to the user and ask them to confirm or correct. Structure your questions like this:
 
-### Preset selection
-Explain the available Amika presets and recommend one:
+### Sandbox settings
+Explain the available sandbox presets and sizes, and recommend values:
 
+**Presets:**
 - **`coder`** (default) — Ubuntu 24.04 with Git, curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx. Includes Claude Code, Codex, and OpenCode agent CLIs.
-- **`coder-dind`** — Same base tools as `coder`, but also configures Docker in Docker (dind) to allow running containerized services.
+- **`coder-dind`** — Everything in `coder`, plus Docker-in-Docker (dind) support for running containerized services inside the sandbox.
 
-Both presets use the same Ubuntu 24.04 base and development tools. The only difference is which AI agent CLIs are preinstalled. Recommend `coder` unless the user requires Docker or containerization.
+Recommend `coder` unless the project uses Docker Compose, runs containerized services locally, or otherwise requires Docker.
 
-Note: The preset is selected at sandbox creation time (`amika sandbox create --preset coder`), not in config.toml. But the user should know which preset to use since it determines what's pre-installed and affects what the setup script needs to install.
+**Sizes:**
+- **`m`** (default) — Medium resource allocation. Suitable for most projects.
+- **`xs`** — Extra-small resource allocation. Suitable for lightweight tasks like documentation or simple scripts.
+
+These values are set in the `[sandbox]` section of `.amika/config.toml` and used as defaults when creating a sandbox from this repository. They can be overridden at creation time via CLI flags or the web UI.
 
 ### Services
 List the services you discovered and the ports they use. Ask the user:
@@ -96,7 +101,7 @@ List the services you discovered and the ports they use. Ask the user:
 - For each service, confirm the port and whether it should have an HTTP/HTTPS URL scheme.
 
 ### Missing runtimes
-Based on the preset's pre-installed tools (Python, Node.js 22, pnpm, TypeScript), identify what's missing that the setup script will need to install. For example:
+Based on the preset's pre-installed tools (Git, curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx), identify what's missing that the setup script will need to install. For example:
 - Go (not included in any preset)
 - Rust (not included in any preset)
 - Java/JVM (not included in any preset)
@@ -126,9 +131,13 @@ After the user confirms, create the following files:
 
 ### `.amika/config.toml`
 
-This is the main configuration file. It has three sections:
+This is the main configuration file. It has four sections:
 
 ```toml
+[sandbox]
+preset = "coder"       # "coder" or "coder-dind"
+size = "m"             # "m" or "xs"
+
 [lifecycle]
 setup_script = ".amika/scripts/setup.sh"
 
@@ -142,6 +151,8 @@ SECRET_VAR = { secret = "secret-name" }
 ```
 
 **Rules:**
+- `preset` selects the base image: `"coder"` (default) or `"coder-dind"` (adds Docker-in-Docker). Use `coder-dind` only if the project requires Docker.
+- `size` sets the resource allocation: `"m"` (default, medium) or `"xs"` (extra-small). Use `xs` only for lightweight tasks.
 - `setup_script` is a path relative to the repo root pointing to an executable script.
 - Services expose ports from the sandbox. Each service has a name, port, and optional `url_scheme`. Only set `url_scheme` for HTTP/HTTPS services — omit it for raw TCP services like gRPC.
 - Ports 60899–60999 are reserved by Amika — do not use them.
@@ -209,7 +220,7 @@ amika secret push --name <secret-name> --value <value>
 
 And how to create a sandbox with this config:
 ```bash
-amika sandbox create --git --preset coder
+amika sandbox create --git
 ```
 
 ---
@@ -221,6 +232,12 @@ This section summarizes the key configuration details in case you cannot fetch t
 ### config.toml structure
 
 The file lives at `.amika/config.toml` in the repository root.
+
+**`[sandbox]`** — Default sandbox settings for the repository.
+- `preset` (string, default `"coder"`): The base image to use. Allowed values: `"coder"`, `"coder-dind"`.
+- `size` (string, default `"m"`): Resource allocation. Allowed values: `"xs"` (extra-small), `"m"` (medium).
+
+These values are used as defaults when creating a sandbox from this repository. They can be overridden at creation time via CLI flags or the web UI.
 
 **`[lifecycle]`** — Sandbox lifecycle hooks.
 - `setup_script` (string): Path to a setup script relative to the repo root. The script runs before the agent starts. It must be executable and exit 0 on success.
@@ -236,12 +253,12 @@ The file lives at `.amika/config.toml` in the repository root.
 
 ### Presets
 
-Presets are pre-built Docker images for sandboxes. Selected at sandbox creation time, not in config.toml.
+Presets are pre-built Docker images for sandboxes. Set via the `[sandbox]` section in config.toml or overridden at creation time with `--preset`.
 
-| Preset | Image | Agent CLIs | Pre-installed tools |
-|--------|-------|------------|---------------------|
-| `coder` (default) | `amika/coder:latest` | Claude Code, Codex, OpenCode | Ubuntu 24.04, Git, curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx |
-| `claude` | `amika/claude:latest` | Claude Code only | Same as coder |
+| Preset | Image | Description | Pre-installed tools |
+|--------|-------|-------------|---------------------|
+| `coder` (default) | `amika/coder:latest` | Standard dev environment with Claude Code, Codex, and OpenCode agent CLIs | Ubuntu 24.04, Git, curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx |
+| `coder-dind` | `amika/coder-dind:latest` | Same as `coder`, plus Docker-in-Docker support for running containerized services | Same as coder + Docker |
 
 ### Setup script environment
 
@@ -257,14 +274,17 @@ Ports 60899–60999 are reserved for Amika internal services. Do not bind to the
 ### Sandbox creation
 
 ```bash
-# Clone current repo into a sandbox (clean checkout)
-amika sandbox create --git --preset coder
+# Clone current repo into a sandbox (uses preset and size from config.toml)
+amika sandbox create --git
+
+# Override preset at creation time
+amika sandbox create --git --preset coder-dind
 
 # Include uncommitted/untracked files
-amika sandbox create --git --no-clean --preset coder
+amika sandbox create --git --no-clean
 
 # Clone a specific branch
-amika sandbox create --git --branch my-branch --preset coder
+amika sandbox create --git --branch my-branch
 
 # List running services
 amika service list
@@ -295,7 +315,7 @@ amika secret push --name my-secret --value "the-value"
 2. **Create a sandbox** to test the configuration:
 
 ```bash
-amika sandbox create --git --preset coder
+amika sandbox create --git
 ```
 
 3. **Check that services started** correctly:
