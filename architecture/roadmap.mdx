@@ -1,47 +1,102 @@
 ---
 title: "Architecture roadmap"
-description: "Current capabilities and planned system evolution."
+description: "Open-source plan and the capabilities Amika's daemon is evolving toward."
 ---
 
-This roadmap summarizes technical direction from the architecture planning docs.
+Amika is open-sourcing the parts of its codebase that let developers control individual sandboxed agents — the messaging and filesystem layer between the agent and the sandbox it lives on.
+
+You can spin up a sandbox, put any agent on it, and then use the open-source components to:
+
+1. Message the agent over SSE or WebSockets.
+2. Manage the files synced to and from the sandbox.
+
+Beyond that, we're working on:
+
+1. A network proxy for agent security and request/response authorization.
+2. A secrets vault so a sandboxed agent can use APIs without directly seeing secrets.
+
+The open source runs on any sandbox provider, or you can pair it with the hosted product, which handles the tricky parts of scaling and provisioning sandboxes and provides extra features for managing fleets of agents, their filesystems, and security.
 
 ## Invariants
+
+Two properties stay fixed as the system evolves:
 
 1. POSIX remains the primary interface for agents.
 2. Filesystem-level access control remains the safety boundary.
 
-## Current state
+## Components
 
-### Data plane
+### Open source
 
-- Batch materialization is production-ready.
-- Script output sync to host paths is available today.
+- **`amika`** — client-side CLI to interact with sandboxed agents.
+  - In **direct mode**, it talks to `amikad` on a sandbox directly.
+  - In **scalable mode**, it talks to the closed-source Amika Control Plane.
+- **`amikad`** — daemon that runs on a sandbox and:
+  - Provisions and controls the sandbox lifecycle.
+  - Messages agents on the sandbox.
+  - Copies files in and out of the sandbox.
+  - Proxies network requests for agent security and authorization.
+  - Keeps secrets in a vault, away from the agents.
+- **`amikactl`** — CLI that lives on the sandbox and lets the agent talk to `amikad` to self-control its sandbox (access secrets, pull remote files, spawn new sandboxes).
 
-### Execution plane
+### Closed source
 
-- Docker-backed local sandboxes are available.
-- Mount permissions support `ro`, `rw`, and `rwcopy`.
+- **Amika Control Plane** — API to provision hundreds to thousands of sandboxes, manage agents across them, enable multiplayer and team-shared sandboxes, index and store agent sessions, centralize configuration of agent skills/tools/MCP servers, and host a centralized file repo that can be mounted onto sandboxes.
+- **Amika Web UI** — the web interface to the Control Plane and sandboxed cloud agents.
 
-## In progress
+## Daemon capabilities
 
-- Connector framework for SaaS and storage backends.
-- Improved Linux and macOS compatibility.
+The `amikad` daemon is evolving toward four capabilities.
 
-## Planned
+### Agent Messaging Layer
 
-- Live sync engine for incremental bidirectional updates.
-- Network-mountable filesystem for remote sandbox providers.
-- Per-agent mount policies with isolated data views.
-- Lazy-loading file strategies for faster sandbox startup.
+*Open source.*
 
-## Security pipeline direction
+HTTP APIs to message any agent on a sandbox. Supports Claude Code, Codex, OpenCode, Pi, and custom agents via the [Agent Communication Protocol](https://agentcommunicationprotocol.dev/introduction/welcome).
 
-Amika is evolving toward a filter pipeline:
+- **Current:** request/response messaging, SSE streaming back to the client, session management.
+- **Planned:** hooks for piping agent chat sessions to your own datastore or to the Amika Control Plane.
 
-1. Inbound redaction and tokenization
-2. Agent file access inside constrained mounts
-3. Outbound validation and approval before write-back
+### Sandbox Filesystem Layer
+
+*Open source: sync from host to sandbox, and copy data out of a sandbox to a destination. Closed source (for now): the Filesystem Volume backend and live sync tech.*
+
+Mount persistent file volumes onto sandboxes and version and control the files. Mount parts of a Filesystem Volume to a sandbox; when the sandbox terminates, the files persist.
+
+- **Current:**
+  - Mount modes: `ro` (read-only), `rw` (read-write, syncs back), `rwcopy` (read-write over a snapshot; writes land in a separate tree, preserving originals).
+  - Batch file materialization — spin up a sandbox, inject files, run scripts to pull or mutate data, output the resulting filesystem to a persistent volume or another sandbox. Useful for pulling data out of enterprise systems-of-record, transforming it to be "agent-ready," and handing it to a sandboxed agent.
+  - S3-compatible storage sync that avoids the POSIX gaps typical of FUSE filesystems (for instance, preserving symlinks so `git clone` works).
+- **In progress:** bidirectional syncing — materialization processes that update a Filesystem Volume stream their changes down into running sandboxes, and vice versa. Live sync engine and git-like transparent versioning with agent-authored commit messages.
+- **Planned:** network-mountable filesystem for remote sandbox providers, per-agent mount policies with isolated data views, lazy-loading strategies for faster sandbox startup.
+
+### Network Proxy
+
+*Early design. Open-source status TBD.*
+
+Goals for agent control:
+
+1. Run arbitrary scripts to process inbound and outbound network requests and responses, airgapped from the agent's control.
+2. Set authorization rules at the network layer for total control over how the agent interacts with external systems.
+3. Mutate inbound and outbound traffic to constrain what requests the agent can make, strip sensitive data, and so on.
+4. Fully airgap sandboxed agents from sensitive data or secrets, injecting them and stripping them at the network layer.
+
+Goals for service exposure:
+
+1. Control which ports and services are exposed from a sandbox.
+2. Control whether services are exposed publicly or behind team auth.
+
+The direction is a filter pipeline: inbound redaction and tokenization → constrained-mount file access → outbound validation and approval before write-back.
+
+### Secrets Vault
+
+*Early design. Open-source status TBD.*
+
+Stores secrets for a sandbox. Two usage modes:
+
+1. **Fully isolated** — the agent only sees tokenized versions of secrets; the network-proxy layer swaps tokens for real values on outbound requests. Similar to how credit-card payments avoid exposing card numbers to merchants.
+2. **Agent-accessible** — optionally gated behind hooks that pause for human approval. Safer than putting credentials in environment variables or directly on the filesystem.
 
 ## Long-term vision
 
-Amika aims to create semantic data views for agents, so workflows are organized by intent instead of source system boundaries.
+Amika aims to build semantic data views for agents, so workflows are organized by intent rather than source-system boundaries.
