@@ -5,9 +5,11 @@ description: "Set up coding agent authentication and credentials for your sandbo
 
 ## Agent credential setup
 
-For remote sandboxes, you can push Claude Code credentials to the Amika secrets store and have them automatically injected at sandbox creation time. This avoids manual authentication inside the sandbox.
+For remote sandboxes, you can push Claude Code or Codex credentials to the Amika secrets store and have them automatically injected at sandbox creation time. This avoids manual authentication inside the sandbox.
 
-See [CLI reference](/reference/cli-reference) for the full `amika secret claude push/list/delete` flag reference.
+See [CLI reference](/reference/cli-reference) for the full `amika secret claude` and `amika secret codex` flag references.
+
+## Push Claude credentials
 
 ### OAuth Workflow (preferred)
 
@@ -39,6 +41,38 @@ amika sandbox create --git --remote --secret env:ANTHROPIC_API_KEY=my-claude-key
 ```
 
 3. Claude Code is pre-authenticated inside the sandbox — no manual login needed.
+
+## Push Codex credentials
+
+Codex credentials work the same way as Claude. `amika secret codex push` scans `~/.codex/auth.json` and lets you pick which credential to push.
+
+### OAuth Workflow
+
+```bash
+# Auto-detect and push OAuth tokens from ~/.codex/auth.json
+amika secret codex push --type oauth
+```
+
+The OAuth credential is auto-set inside the sandbox's Codex settings, so `codex` runs without re-authenticating.
+
+### API Key Workflow
+
+```bash
+# Interactive discovery
+amika secret codex push
+
+# Auto-resolve by type — reads OPENAI_API_KEY, falls back to ~/.codex/auth.json
+amika secret codex push --type api_key
+
+# Or specify directly
+amika secret codex push --type api_key --value sk-...
+```
+
+Inject into a sandbox by selecting the credential in the web UI or via `--secret`:
+
+```bash
+amika sandbox create --git --remote --secret env:OPENAI_API_KEY=my-codex-key
+```
 
 ## Credential discovery
 

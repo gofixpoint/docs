@@ -39,7 +39,9 @@
             "pages": [
               "index",
               "quickstart",
-              "install"
+              "install",
+              "guides/authentication",
+              "guides/agent-authentication"
             ]
           },
           {
@@ -53,10 +55,9 @@
             ]
           },
           {
-            "group": "Authentication",
+            "group": "Tools and Context",
             "pages": [
-              "guides/authentication",
-              "guides/agent-authentication"
+              "guides/mcp-integrations"
             ]
           }
         ]

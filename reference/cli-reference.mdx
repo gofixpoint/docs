@@ -315,6 +315,17 @@ Log in to Amika via the WorkOS Device Authorization Flow. Opens a browser for yo
 amika auth login
 ```
 
+To skip the browser flow and log in with an Amika API key — useful in CI — pass `--api-key-file`. Use `-` to read from stdin so the key never lands on disk:
+
+```bash
+amika auth login --api-key-file /path/to/key
+vault kv get -field=key secret/amika | amika auth login --api-key-file -
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--api-key-file <path \| ->` | | Read an Amika API key from this path (or `-` for stdin) instead of running the device flow |
+
 See [Authentication](/guides/authentication) for details on the login flow and session storage.
 
 ### `amika auth status`
@@ -453,6 +464,67 @@ Delete a Claude credential by ID.
 ```bash
 amika secret claude delete <id>
 amika secret claude rm <id>
+```
+
+### `amika secret codex`
+
+Manage Codex credentials for sandbox authentication. Same shape as `amika secret claude` — pushed credentials can be injected into sandboxes at creation time.
+
+#### `amika secret codex push`
+
+Push Codex credentials (API key or OAuth token) to the remote Amika secrets store. Scans `~/.codex/auth.json` for credentials and lets you choose which one to push.
+
+```bash
+# Interactive — discover and select credentials
+amika secret codex push
+
+# Push with a custom label
+amika secret codex push --type oauth --name "Codex OAuth"
+
+# Push from ~/.codex/auth.json
+amika secret codex push --from-file ~/.codex/auth.json
+
+# Push a credential value directly
+amika secret codex push --value '{"tokens":{"access_token":"..."}}'
+
+# Auto-resolve by type
+amika secret codex push --type api_key  # reads OPENAI_API_KEY env, falls back to ~/.codex/auth.json
+amika secret codex push --type oauth    # reads ~/.codex/auth.json
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--name <label>` | | Human-readable label for the credential (prompted if omitted) |
+| `--value <string>` | | Credential value (skips interactive discovery) |
+| `--from-file <path>` | | Path to a credentials file (skips interactive discovery) |
+| `--type <type>` | `oauth` | Credential type: `oauth` or `api_key` |
+
+<Note>
+`--value` and `--from-file` are mutually exclusive.
+</Note>
+
+#### `amika secret codex list`
+
+Aliases: `ls`
+
+List pushed Codex credentials.
+
+```bash
+amika secret codex list
+amika secret codex ls
+```
+
+Output columns: `ID`, `NAME`, `TYPE`.
+
+#### `amika secret codex delete`
+
+Aliases: `rm`
+
+Delete a Codex credential by ID.
+
+```bash
+amika secret codex delete <id>
+amika secret codex rm <id>
 ```
 
 ## `amika materialize`

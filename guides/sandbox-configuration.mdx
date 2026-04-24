@@ -108,6 +108,21 @@ Only files that exist on your host are mounted.
 
 Inside containers, these files appear under `/home/amika/` with matching relative paths.
 
+## Sandbox lifecycle
+
+Hosted sandboxes have two idle-timeout knobs that control when they stop and when they're deleted:
+
+| Setting | Default | Range | Behavior |
+| --- | --- | --- | --- |
+| Auto-stop interval | 30 minutes | 0–10080 (7 days) | Time of idleness before the sandbox is stopped. `0` disables auto-stop. |
+| Auto-delete interval | Keep on stop | 0–10080 (7 days) | Time after stopping before the sandbox is deleted. The default keeps stopped sandboxes indefinitely. |
+
+Both intervals are expressed in minutes and apply to the hosted platform (remote sandboxes). Stopped sandboxes can be resumed with `amika sandbox start <name>`.
+
+<Note>
+Auto-stop and auto-delete intervals are currently settable only when creating a sandbox through the web UI or by passing `auto_stop_interval` / `auto_delete_interval` to `POST /api/sandboxes`. There's no CLI flag and no `.amika/config.toml` field for these yet.
+</Note>
+
 ## Reserved ports
 
 Amika reserves container ports **60899–60999** (101 ports) for internal services that run inside sandboxes. User workloads and setup scripts should avoid binding to ports in this range.
