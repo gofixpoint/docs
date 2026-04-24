@@ -77,7 +77,7 @@ Variable names must be `UPPER_SNAKE_CASE`.
 
 Secrets referenced with `{ secret = "name" }` must exist in the remote secrets store before sandbox creation. Push them with `amika secret push` or through the web UI.
 
-Service references (`{ service = "<name>", field = "url" | "port" }`) resolve to the public URL or host port of a service declared in the same file's `[services.<name>]` section. They're useful when one service needs to reach another by URL.
+Service references (`{ service = "<name>", field = "url" | "port" }`) resolve to a service declared in the same file's `[services.<name>]` section. `field = "url"` gives the public URL for external access. `field = "port"` gives the host-side port (inside the sandbox) — use it when one service running in the sandbox needs to reach another over localhost.
 
 **Merge semantics:** environment variables are merged per-key. Database entries override TOML entries with the same name, but TOML-only entries are preserved.
 

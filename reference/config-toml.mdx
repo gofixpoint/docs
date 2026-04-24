@@ -105,7 +105,7 @@ WEB_PORT = { service = "web", field = "port" }
 The `service` field references a service declared in the same file's `[services.<name>]` section. The `field` selects which attribute to inject:
 
 - `"url"` — the public URL of the service (e.g. `https://<sandbox>.preview.amika.dev`). Requires the service to have a `url_scheme`.
-- `"port"` — the host-side port the service is exposed on.
+- `"port"` — the host-side port (inside the sandbox) the service is exposed on.
 
 Service references are resolved during sandbox initialization and written to the sandbox environment. They're useful when one service needs to reach another by URL.
 
