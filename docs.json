@@ -53,6 +53,12 @@
             ]
           },
           {
+            "group": "Tools and Context",
+            "pages": [
+              "guides/mcp-integrations"
+            ]
+          },
+          {
             "group": "Authentication",
             "pages": [
               "guides/authentication",

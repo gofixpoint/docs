@@ -1,0 +1,80 @@
+---
+title: "MCP integrations"
+description: "Give sandboxed agents pre-authenticated access to external tools via MCP servers."
+---
+
+MCP (Model Context Protocol) integrations let a sandboxed coding agent call out to external services — error trackers, project management tools, internal systems — without running an interactive OAuth flow inside the sandbox.
+
+You connect your account to a provider once on the host. Amika stores the OAuth token in the secrets vault, attaches it to each sandbox created from repositories that use the integration, and writes the MCP server configuration into the sandbox's `~/.claude/.config.json` so Claude Code picks it up on startup.
+
+## Supported providers
+
+| Provider | MCP server URL | Transport |
+| --- | --- | --- |
+| Sentry | `https://mcp.sentry.dev/mcp` | HTTP + OAuth 2.1 |
+| Linear | `https://mcp.linear.app/mcp` | HTTP + OAuth 2.1 |
+| Pylon | `https://mcp.usepylon.com` | HTTP + OAuth 2.1 |
+
+Each provider uses OAuth 2.1 with PKCE and dynamic client registration.
+
+## Connect your account
+
+1. Go to [app.amika.dev/integrations](https://app.amika.dev/integrations).
+2. Click **Connect** next to the provider you want.
+3. Complete the provider's OAuth flow in your browser. You'll be redirected back to `/integrations` with a success banner.
+
+Credentials are per-user: every teammate connects their own account to each provider. You only need to connect once per provider — the same token is reused across every repository that uses the integration.
+
+To disconnect, click **Disconnect** on the same page. This removes your token from the vault and detaches you from any repositories that had the integration enabled under your account.
+
+## Enable integrations on a repository
+
+Integrations attach to repositories, so sandboxes inherit the right tools automatically.
+
+1. Open the repository's settings in the web UI.
+2. Under **MCP integrations**, add any connected providers you want agents in this repo to use.
+3. Save.
+
+Configuration is org-visible — any teammate can see which integrations a repo uses — but each teammate's token is personal.
+
+<Note>
+If a repo has an integration enabled but you haven't connected your account for that provider, sandbox creation skips the integration silently. Your sandbox is created successfully; the missing provider just won't be available to the agent.
+</Note>
+
+## Override at sandbox creation
+
+The **Create sandbox** dialog pre-checks every integration attached to the repo. Uncheck any you don't want for that sandbox, and Amika skips them at provisioning time. The final list of integrations is recorded on the sandbox so you can audit which tools the agent had access to.
+
+Via the HTTP API, pass `integration_ids` (a list of `app.repo_integrations` IDs) to `POST /api/sandboxes`. Omit the field to use the repo's full set.
+
+## What the agent sees
+
+During sandbox initialization, Amika writes the MCP servers into `~/.claude/.config.json` under the project's entry:
+
+```json
+{
+  "projects": {
+    "/home/amika/workspace/<repo>": {
+      "mcpServers": {
+        "sentry": {
+          "type": "http",
+          "url": "https://mcp.sentry.dev/mcp",
+          "headers": {
+            "Authorization": "Bearer <your-access-token>"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+This is the same location `claude mcp add` writes to, so Claude Code trusts the servers implicitly — no in-sandbox approval prompt.
+
+Injection runs after the setup script finishes, so a setup script that installs Claude Code or rewrites `.config.json` won't clobber the MCP entries.
+
+## Limitations
+
+- **Token refresh is manual.** If a provider's access token expires while a sandbox is running, MCP requests start returning 401. Reconnect the provider on `/integrations` and recreate the sandbox.
+- **One token per user per provider.** If a provider supports multiple organizations (e.g. multiple Sentry orgs), you authorize one at a time. Switching orgs requires disconnecting and reconnecting.
+- **No `.amika/config.toml` support yet.** Integrations are currently repo-only (database). They will eventually be readable from config.toml with DB values taking precedence.
