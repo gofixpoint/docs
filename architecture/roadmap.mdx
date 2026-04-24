@@ -1,6 +1,6 @@
 ---
 title: "Architecture roadmap"
-description: "Open-source plan and the capabilities Amika's daemon is evolving toward."
+description: "Current capabilities and planned system evolution."
 ---
 
 Amika is open-sourcing the parts of its codebase that let developers control individual sandboxed agents — the messaging and filesystem layer between the agent and the sandbox it lives on.
@@ -22,7 +22,7 @@ The open source runs on any sandbox provider, or you can pair it with the hosted
 Two properties stay fixed as the system evolves:
 
 1. POSIX remains the primary interface for agents.
-2. Filesystem-level access control remains the safety boundary.
+2. Filesystem and network access control remain the safety boundary.
 
 ## Components
 
@@ -97,6 +97,3 @@ Stores secrets for a sandbox. Two usage modes:
 1. **Fully isolated** — the agent only sees tokenized versions of secrets; the network-proxy layer swaps tokens for real values on outbound requests. Similar to how credit-card payments avoid exposing card numbers to merchants.
 2. **Agent-accessible** — optionally gated behind hooks that pause for human approval. Safer than putting credentials in environment variables or directly on the filesystem.
 
-## Long-term vision
-
-Amika aims to build semantic data views for agents, so workflows are organized by intent rather than source-system boundaries.
