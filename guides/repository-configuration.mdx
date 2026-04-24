@@ -67,11 +67,17 @@ NODE_ENV = "production"
 
 # Secret reference — resolved at sandbox creation
 ANTHROPIC_API_KEY = { secret = "my-anthropic-key" }
+
+# Service reference — resolved during sandbox initialization
+API_URL = { service = "api", field = "url" }
+API_PORT = { service = "api", field = "port" }
 ```
 
 Variable names must be `UPPER_SNAKE_CASE`.
 
 Secrets referenced with `{ secret = "name" }` must exist in the remote secrets store before sandbox creation. Push them with `amika secret push` or through the web UI.
+
+Service references (`{ service = "<name>", field = "url" | "port" }`) resolve to the public URL or host port of a service declared in the same file's `[services.<name>]` section. They're useful when one service needs to reach another by URL.
 
 **Merge semantics:** environment variables are merged per-key. Database entries override TOML entries with the same name, but TOML-only entries are preserved.
 
@@ -109,6 +115,8 @@ size = "m"             # "m" or "xs"
 | `size` | `xs`, `m` | Sandbox resource allocation. |
 
 These values are used as defaults when creating a sandbox from this repository. They can be overridden at creation time via the web UI or API.
+
+You can also set repository-level preset and size defaults from the Edit Repository page in the web UI without committing a TOML change — those values become the "Database" layer in the resolution table above and win over any `[sandbox]` values in `.amika/config.toml`.
 
 ## Branch selection
 
