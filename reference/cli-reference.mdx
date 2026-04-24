@@ -315,7 +315,7 @@ Log in to Amika via the WorkOS Device Authorization Flow. Opens a browser for yo
 amika auth login
 ```
 
-To skip the browser flow and log in with a WorkOS organization API key — useful in CI — pass `--api-key-file`. Use `-` to read from stdin so the key never lands on disk:
+To skip the browser flow and log in with an Amika API key — useful in CI — pass `--api-key-file`. Use `-` to read from stdin so the key never lands on disk:
 
 ```bash
 amika auth login --api-key-file /path/to/key
@@ -324,7 +324,7 @@ vault kv get -field=key secret/amika | amika auth login --api-key-file -
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--api-key-file <path \| ->` | | Read a WorkOS organization API key from this path (or `-` for stdin) instead of running the device flow |
+| `--api-key-file <path \| ->` | | Read an Amika API key from this path (or `-` for stdin) instead of running the device flow |
 
 See [Authentication](/guides/authentication) for details on the login flow and session storage.
 
