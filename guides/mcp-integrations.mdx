@@ -45,8 +45,6 @@ If a repo has an integration enabled but you haven't connected your account for 
 
 The **Create sandbox** dialog pre-checks every integration attached to the repo. Uncheck any you don't want for that sandbox, and Amika skips them at provisioning time. The final list of integrations is recorded on the sandbox so you can audit which tools the agent had access to.
 
-Via the HTTP API, pass `integration_ids` (a list of `app.repo_integrations` IDs) to `POST /api/sandboxes`. Omit the field to use the repo's full set.
-
 ## What the agent sees
 
 During sandbox initialization, Amika writes the MCP servers into `~/.claude/.config.json` under the project's entry:
