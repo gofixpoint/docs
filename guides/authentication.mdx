@@ -5,7 +5,14 @@ description: "Login flow and session management."
 
 ## Login
 
-`amika auth login` authenticates with Amika using the WorkOS Device Authorization Flow.
+`amika auth login` has two modes:
+
+- **Browser login** — interactive device authorization flow. Best for local development.
+- **API key login** — non-interactive, for CI and automation.
+
+## Browser login
+
+The default `amika auth login` authenticates with Amika using a device authorization flow.
 
 ### Quick start
 
@@ -22,9 +29,9 @@ amika auth logout
 
 ### How it works
 
-1. The CLI requests a device code from WorkOS.
+1. The CLI requests a device code from Amika.
 2. A user code is displayed and the browser opens for you to authorize.
-3. The CLI polls WorkOS until you complete authorization.
+3. The CLI polls Amika until you complete authorization.
 4. The session (access token, refresh token, email, org) is saved to `${XDG_STATE_HOME}/amika/workos-session.json`.
 5. Access tokens are automatically refreshed when they are within 60 seconds of expiry.
 
@@ -35,9 +42,57 @@ amika auth logout
 | `amika auth status` | Show current login status (email and org) |
 | `amika auth logout` | Remove the saved session |
 
-### Environment variables
+## API key login
+
+Use an Amika API key when you need to authenticate without a browser — for example, from CI jobs or automated scripts.
+
+### Create a key
+
+Generate API keys in the web UI at [https://app.amika.dev/settings](https://app.amika.dev/settings) under the **API Key** section.
+
+### Use the key
+
+There are two ways to use an API key:
+
+**Environment variable** (highest priority):
+
+```bash
+export AMIKA_API_KEY=<key>
+amika auth status
+```
+
+When `AMIKA_API_KEY` is set, it overrides any stored API key or browser session. Good for ephemeral CI runs.
+
+**Store on disk** with `amika auth login --api-key-file`:
+
+```bash
+# From a file
+amika auth login --api-key-file ./key.txt
+
+# From stdin — pairs well with secret managers
+vault kv get -field=key secret/amika | amika auth login --api-key-file -
+```
+
+The key is written to `${XDG_STATE_HOME}/amika/api-key.json` with `0600` permissions.
+
+### Precedence
+
+When multiple credentials are present, `amika` picks the first one that is set, in this order:
+
+1. `AMIKA_API_KEY` environment variable
+2. Stored API key file (`${XDG_STATE_HOME}/amika/api-key.json`)
+3. Browser login session (`${XDG_STATE_HOME}/amika/workos-session.json`)
+
+`amika auth status` prints the active source and warns if a lower-priority credential is being shadowed.
+
+### Logout
+
+`amika auth logout` clears both the stored API key and the browser session.
+
+## Environment variables
 
 | Variable | Default | Description |
 | --- | --- | --- |
+| `AMIKA_API_KEY` | | Amika API key used to authenticate CLI requests. Overrides any stored API key or browser session when set |
 | `AMIKA_API_URL` | `https://app.amika.dev` | Override the remote API base URL. Used by sandbox commands when operating on remote sandboxes |
 | `AMIKA_WORKOS_CLIENT_ID` | | Override the default WorkOS client ID. If you change `AMIKA_API_URL`, you likely need to update this variable too |
