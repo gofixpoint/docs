@@ -47,11 +47,11 @@
           {
             "group": "Sandboxes and Repositories",
             "pages": [
+              "guides/setup-repo-config-with-agent",
               "guides/repository-configuration",
               "guides/sandbox-configuration",
               "guides/services",
-              "guides/presets",
-              "guides/setup-repo-config-with-agent"
+              "guides/presets"
             ]
           },
           {
