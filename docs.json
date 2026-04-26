@@ -41,7 +41,8 @@
               "quickstart",
               "install",
               "guides/authentication",
-              "guides/agent-authentication"
+              "guides/agent-authentication",
+              "guides/programmatic-usage"
             ]
           },
           {

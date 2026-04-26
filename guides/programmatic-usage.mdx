@@ -1,0 +1,230 @@
+---
+title: "Programmatic usage"
+description: "Script the Amika CLI to spin up a sandbox, drive an agent non-interactively, and ship the result."
+---
+
+The Amika CLI is shell-friendly, so you can wire it into bash scripts, CI jobs,
+and code-gen pipelines. This guide walks through a complete automated flow:
+push a credential, create a remote sandbox cloned from a git repo, drive Claude
+Code non-interactively to make a change and open a PR, then tear the sandbox
+down.
+
+## Prerequisites
+
+- The CLI installed and logged in. See [Install](/install) and
+  [Authentication](/guides/authentication).
+- A Claude API key on disk. See
+  [Agent authentication](/guides/agent-authentication) for how to push it to
+  the Amika secrets store.
+- Run from inside a git repository whose remote you want the agent to work
+  against.
+
+<Info>
+The pattern below uses `amika sandbox ssh` with heredocs to control the agent.
+Pair it with `--agent-credential-type` so the right credential is injected
+without an interactive picker. See
+[Pin a credential at sandbox creation](/guides/agent-authentication#pin-a-credential-at-sandbox-creation).
+</Info>
+
+## Walkthrough
+
+<Steps>
+<Step title="Push your Claude API key to the Amika vault">
+
+```bash
+amika secret claude push \
+  --type api_key \
+  --from-file /path/to/your/CLAUDE_API_KEY
+```
+
+`--from-file` reads the key without prompting, which keeps the script
+non-interactive.
+
+</Step>
+
+<Step title="Create a remote sandbox cloned from the repo">
+
+```bash
+amika sandbox create --git \
+  --agent-credential-type claude=api-key \
+  --name testing-claude-api
+```
+
+`--git` mounts the current repo into the sandbox.
+`--agent-credential-type claude=api-key` tells Amika to inject your stored
+API-key credential, which avoids the OAuth picker.
+
+</Step>
+
+<Step title="Configure agent permissions inside the sandbox">
+
+Use a heredoc with `amika sandbox ssh` to write a Claude
+`settings.local.json`. The `$AMIKA_AGENT_CWD` env var resolves to the cloned
+repo root inside the sandbox.
+
+```bash
+export CLAUDE_SETTINGS='
+{
+    "permissions": {
+        "allow": [
+            "Bash(git:*)",
+            "Bash(gh:*)"
+        ]
+    }
+}'
+
+amika sandbox ssh testing-claude-api << EOF
+mkdir -p \$AMIKA_AGENT_CWD/.claude
+echo 'settings.local.json' > \$AMIKA_AGENT_CWD/.claude/.gitignore
+echo '$CLAUDE_SETTINGS' > \$AMIKA_AGENT_CWD/.claude/settings.local.json
+EOF
+```
+
+The unquoted `<< EOF` lets the host shell expand `$CLAUDE_SETTINGS` before
+ssh transmits the body. Guest-side variables like `$AMIKA_AGENT_CWD` are
+escaped with `\$` so they survive to the sandbox shell and resolve there.
+
+These permissions let the agent run `git` and `gh` commands. Adjust the
+allowlist to match what your script needs.
+
+</Step>
+
+<Step title="Generate a session id so you can resume the agent run">
+
+```bash
+export CLAUDE_UUID=$(uuidgen)
+```
+
+Holding the session id lets you continue the same conversation across multiple
+agent invocations. This is useful when you want to break the work into phases.
+
+</Step>
+
+<Step title="Run Claude non-interactively to make code changes">
+
+```bash
+export CLAUDE_PROMPT="Change the heading text to also include, 'Dylan was here!'
+
+Do not stop, do not ask me for clarification or questions.
+"
+
+amika sandbox ssh -t testing-claude-api << EOF
+cd \$AMIKA_AGENT_CWD && claude \
+  --dangerously-skip-permissions \
+  --session-id '$CLAUDE_UUID' \
+  -p '$CLAUDE_PROMPT' < /dev/null
+EOF
+```
+
+A few details that matter for scripting:
+
+- `-t` allocates a TTY so Claude renders correctly.
+- `--dangerously-skip-permissions` is safe here because the allowlist in
+  `settings.local.json` already constrains what the agent can do.
+- `< /dev/null` closes stdin so Claude exits when the prompt is done instead of
+  waiting for input.
+
+</Step>
+
+<Step title="Resume the same session to commit and open a PR">
+
+```bash
+amika sandbox ssh -t testing-claude-api << EOF
+cd \$AMIKA_AGENT_CWD && claude \
+  --dangerously-skip-permissions \
+  --resume '$CLAUDE_UUID' \
+  -p 'Make a git branch and commit the changes. Then make a Github PR' < /dev/null
+EOF
+```
+
+Splitting the code change and the git/PR work into two prompts is more
+reliable than asking the agent to do both at once.
+
+</Step>
+
+<Step title="Tear down the sandbox">
+
+```bash
+amika sandbox rm --force testing-claude-api
+```
+
+`--force` skips the confirmation prompt, which is what you want in a script.
+
+</Step>
+</Steps>
+
+## Full script
+
+Drop this into a file and run it end-to-end. Make sure
+`/path/to/your/CLAUDE_API_KEY` exists and that your GitHub PAT is configured
+in the [Git settings](https://app.amika.dev/settings#git) so the agent can
+push the branch and open the PR.
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+errcho() { echo "$@" >&2; }
+
+amika secret claude push \
+  --type api_key \
+  --from-file /path/to/your/CLAUDE_API_KEY
+
+errcho "Creating sandbox..."
+amika sandbox create --git \
+  --agent-credential-type claude=api-key \
+  --name testing-claude-api
+
+export CLAUDE_SETTINGS='
+{
+    "permissions": {
+        "allow": [
+            "Bash(git:*)",
+            "Bash(gh:*)"
+        ]
+    }
+}'
+
+errcho "Configuring Claude settings in sandbox..."
+amika sandbox ssh testing-claude-api << EOF
+mkdir -p \$AMIKA_AGENT_CWD/.claude
+echo "settings.local.json" > \$AMIKA_AGENT_CWD/.claude/.gitignore
+echo '$CLAUDE_SETTINGS' > \$AMIKA_AGENT_CWD/.claude/settings.local.json
+EOF
+
+export CLAUDE_UUID=$(uuidgen)
+export CLAUDE_PROMPT="Change the heading text to also include, 'Dylan was here!'
+
+Do not stop, do not ask me for clarification or questions.
+"
+
+errcho "Running Claude to make code changes..."
+amika sandbox ssh -t testing-claude-api << EOF
+cd \$AMIKA_AGENT_CWD && claude --dangerously-skip-permissions --session-id '$CLAUDE_UUID' -p '$CLAUDE_PROMPT' < /dev/null
+EOF
+
+errcho "Resuming Claude to create git branch and PR..."
+amika sandbox ssh -t testing-claude-api << EOF
+cd \$AMIKA_AGENT_CWD && claude --dangerously-skip-permissions --resume '$CLAUDE_UUID' -p 'Make a git branch and commit the changes. Then make a Github PR' < /dev/null
+EOF
+
+errcho "Removing sandbox..."
+amika sandbox rm --force testing-claude-api
+```
+
+<Tip>
+For long agent runs, drop `set -e` around the agent invocations or wrap them
+so a single failed run does not leak a sandbox. `amika sandbox rm --force`
+should always run, even on failure.
+</Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Agent authentication" icon="key-round" href="/guides/agent-authentication">
+    Push and pin Claude or Codex credentials for sandboxes.
+  </Card>
+  <Card title="CLI reference" icon="square-terminal" href="/reference/cli-reference">
+    Full flag listings for sandbox, secret, and ssh commands.
+  </Card>
+</CardGroup>

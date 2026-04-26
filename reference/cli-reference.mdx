@@ -79,6 +79,11 @@ amika sandbox create --git --branch main --new-branch bugfix-1
 # Inject remote secrets (remote sandboxes only)
 amika sandbox create --name dev-sandbox --git --remote \
   --secret env:ANTHROPIC_API_KEY=my-claude-key
+
+# Pin which agent credential gets injected at create time
+amika sandbox create --name dev-sandbox --git --remote \
+  --agent-credential-type claude=api-key \
+  --no-agent-credential codex
 ```
 
 ### Create flags
@@ -104,9 +109,16 @@ amika sandbox create --name dev-sandbox --git --remote \
 | `--size <size>` | `m` | Sandbox resource size: `xs` or `m`. Remote sandboxes only |
 | `--no-setup` | `false` | Skip the setup script (ignore both `--setup-script` and `.amika/config.toml` setup) |
 | `--secret <spec>` | | Inject a remote secret (`env:FOO=SECRET_NAME` or `env:SECRET_NAME`). Repeatable. Requires `--remote` |
+| `--agent-credential <KIND=NAME>` | | Pin an agent credential by stored name (e.g. `claude=personal-oauth`). Repeatable per kind |
+| `--agent-credential-type <KIND=TYPE>` | | Pin an agent credential by type, where `TYPE` is `oauth` or `api-key` (e.g. `claude=oauth`). Repeatable per kind |
+| `--no-agent-credential <KIND>` | | Skip injecting any credential of this kind (e.g. `codex`). Repeatable per kind |
 
 <Note>
 The `--secret` flag requires `--remote` mode — secrets are resolved by the remote API.
+</Note>
+
+<Note>
+Supported agent kinds for `--agent-credential`, `--agent-credential-type`, and `--no-agent-credential` are `claude` and `codex`. Each flag may appear at most once per kind. `--no-agent-credential` is mutually exclusive with the other two for the same kind. See [Pin a credential at sandbox creation](/guides/agent-authentication#pin-a-credential-at-sandbox-creation) for usage.
 </Note>
 
 <Note>
