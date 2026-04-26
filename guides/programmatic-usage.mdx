@@ -73,12 +73,16 @@ export CLAUDE_SETTINGS='
     }
 }'
 
-amika sandbox ssh testing-claude-api << 'EOF'
-mkdir -p $AMIKA_AGENT_CWD/.claude
-echo "settings.local.json" > $AMIKA_AGENT_CWD/.claude/.gitignore
-echo "$CLAUDE_SETTINGS" > $AMIKA_AGENT_CWD/.claude/settings.local.json
+amika sandbox ssh testing-claude-api << EOF
+mkdir -p \$AMIKA_AGENT_CWD/.claude
+echo 'settings.local.json' > \$AMIKA_AGENT_CWD/.claude/.gitignore
+echo '$CLAUDE_SETTINGS' > \$AMIKA_AGENT_CWD/.claude/settings.local.json
 EOF
 ```
+
+The unquoted `<< EOF` lets the host shell expand `$CLAUDE_SETTINGS` before
+ssh transmits the body. Guest-side variables like `$AMIKA_AGENT_CWD` are
+escaped with `\$` so they survive to the sandbox shell and resolve there.
 
 These permissions let the agent run `git` and `gh` commands. Adjust the
 allowlist to match what your script needs.
