@@ -74,6 +74,45 @@ Inject into a sandbox by selecting the credential in the web UI or via `--secret
 amika sandbox create --git --remote --secret env:OPENAI_API_KEY=my-codex-key
 ```
 
+## Pin a credential at sandbox creation
+
+If you have multiple credentials pushed for the same agent kind (for example,
+both an OAuth and an API-key credential for Claude), you can tell the CLI
+which one to inject when you create a sandbox. This is the way to keep
+scripted flows deterministic instead of relying on default selection.
+
+| Flag | Format | Behavior |
+| --- | --- | --- |
+| `--agent-credential <KIND=NAME>` | `claude=personal-oauth` | Pick the stored credential by name |
+| `--agent-credential-type <KIND=TYPE>` | `claude=oauth` or `claude=api-key` | Pick by credential type and let the server choose a matching credential |
+| `--no-agent-credential <KIND>` | `codex` | Skip credential injection for that kind entirely |
+
+Examples:
+
+```bash
+# Pin Claude to a specific stored credential by name
+amika sandbox create --git --remote \
+  --agent-credential claude=personal-oauth
+
+# Pin Claude to whatever API-key credential is available
+amika sandbox create --git --remote \
+  --agent-credential-type claude=api-key
+
+# Use Claude defaults but skip injecting any Codex credential
+amika sandbox create --git --remote \
+  --no-agent-credential codex
+```
+
+<Note>
+Supported kinds are `claude` and `codex`. Type values are `oauth` or
+`api-key`. Each flag may appear at most once per kind, and
+`--no-agent-credential` is mutually exclusive with the other two for the
+same kind. You can combine `--agent-credential` and `--agent-credential-type`
+on the same kind to pin both name and type. See
+[CLI reference](/reference/cli-reference#create-flags) for the full flag
+table.
+</Note>
+
 ## Credential discovery
 
 `amika auth extract` discovers locally stored API credentials from multiple coding agent tools and prints them as shell environment assignments.
