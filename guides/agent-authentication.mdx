@@ -81,6 +81,10 @@ both an OAuth and an API-key credential for Claude), you can tell the CLI
 which one to inject when you create a sandbox. This is the way to keep
 scripted flows deterministic instead of relying on default selection.
 
+You can also pick the credential per-kind in the **New sandbox** form on
+[app.amika.dev](https://app.amika.dev) — the CLI flags below are the
+scriptable equivalent.
+
 | Flag | Format | Behavior |
 | --- | --- | --- |
 | `--agent-credential <KIND=NAME>` | `claude=personal-oauth` | Pick the stored credential by name |
