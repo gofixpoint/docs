@@ -5,7 +5,7 @@ description: "Exhaustive reference for .amika/config.toml fields."
 
 The `.amika/config.toml` file lives at the root of a Git repository and declares sandbox defaults for that repository. When a sandbox is created from the repo, Amika reads this file and applies the settings automatically.
 
-For an overview of how repository configuration works and how it interacts with other configuration sources, see [Repository configuration](/guides/repository-configuration).
+For an overview of how repository configuration works and how it interacts with other configuration sources, see [Repository configuration](/reference/repository-configuration).
 
 ## Quick start
 
@@ -129,7 +129,7 @@ Environment variables are merged per-key across sources. Database entries (saved
 
 ## `[services.<name>]`
 
-Declares named services with port bindings and optional URL schemes. Each `[services.<name>]` section defines one service. See [Services](/guides/services) for usage examples and runtime behavior.
+Declares named services with port bindings and optional URL schemes. Each `[services.<name>]` section defines one service. See [Services](/reference/services) for usage examples and runtime behavior.
 
 ### Fields
 
@@ -243,7 +243,7 @@ The base image preset for sandboxes created from this repository.
 - `coder` — Ubuntu 24.04 with Git, Node.js, Python, and agent CLIs (Claude Code, Codex, OpenCode).
 - `coder-dind` — Same as `coder` with Docker-in-Docker support.
 
-See [Presets](/guides/presets) for full details on what each preset includes.
+See [Presets](/reference/presets) for full details on what each preset includes.
 
 ### `size`
 
@@ -304,6 +304,6 @@ size = "m"
 
 ## Related docs
 
-- [Repository configuration](/guides/repository-configuration) — how repo config works and resolution precedence
-- [Sandbox configuration](/guides/sandbox-configuration) — CLI flags and runtime settings
-- [Services](/guides/services) — service runtime behavior, port resolution, and listing
+- [Repository configuration](/reference/repository-configuration) — how repo config works and resolution precedence
+- [Sandbox configuration](/reference/sandbox-configuration) — CLI flags and runtime settings
+- [Services](/reference/services) — service runtime behavior, port resolution, and listing

@@ -35,55 +35,95 @@
         "tab": "Guides",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get started",
             "pages": [
               "index",
               "quickstart",
               "install",
-              "guides/authentication",
-              "guides/agent-authentication",
-              "guides/programmatic-usage"
+              "guides/overview"
             ]
           },
           {
-            "group": "Sandboxes and Repositories",
+            "group": "Sandboxes",
+            "pages": [
+              "guides/create-a-sandbox",
+              "guides/sandbox-lifecycle",
+              "guides/ssh-and-connect"
+            ]
+          },
+          {
+            "group": "Agents and sessions",
+            "pages": [
+              "guides/send-a-message-to-an-agent",
+              "guides/manage-sessions"
+            ]
+          },
+          {
+            "group": "Credentials",
+            "pages": [
+              "guides/manage-secrets",
+              "guides/inject-credentials"
+            ]
+          },
+          {
+            "group": "Advanced",
             "pages": [
               "guides/setup-repo-config-with-agent",
-              "guides/repository-configuration",
-              "guides/sandbox-configuration",
-              "guides/services",
-              "guides/presets"
-            ]
-          },
-          {
-            "group": "Tools and Context",
-            "pages": [
+              "guides/programmatic-usage",
               "guides/mcp-integrations"
             ]
           }
         ]
       },
       {
-        "tab": "API and CLI Reference",
+        "tab": "SDKs",
         "groups": [
           {
-            "group": "CLI and API",
+            "group": "Overview",
+            "pages": [
+              "sdks/overview"
+            ]
+          },
+          {
+            "group": "TypeScript",
+            "pages": [
+              "sdks/typescript/quickstart",
+              "sdks/typescript/client",
+              "sdks/typescript/types",
+              "sdks/typescript/errors",
+              "sdks/typescript/token-sources"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "groups": [
+          {
+            "group": "CLI and platform",
+            "pages": [
+              "reference/cli",
+              "reference/auth",
+              "reference/secrets",
+              "reference/presets",
+              "reference/sandbox-configuration",
+              "reference/storage"
+            ]
+          },
+          {
+            "group": "Repository configuration",
+            "pages": [
+              "reference/repository-configuration",
+              "reference/config-toml",
+              "reference/services"
+            ]
+          },
+          {
+            "group": "HTTP API",
             "pages": [
               "reference/api-reference",
-              "reference/cli-reference",
-              "reference/http-api"
-            ]
-          },
-          {
-            "group": "Configuration",
-            "pages": [
-              "reference/config-toml"
-            ]
-          },
-          {
-            "group": "System reference",
-            "pages": [
-              "reference/storage"
+              "reference/http-api",
+              "reference/amika-server-cli-reference"
             ]
           }
         ]

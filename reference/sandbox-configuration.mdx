@@ -3,7 +3,7 @@ title: "Sandbox configuration"
 description: "Configure sandboxes with CLI flags, credential mounting, and runtime settings."
 ---
 
-Sandbox configuration controls the runtime environment of individual sandboxes. Many settings can be defined in a [repository configuration](/guides/repository-configuration) and applied automatically, but you can also override or extend them with CLI flags and platform settings.
+Sandbox configuration controls the runtime environment of individual sandboxes. Many settings can be defined in a [repository configuration](/reference/repository-configuration) and applied automatically, but you can also override or extend them with CLI flags and platform settings.
 
 ## Setup scripts
 
@@ -40,7 +40,7 @@ If the setup script exits non-zero, the container command does not run.
 </Warning>
 
 <Tip>
-You can also define setup scripts in [`.amika/config.toml`](/guides/repository-configuration#lifecycle--setup-script) so they apply automatically when creating sandboxes from a repository. The `--setup-script` flag always takes priority.
+You can also define setup scripts in [`.amika/config.toml`](/reference/repository-configuration#lifecycle--setup-script) so they apply automatically when creating sandboxes from a repository. The `--setup-script` flag always takes priority.
 </Tip>
 
 ## Git repository cloning
@@ -61,7 +61,7 @@ amika sandbox create --git ./src
 amika sandbox create --git --branch feature/new-api
 ```
 
-When `--git` is used, Amika also looks for a [`.amika/config.toml`](/guides/repository-configuration) file at the root of the repository and applies it automatically.
+When `--git` is used, Amika also looks for a [`.amika/config.toml`](/reference/repository-configuration) file at the root of the repository and applies it automatically.
 
 <Note>
 - The volume name is derived from the sandbox name and repo name, e.g. `amika-git-teal-tokyo-Hello-World-<timestamp>`.
@@ -83,7 +83,7 @@ amika sandbox create --git --preset coder-dind
 amika sandbox create --git --port 5432:5432
 ```
 
-On the hosted platform, settings saved via the web UI take priority over `.amika/config.toml` values. See [configuration resolution](/guides/repository-configuration#configuration-resolution) for the full precedence order.
+On the hosted platform, settings saved via the web UI take priority over `.amika/config.toml` values. See [configuration resolution](/reference/repository-configuration#configuration-resolution) for the full precedence order.
 
 ## Agent credential auto-mounting
 
@@ -137,6 +137,6 @@ The OpenCode web server starts automatically on port 60998 when OpenCode is inst
 
 ## Related docs
 
-- [Repository configuration](/guides/repository-configuration) — `.amika/config.toml` and per-repo settings
-- [Services](/guides/services) — named service definitions with port mappings
-- [Presets](/guides/presets) — preset images and container layout
+- [Repository configuration](/reference/repository-configuration) — `.amika/config.toml` and per-repo settings
+- [Services](/reference/services) — named service definitions with port mappings
+- [Presets](/reference/presets) — preset images and container layout

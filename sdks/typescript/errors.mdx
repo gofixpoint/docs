@@ -1,0 +1,82 @@
+---
+title: "Errors"
+description: "Error classes and agent-auth detection in the TypeScript SDK."
+---
+
+The SDK throws typed errors so you can branch on failure modes.
+
+## `AmikaError`
+
+The base class for every error the SDK raises.
+
+```ts
+class AmikaError extends Error {}
+```
+
+Catch `AmikaError` to handle anything the SDK throws, including the failed
+sandbox state surfaced by the wait helpers.
+
+## `AmikaHTTPError`
+
+Thrown when the API returns a non-2xx response.
+
+```ts
+class AmikaHTTPError extends AmikaError {
+  readonly statusCode: number;
+  readonly body: string;
+  userMessage(): string;
+}
+```
+
+- `statusCode` — the HTTP status.
+- `body` — the raw response body.
+- `userMessage()` — parses a structured error (`{ code | error_code, message }`)
+  from the body and returns a human-readable string, prefixing the stable
+  error code when present. Falls back to the raw body if parsing fails.
+
+```ts
+try {
+  await amika.getSandbox("does-not-exist");
+} catch (err) {
+  if (err instanceof AmikaHTTPError) {
+    console.error(err.statusCode);      // e.g. 404
+    console.error(err.userMessage());   // friendly message
+  }
+}
+```
+
+<Note>
+`getLatestSession` is the one place where a 404 is *not* an error — it
+returns `null` instead of throwing. You don't need a handler for that case.
+</Note>
+
+## `extractAgentAuthError`
+
+`agentSend` runs an agent that talks to an upstream AI provider. If that
+provider rejects the agent's credentials (e.g. an Anthropic 401), the
+failure surfaces as an `AmikaHTTPError`. `extractAgentAuthError` inspects
+such an error and returns a short description if the root cause is an
+agent-side auth failure, or `""` otherwise.
+
+```ts
+function extractAgentAuthError(err: unknown): string;
+```
+
+```ts
+import { extractAgentAuthError } from "@amika/sdk";
+
+try {
+  await amika.agentSend("dev-box", { message: "..." });
+} catch (err) {
+  const authMsg = extractAgentAuthError(err);
+  if (authMsg) {
+    console.error("Agent credential problem:", authMsg);
+  } else {
+    throw err;
+  }
+}
+```
+
+Use it to distinguish "the agent's API key is bad" (fix the injected
+credential — see [Inject credentials](/guides/inject-credentials)) from a
+genuine platform or transport error.

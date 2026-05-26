@@ -42,8 +42,8 @@ amika sandbox create --name dev-sandbox --git --no-clean
 # Mount git repo containing a specific path
 amika sandbox create --name dev-sandbox --git ./src
 
-# Use the claude preset image
-amika sandbox create --name claude-box --preset claude
+# Use the coder-dind preset image
+amika sandbox create --name dind-box --preset coder-dind
 
 # Use a custom Docker image
 amika sandbox create --name custom-box --image myimage:latest
@@ -93,7 +93,7 @@ amika sandbox create --name dev-sandbox --git --remote \
 | `--name <name>` | auto-generated | Name for the sandbox. If omitted, a random `{color}-{city}` name is generated |
 | `--provider <name>` | `docker` | Sandbox provider (only `docker` is currently supported) |
 | `--image <image>` | `amika/coder:latest` | Docker image to use (mutually exclusive with `--preset`) |
-| `--preset <name>` | | Use a preset environment, e.g. `coder` or `claude` (mutually exclusive with `--image`) |
+| `--preset <name>` | | Use a preset environment, e.g. `coder` or `coder-dind` (mutually exclusive with `--image`) |
 | `--mount <spec>` | | Mount a host path (`source:target[:mode]`, mode defaults to `rwcopy`). Repeatable |
 | `--volume <spec>` | | Mount an existing named volume (`name:target[:mode]`, mode defaults to `rw`). Repeatable |
 | `--git [path]` | | Mount the git repo root (or repo containing `path`) to `/home/amika/workspace/{repo}` |
@@ -118,11 +118,11 @@ The `--secret` flag requires `--remote` mode — secrets are resolved by the rem
 </Note>
 
 <Note>
-Supported agent kinds for `--agent-credential`, `--agent-credential-type`, and `--no-agent-credential` are `claude` and `codex`. Each flag may appear at most once per kind. `--no-agent-credential` is mutually exclusive with the other two for the same kind. See [Pin a credential at sandbox creation](/guides/agent-authentication#pin-a-credential-at-sandbox-creation) for usage.
+Supported agent kinds for `--agent-credential`, `--agent-credential-type`, and `--no-agent-credential` are `claude` and `codex`. Each flag may appear at most once per kind. `--no-agent-credential` is mutually exclusive with the other two for the same kind. See [Inject credentials](/guides/inject-credentials) for usage.
 </Note>
 
 <Note>
-When `--git` is used with a repo that contains `.amika/config.toml` service declarations, those service ports are published automatically. If a `--port` flag conflicts with a service port (same container port and protocol), the command returns an error. See [Services](/guides/services) for details.
+When `--git` is used with a repo that contains `.amika/config.toml` service declarations, those service ports are published automatically. If a `--port` flag conflicts with a service port (same container port and protocol), the command returns an error. See [Services](/reference/services) for details.
 </Note>
 
 <Note>
@@ -313,7 +313,7 @@ Output columns: `SERVICE`, `SANDBOX`, `PORTS`, `URL`.
 | --- | --- | --- |
 | `--sandbox-name <name>` | (none) | Filter services to a specific sandbox |
 
-See [Services](/guides/services) for how to declare services in `.amika/config.toml`.
+See [Services](/reference/services) for how to declare services in `.amika/config.toml`.
 
 ## `amika auth`
 
@@ -338,7 +338,7 @@ vault kv get -field=key secret/amika | amika auth login --api-key-file -
 | --- | --- | --- |
 | `--api-key-file <path \| ->` | | Read an Amika API key from this path (or `-` for stdin) instead of running the device flow |
 
-See [Authentication](/guides/authentication) for details on the login flow and session storage.
+See [Authentication](/reference/auth) for details on the login flow and session storage.
 
 ### `amika auth status`
 
@@ -375,7 +375,7 @@ amika auth extract --no-oauth
 | `--homedir <path>` | `$HOME` | Override home directory used for credential discovery |
 | `--no-oauth` | `false` | Skip OAuth credential sources |
 
-See [Authentication](/guides/authentication) for details on supported credential sources and priority.
+See [Authentication](/reference/auth) for details on supported credential sources and priority.
 
 ## `amika secret`
 
@@ -550,7 +550,7 @@ amika materialize --script ./pull-data.sh --destdir ./output
 amika materialize --cmd "curl -s https://api.example.com/data > result.json" --destdir ./output
 amika materialize --script ./transform.sh --outdir /app/results --destdir ./output
 amika materialize -i --cmd claude --mount $(pwd):/workspace --env ANTHROPIC_API_KEY=...
-amika materialize --preset claude --cmd "claude --help" --destdir /tmp/out
+amika materialize --preset coder-dind --cmd "docker ps" --destdir /tmp/out
 amika materialize --setup-script ./install-deps.sh --cmd "echo done" --destdir /tmp/out
 ```
 
@@ -563,7 +563,7 @@ amika materialize --setup-script ./install-deps.sh --cmd "echo done" --destdir /
 | `--destdir <path>` | **(required)** | Host directory where output files are copied |
 | `--outdir <path>` | workdir | Container directory to copy from |
 | `--image <image>` | `amika/coder:latest` | Docker image to use (mutually exclusive with `--preset`) |
-| `--preset <name>` | | Preset image, e.g. `coder` or `claude` (mutually exclusive with `--image`) |
+| `--preset <name>` | | Preset image, e.g. `coder` or `coder-dind` (mutually exclusive with `--image`) |
 | `--mount <spec>` | | Mount a host directory (`source:target[:mode]`, mode defaults to `rw`). Repeatable |
 | `--env <KEY=VALUE>` | | Set environment variable in the container. Repeatable |
 | `-i`, `--interactive` | `false` | Run interactively with TTY |

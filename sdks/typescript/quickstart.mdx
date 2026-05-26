@@ -1,0 +1,85 @@
+---
+title: "TypeScript quickstart"
+description: "Install @amika/sdk and create your first sandbox from TypeScript."
+---
+
+The TypeScript SDK wraps the hosted Amika API. This page gets you from
+install to a running agent in a few lines.
+
+## Install
+
+```bash
+npm install @amika/sdk
+```
+
+## Get an API token
+
+Generate an Amika API key in the web UI at
+[app.amika.dev/settings](https://app.amika.dev/settings). The SDK does not
+read it from your environment automatically — you pass it to the client.
+
+## Create a client
+
+```ts
+import { AmikaClient } from "@amika/sdk";
+
+const amika = new AmikaClient({
+  baseUrl: process.env.AMIKA_API_URL ?? "https://app.amika.dev",
+  accessToken: process.env.AMIKA_API_KEY!,
+});
+```
+
+The client appends the API path prefix (`/api/v0beta1`) to `baseUrl` for
+you, so pass just the origin.
+
+<Note>
+`accessToken` and `tokenSource` are mutually exclusive. For tokens that need
+to be fetched or refreshed, use a `tokenSource` instead — see
+[Token sources](/sdks/typescript/token-sources).
+</Note>
+
+## Create a sandbox and run an agent
+
+```ts
+// 1. Create a sandbox and wait for it to be ready
+const sb = await amika.createSandbox({
+  name: "dev-box",
+  preset: "coder",
+});
+await amika.waitForSandbox(sb.name);
+
+// 2. Send a prompt to the agent (blocks until it finishes)
+const res = await amika.agentSend(sb.name, {
+  message: "Add unit tests for the auth module",
+});
+console.log(res.result);
+
+// 3. Tear down
+await amika.deleteSandbox(sb.name);
+```
+
+## Timeouts and polling
+
+- Default HTTP timeout: **30 seconds**.
+- `agentSend` HTTP timeout: **10 minutes** — it blocks until the agent
+  finishes.
+- `waitForSandbox` / `waitForSandboxStart` / `waitForSandboxStop` poll every
+  **3 seconds** with no client-side timeout. They throw if the sandbox
+  enters the `failed` state.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Client reference" icon="code" href="/sdks/typescript/client">
+    Every method on `AmikaClient`.
+  </Card>
+  <Card title="Types" icon="brackets-curly" href="/sdks/typescript/types">
+    Request and response interfaces.
+  </Card>
+  <Card title="Errors" icon="triangle-exclamation" href="/sdks/typescript/errors">
+    `AmikaError`, `AmikaHTTPError`, and agent-auth detection.
+  </Card>
+  <Card title="Token sources" icon="key" href="/sdks/typescript/token-sources">
+    Static tokens and custom token providers.
+  </Card>
+</CardGroup>

@@ -89,16 +89,16 @@ Duplicate bindings (same `HostIP:HostPort/Protocol`) are rejected with a 400 err
 }
 ```
 
-See [Services](/guides/services) for how to declare services in `.amika/config.toml`.
+See [Services](/reference/services) for how to declare services in `.amika/config.toml`.
 
 ## API-only fields
 
 The HTTP API accepts some fields that are not available as CLI flags:
 
 - **`SetupScriptText`** (on `POST /v1/sandboxes`): Inline setup script content as a string. Amika writes it to a temporary file and mounts it as `/usr/local/etc/amikad/setup/setup.sh`. Mutually exclusive with `SetupScript` (file path).
-- **`GitRepo`** (on `POST /v1/sandboxes`): URL of a git repository to clone into the sandbox. The repo is cloned on the host, copied into a Docker volume, and mounted at `/home/amika/workspace/<repo-name>`. Supported schemes: `https://`, `http://`, `ssh://`, `file:///` (absolute paths only), and SCP-style (`git@host:path`). See [Sandbox configuration](/guides/sandbox-configuration) for details.
+- **`GitRepo`** (on `POST /v1/sandboxes`): URL of a git repository to clone into the sandbox. The repo is cloned on the host, copied into a Docker volume, and mounted at `/home/amika/workspace/<repo-name>`. Supported schemes: `https://`, `http://`, `ssh://`, `file:///` (absolute paths only), and SCP-style (`git@host:path`). See [Sandbox configuration](/reference/sandbox-configuration) for details.
 
 ## Related docs
 
-- [CLI reference](/reference/cli-reference)
-- [Sandbox configuration](/guides/sandbox-configuration)
+- [CLI reference](/reference/cli)
+- [Sandbox configuration](/reference/sandbox-configuration)

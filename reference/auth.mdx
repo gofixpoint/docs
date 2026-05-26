@@ -1,0 +1,170 @@
+---
+title: "Authentication"
+description: "CLI login flows, credential precedence, and session storage."
+---
+
+This page is the reference for how the `amika` CLI authenticates to the
+hosted platform. For a task-oriented walkthrough, see the
+[Manage secrets](/guides/manage-secrets) guide.
+
+<Note>
+The TypeScript SDK does **not** use any of the stored credentials below. It
+requires you to pass a token via `accessToken` or `tokenSource`. See
+[Token sources](/sdks/typescript/token-sources).
+</Note>
+
+## Login modes
+
+`amika auth login` has two modes:
+
+- **Browser login** — interactive device authorization flow. Best for local
+  development.
+- **API key login** — non-interactive, for CI and automation.
+
+## Browser login
+
+The default `amika auth login` authenticates with Amika using a device
+authorization flow.
+
+```bash
+# Log in (opens browser)
+amika auth login
+
+# Check login status
+amika auth status
+
+# Log out
+amika auth logout
+```
+
+### How it works
+
+1. The CLI requests a device code from Amika.
+2. A user code is displayed and the browser opens for you to authorize.
+3. The CLI polls Amika until you complete authorization.
+4. The session (access token, refresh token, email, org) is saved to
+   `${XDG_STATE_HOME}/amika/workos-session.json`.
+5. Access tokens are automatically refreshed when within 60 seconds of expiry.
+
+## API key login
+
+Use an Amika API key when you need to authenticate without a browser — for
+example, from CI jobs or automated scripts.
+
+### Create a key
+
+Generate API keys in the web UI at
+[app.amika.dev/settings](https://app.amika.dev/settings) under the **API Key**
+section.
+
+### Use the key
+
+**Environment variable** (highest priority):
+
+```bash
+export AMIKA_API_KEY=<key>
+amika auth status
+```
+
+When `AMIKA_API_KEY` is set, it overrides any stored API key or browser
+session. Good for ephemeral CI runs.
+
+**Store on disk** with `amika auth login --api-key-file`:
+
+```bash
+# From a file
+amika auth login --api-key-file ./key.txt
+
+# From stdin — pairs well with secret managers
+vault kv get -field=key secret/amika | amika auth login --api-key-file -
+```
+
+The key is written to `${XDG_STATE_HOME}/amika/api-key.json` with `0600`
+permissions.
+
+## Credential precedence
+
+When multiple credentials are present, `amika` picks the first one that is
+set, in this order:
+
+1. `AMIKA_API_KEY` environment variable
+2. Stored API key file (`${XDG_STATE_HOME}/amika/api-key.json`)
+3. Browser login session (`${XDG_STATE_HOME}/amika/workos-session.json`)
+
+`amika auth status` prints the active source and warns if a lower-priority
+credential is being shadowed. `amika auth logout` clears both the stored API
+key and the browser session.
+
+## Local credential discovery
+
+`amika auth extract` discovers locally stored API credentials from coding
+agent tools and prints them as shell environment assignments. Use it to copy
+agent credentials into Amika's web UI or to seed sandboxes.
+
+```bash
+# Print detected assignments
+amika auth extract
+
+# Export into current shell
+eval "$(amika auth extract --export)"
+
+# Skip OAuth sources
+amika auth extract --no-oauth
+```
+
+### Supported sources
+
+Amika reads sources in priority order. Higher-priority sources win when
+multiple files provide the same provider key.
+
+| Priority | Source | Files | Providers |
+| --- | --- | --- | --- |
+| 500 | Claude API key | `~/.claude.json.api`, `~/.claude.json` | Anthropic |
+| 400 | Claude OAuth | `~/.claude/.credentials.json`, `~/.claude-oauth-credentials.json` | Anthropic |
+| 300 | Codex | `~/.codex/auth.json` | OpenAI |
+| 290 | Amika env cache | `${XDG_CACHE_HOME}/amika/env-cache.json` | Any |
+| 280 | Amika keychain | `${XDG_DATA_HOME}/amika/keychain.json` | Any |
+| 270 | Amika OAuth | `${XDG_STATE_HOME}/amika/oauth.json` | Any |
+| 200 | OpenCode | `~/.local/share/opencode/auth.json` | Any |
+| 100 | Amp | `~/.amp/config.json` | Anthropic |
+
+### Output mapping
+
+Amika normalizes provider names and exports common aliases:
+
+- Anthropic keys output as both `ANTHROPIC_API_KEY` and `CLAUDE_API_KEY`.
+- OpenAI keys output as both `OPENAI_API_KEY` and `CODEX_API_KEY`.
+
+```bash
+ANTHROPIC_API_KEY='sk-ant-...'
+CLAUDE_API_KEY='sk-ant-...'
+OPENAI_API_KEY='sk-...'
+CODEX_API_KEY='sk-...'
+```
+
+Provider names are canonicalized before deduplication: `claude`/`anthropic`
+→ `anthropic`; `codex`/`openai` → `openai`; other providers are lowercased
+with separators normalized to hyphens. OAuth tokens with an `expiresAt` or
+`expires` timestamp are skipped if expired.
+
+### `extract` flags
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--export` | `false` | Prefix lines with `export` |
+| `--homedir <path>` | `$HOME` | Override home directory for discovery |
+| `--no-oauth` | `false` | Skip OAuth credential sources |
+
+## Environment variables
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `AMIKA_API_KEY` | | Amika API key used to authenticate CLI requests. Overrides any stored API key or browser session when set |
+| `AMIKA_API_URL` | `https://app.amika.dev` | Override the remote API base URL. Used by sandbox commands when operating on remote sandboxes |
+| `AMIKA_WORKOS_CLIENT_ID` | | Override the default WorkOS client ID. If you change `AMIKA_API_URL`, you likely need to update this too |
+
+## Related docs
+
+- [Manage secrets](/guides/manage-secrets) — push and inject credentials
+- [Secrets reference](/reference/secrets) — scope model and provider secrets
+- [Storage paths](/reference/storage) — where sessions and caches live

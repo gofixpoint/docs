@@ -1,0 +1,96 @@
+---
+title: "SSH and connect"
+description: "Open a shell on a sandbox over SSH, or open it in your editor."
+---
+
+Once a sandbox is running, you have a few ways to get inside it:
+
+- **SSH** (works on hosted sandboxes) — for interactive shells, one-off
+  commands, or for handing the destination to your own SSH client.
+- **`sandbox connect`** (CLI-only, local sandboxes) — drops you into the
+  Docker container's shell directly.
+- **`sandbox code`** (CLI-only) — opens the sandbox in Cursor over SSH.
+
+## Prerequisites
+
+<Note>
+A sandbox in the `active` / `running` / `started` state. See
+[Create a sandbox](/guides/create-a-sandbox).
+</Note>
+
+## Open an interactive SSH session
+
+<CodeGroup>
+
+```bash CLI
+amika sandbox ssh dev-box
+```
+
+```ts TypeScript
+// The SDK doesn't shell out — it returns SSH connection info you
+// hand to your own SSH client.
+const ssh = await amika.getSSH("dev-box");
+console.log(ssh.sshDestination); // e.g. "user@host:2222"
+console.log(ssh.token);          // bearer for the proxy
+console.log(ssh.expiresAt);      // ISO timestamp
+console.log(ssh.repoName);       // repo subdir inside the sandbox
+```
+
+</CodeGroup>
+
+## Run a one-off command
+
+The CLI passes anything after `--` straight to the remote shell. Use `-t`
+to allocate a TTY when the remote command needs one.
+
+```bash
+# Non-interactive command
+amika sandbox ssh dev-box -- ls -la
+
+# Interactive program (force TTY)
+amika sandbox ssh -t dev-box -- top
+```
+
+## Local-Docker shell (CLI only)
+
+`amika sandbox connect` opens the Docker container's shell directly. It only
+applies to local sandboxes (`--local`).
+
+```bash
+amika sandbox connect dev-box                # default zsh
+amika sandbox connect dev-box --shell bash
+```
+
+## Open in Cursor (CLI only)
+
+`amika sandbox code` opens the sandbox in Cursor over SSH.
+
+```bash
+amika sandbox code dev-box
+amika sandbox code dev-box --editor cursor   # currently the only supported editor
+```
+
+## Revoke an SSH token
+
+The SSH credential issued by `ssh`/`getSSH` is time-bounded. You can revoke
+it on demand.
+
+<CodeGroup>
+
+```bash CLI
+amika sandbox ssh dev-box --revoke
+```
+
+```ts TypeScript
+await amika.revokeSSH("dev-box", ssh.token);
+```
+
+</CodeGroup>
+
+## Next steps
+
+<CardGroup>
+  <Card title="Programmatic walkthrough" href="/guides/programmatic-usage" icon="code-branch" />
+  <Card title="Sandbox lifecycle" href="/guides/sandbox-lifecycle" icon="rotate" />
+  <Card title="CLI reference" href="/reference/cli" icon="square-terminal" />
+</CardGroup>

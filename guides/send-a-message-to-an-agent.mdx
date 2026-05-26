@@ -1,0 +1,110 @@
+---
+title: "Send a message to an agent"
+description: "Run Claude, Codex, or another agent inside a sandbox and read its response."
+---
+
+Once you have a running sandbox, you can drive its coding agent (Claude Code,
+Codex, OpenCode, etc.) by sending a single prompt synchronously. The call
+blocks until the agent finishes and returns the result.
+
+## Prerequisites
+
+<Note>
+- A sandbox in the `active` / `running` / `started` state. See
+  [Create a sandbox](/guides/create-a-sandbox).
+- Agent credentials injected at sandbox-create time. See
+  [Inject credentials](/guides/inject-credentials).
+</Note>
+
+## Step 1 — Send a prompt
+
+By default the call uses Claude. Pass `--agent` / `agent` to switch agents.
+
+<CodeGroup>
+
+```bash CLI
+amika sandbox agent-send dev-box "Add unit tests for the auth module"
+```
+
+```ts TypeScript
+const res = await amika.agentSend("dev-box", {
+  message: "Add unit tests for the auth module",
+});
+console.log(res.result);
+```
+
+</CodeGroup>
+
+## Step 2 — Continue or start a fresh session
+
+By default, both the CLI and SDK resume the most recent session for the
+sandbox. Force a new session with `--new-session` / `newSession`, or pick a
+specific one with `--session-id` / `sessionId`.
+
+<CodeGroup>
+
+```bash CLI
+# Start fresh
+amika sandbox agent-send dev-box "Refactor the API layer" --new-session
+
+# Resume a specific session
+amika sandbox agent-send dev-box "Now write the tests" \
+  --session-id 3f2a...
+```
+
+```ts TypeScript
+// Start fresh
+await amika.agentSend("dev-box", {
+  message: "Refactor the API layer",
+  newSession: true,
+});
+
+// Resume a specific session
+await amika.agentSend("dev-box", {
+  message: "Now write the tests",
+  sessionId: "3f2a...",
+});
+```
+
+</CodeGroup>
+
+## Response shape
+
+`agentSend` returns the agent's text output, the session id it ran in, and a
+flag indicating whether the agent itself reported an error.
+
+```ts
+interface AgentSendResponse {
+  result: string;     // the agent's textual response
+  sessionId: string;
+  isError: boolean;
+}
+```
+
+<Note>
+On the wire the field is named `response`; the SDK maps it to `result` for
+consistency with the rest of the surface.
+</Note>
+
+## Things to know
+
+- **`agent-send` blocks.** The endpoint waits for the agent to finish before
+  returning. The SDK uses a **10-minute HTTP timeout** for this call (the
+  default elsewhere is 30 seconds). Anything that wraps the SDK (Lambda,
+  Cloudflare Worker, etc.) needs at least that much runtime budget.
+- **Agent-side auth errors get rewritten.** If the upstream provider returns
+  a 401 (e.g. an Anthropic auth failure), the SDK surfaces a friendlier
+  message. You can also call
+  [`extractAgentAuthError`](/sdks/typescript/errors#extractagentautherror)
+  to detect this case.
+- **CLI default is resume.** Without `--new-session` or `--session-id`, the
+  CLI resumes the stored session for the sandbox. The same is true for the
+  SDK.
+
+## Next steps
+
+<CardGroup>
+  <Card title="Manage sessions" href="/guides/manage-sessions" icon="clock-rotate-left" />
+  <Card title="SSH into the sandbox" href="/guides/ssh-and-connect" icon="terminal" />
+  <Card title="Programmatic walkthrough" href="/guides/programmatic-usage" icon="code-branch" />
+</CardGroup>
