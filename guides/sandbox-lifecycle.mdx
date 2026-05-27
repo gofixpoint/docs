@@ -1,0 +1,136 @@
+---
+title: "Sandbox lifecycle"
+description: "List, start, stop, and delete sandboxes."
+---
+
+A sandbox progresses through a small set of states. This guide covers each
+transition.
+
+## State values
+
+| State | Meaning |
+| --- | --- |
+| `initializing` | Provisioning; not yet reachable |
+| `active`, `running`, `started` | Reachable; the SDK treats all three as "ready" |
+| `stopped` | Paused. Can be resumed with `start` |
+| `failed` | Provisioning or runtime failure. The wait helpers throw on this |
+
+<Note>
+The server may introduce new `state` values over time. The SDK wait helpers
+treat anything not in the lists above (except `failed`) as "still working",
+so unknown values won't break your code.
+</Note>
+
+## List sandboxes
+
+<CodeGroup>
+
+```bash CLI
+amika sandbox list
+```
+
+```ts TypeScript
+const all = await amika.listSandboxes();
+for (const sb of all) {
+  console.log(sb.name, sb.state, sb.createdAt);
+}
+```
+
+</CodeGroup>
+
+## Stop a running sandbox
+
+<CodeGroup>
+
+```bash CLI
+amika sandbox stop dev-box
+```
+
+```ts TypeScript
+await amika.stopSandbox("dev-box");
+await amika.waitForSandboxStop("dev-box");
+```
+
+</CodeGroup>
+
+`waitForSandboxStop` polls every 3 seconds until the sandbox enters
+`stopped`. No client-side timeout — it throws if the sandbox transitions to
+`failed`.
+
+## Start a stopped sandbox
+
+<CodeGroup>
+
+```bash CLI
+amika sandbox start dev-box
+```
+
+```ts TypeScript
+await amika.startSandbox("dev-box");
+await amika.waitForSandboxStart("dev-box");
+```
+
+</CodeGroup>
+
+`waitForSandboxStart` polls every 3 seconds until the sandbox is in one of
+`active` / `running` / `started`.
+
+## Delete a sandbox
+
+<CodeGroup>
+
+```bash CLI
+# Prompts for confirmation
+amika sandbox delete dev-box
+
+# Skip the prompt
+amika sandbox delete dev-box --force
+
+# Multiple at once
+amika sandbox delete dev-box-1 dev-box-2 --force
+
+# Also clean up volumes the sandbox owned
+amika sandbox delete dev-box --force --delete-volumes
+```
+
+```ts TypeScript
+await amika.deleteSandbox("dev-box");
+```
+
+</CodeGroup>
+
+The CLI's `--delete-volumes` / `--keep-volumes` flags control what happens
+to associated volumes; the SDK call always deletes the sandbox record and
+the server handles cleanup.
+
+## End-to-end example
+
+```ts
+const name = "dev-box";
+
+// Create
+await amika.createSandbox({ name, preset: "coder" });
+await amika.waitForSandbox(name);
+
+// Use it…
+await amika.agentSend(name, { message: "Run the test suite" });
+
+// Stop to pause cost
+await amika.stopSandbox(name);
+await amika.waitForSandboxStop(name);
+
+// Later: resume
+await amika.startSandbox(name);
+await amika.waitForSandboxStart(name);
+
+// When done
+await amika.deleteSandbox(name);
+```
+
+## Next steps
+
+<CardGroup>
+  <Card title="Create a sandbox" href="/guides/create-a-sandbox" icon="cube" />
+  <Card title="SSH and connect" href="/guides/ssh-and-connect" icon="terminal" />
+  <Card title="Sandbox configuration reference" href="/reference/sandbox-configuration" icon="sliders" />
+</CardGroup>

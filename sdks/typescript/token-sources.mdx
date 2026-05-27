@@ -1,0 +1,81 @@
+---
+title: "Token sources"
+description: "Supply static or dynamically-refreshed API tokens to the SDK."
+---
+
+`AmikaClient` needs a bearer token for every request. You provide it in one
+of two ways: a static `accessToken`, or a `tokenSource` that the client
+calls each time it needs a token. They're mutually exclusive.
+
+## Static token
+
+The simplest case — pass a token string you already have.
+
+```ts
+import { AmikaClient } from "@amika/sdk";
+
+const amika = new AmikaClient({
+  baseUrl: "https://app.amika.dev",
+  accessToken: process.env.AMIKA_API_KEY!,
+});
+```
+
+## The `TokenSource` interface
+
+For tokens that need to be fetched or refreshed, implement `TokenSource`:
+
+```ts
+interface TokenSource {
+  token(): string | Promise<string>;
+}
+```
+
+The client calls `token()` to obtain a bearer for requests. Returning a
+promise lets you fetch or refresh on demand.
+
+## `StaticTokenSource`
+
+A ready-made `TokenSource` that always returns the same token. Equivalent to
+passing `accessToken`, but useful when an API expects a `TokenSource`.
+
+```ts
+import { AmikaClient, StaticTokenSource } from "@amika/sdk";
+
+const amika = new AmikaClient({
+  baseUrl: "https://app.amika.dev",
+  tokenSource: new StaticTokenSource(process.env.AMIKA_API_KEY!),
+});
+```
+
+## A refreshing token source
+
+Implement `TokenSource` yourself when tokens expire and need refreshing.
+The client awaits `token()` on each request, so you can cache and refresh
+inside it.
+
+```ts
+import { AmikaClient, TokenSource } from "@amika/sdk";
+
+class RefreshingTokenSource implements TokenSource {
+  private cached?: { token: string; expiresAt: number };
+
+  async token(): Promise<string> {
+    if (!this.cached || Date.now() >= this.cached.expiresAt - 60_000) {
+      const fresh = await fetchTokenFromYourAuthService();
+      this.cached = { token: fresh.token, expiresAt: fresh.expiresAtMs };
+    }
+    return this.cached.token;
+  }
+}
+
+const amika = new AmikaClient({
+  baseUrl: "https://app.amika.dev",
+  tokenSource: new RefreshingTokenSource(),
+});
+```
+
+<Note>
+The SDK never reads `AMIKA_API_KEY` from the environment or disk on your
+behalf. Sourcing the token — from an env var, a secret manager, or an auth
+service — is always the caller's responsibility.
+</Note>

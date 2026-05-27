@@ -12,9 +12,9 @@ down.
 ## Prerequisites
 
 - The CLI installed and logged in. See [Install](/install) and
-  [Authentication](/guides/authentication).
+  [Authentication](/reference/auth).
 - A Claude API key on disk. See
-  [Agent authentication](/guides/agent-authentication) for how to push it to
+  [Manage secrets](/guides/manage-secrets) for how to push it to
   the Amika secrets store.
 - Run from inside a git repository whose remote you want the agent to work
   against.
@@ -23,7 +23,7 @@ down.
 The pattern below uses `amika sandbox ssh` with heredocs to control the agent.
 Pair it with `--agent-credential-type` so the right credential is injected
 without an interactive picker. See
-[Pin a credential at sandbox creation](/guides/agent-authentication#pin-a-credential-at-sandbox-creation).
+[Inject credentials](/guides/inject-credentials).
 </Info>
 
 ## Walkthrough
@@ -221,10 +221,10 @@ should always run, even on failure.
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Agent authentication" icon="key-round" href="/guides/agent-authentication">
+  <Card title="Inject credentials" icon="key-round" href="/guides/inject-credentials">
     Push and pin Claude or Codex credentials for sandboxes.
   </Card>
-  <Card title="CLI reference" icon="square-terminal" href="/reference/cli-reference">
+  <Card title="CLI reference" icon="square-terminal" href="/reference/cli">
     Full flag listings for sandbox, secret, and ssh commands.
   </Card>
 </CardGroup>

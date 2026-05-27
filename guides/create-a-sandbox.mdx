@@ -1,0 +1,120 @@
+---
+title: "Create a sandbox"
+description: "Spin up a sandbox pre-loaded with your repo and agent credentials."
+---
+
+This guide walks through creating a sandbox, waiting for it to become ready,
+and tearing it down. By default everything runs on the hosted platform at
+[app.amika.dev](https://app.amika.dev).
+
+## Prerequisites
+
+<Note>
+- An Amika account and an API token. The CLI uses `amika auth login`; the
+  SDK expects you to source a token via `accessToken` or `tokenSource`.
+- (For the `--git` flow) Git installed and a repo to mount.
+- For the SDK: `npm install @amika/sdk`.
+</Note>
+
+## Step 1 — Create the sandbox
+
+The simplest sandbox uses the `coder` preset (Ubuntu 24.04 with Node, Python,
+and the Claude Code / Codex / OpenCode CLIs pre-installed).
+
+<CodeGroup>
+
+```bash CLI
+amika sandbox create --name dev-box --preset coder
+```
+
+```ts TypeScript
+import { AmikaClient } from "@amika/sdk";
+
+const amika = new AmikaClient({
+  baseUrl: process.env.AMIKA_API_URL ?? "https://app.amika.dev",
+  accessToken: process.env.AMIKA_API_KEY!,
+});
+
+const sb = await amika.createSandbox({
+  name: "dev-box",
+  preset: "coder",
+});
+```
+
+</CodeGroup>
+
+To clone a repo into the sandbox, pass `--git` (CLI) or `repoUrl` (SDK). The
+CLI's `--git` accepts a local path or a git URL; the SDK accepts a URL.
+
+<CodeGroup>
+
+```bash CLI
+# Clone the repo in the current directory
+amika sandbox create --name dev-box --preset coder --git
+
+# Or clone a remote URL
+amika sandbox create --name dev-box --preset coder \
+  --git https://github.com/gofixpoint/example-repo.git
+```
+
+```ts TypeScript
+const sb = await amika.createSandbox({
+  name: "dev-box",
+  preset: "coder",
+  repoUrl: "https://github.com/gofixpoint/example-repo.git",
+  branch: "main",
+});
+```
+
+</CodeGroup>
+
+## Step 2 — Wait until it's ready
+
+A new sandbox starts in state `initializing` and transitions to `active` /
+`running` / `started` once it's reachable.
+
+<CodeGroup>
+
+```bash CLI
+# `sandbox create` blocks until the sandbox is ready — no extra step needed.
+```
+
+```ts TypeScript
+// `createSandbox` returns immediately with state "initializing".
+// `waitForSandbox` polls every 3 seconds until ready (no client timeout).
+await amika.waitForSandbox(sb.name);
+```
+
+</CodeGroup>
+
+<Note>
+`waitForSandbox` throws an `AmikaError` if the sandbox reaches the `failed`
+state. New `state` values can appear over time — the wait helper treats
+`active`, `running`, and `started` as ready and anything else (except
+`failed`) as still working.
+</Note>
+
+## Step 3 — Tear it down
+
+When you're done, delete the sandbox to free its resources.
+
+<CodeGroup>
+
+```bash CLI
+amika sandbox delete dev-box --force
+```
+
+```ts TypeScript
+await amika.deleteSandbox("dev-box");
+```
+
+</CodeGroup>
+
+## Next steps
+
+<CardGroup>
+  <Card title="Send a message to an agent" href="/guides/send-a-message-to-an-agent" icon="paper-plane" />
+  <Card title="Inject credentials" href="/guides/inject-credentials" icon="syringe" />
+  <Card title="Sandbox lifecycle" href="/guides/sandbox-lifecycle" icon="rotate" />
+  <Card title="Sandbox configuration reference" href="/reference/sandbox-configuration" icon="sliders" />
+</CardGroup>

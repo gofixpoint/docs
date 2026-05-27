@@ -14,25 +14,29 @@ Presets are Docker images with tools preinstalled for coding agent workflows.
 - Tools: Git, curl, zsh, build essentials, Python, Node.js 22, `pnpm`, TypeScript, `tsx`
 - Agent CLIs: Claude Code, Codex, OpenCode
 
-### `claude`
+### `coder-dind`
 
-- Image: `amika/claude:latest`
+- Image: `amika/coder-dind:latest`
 - Base: Ubuntu 24.04
-- Tools: Git, curl, zsh, build essentials, Python, Node.js 22, `pnpm`, TypeScript, `tsx`
-- Agent CLIs: Claude Code
+- Tools: Everything in `coder`, plus Docker-in-Docker (dind) support for
+  running containerized services inside the sandbox
+- Agent CLIs: Claude Code, Codex, OpenCode
+
+Use `coder-dind` when the project runs containerized services locally
+(Docker Compose, etc.). Otherwise prefer `coder`.
 
 ## Use a preset
 
 ```bash
 # Explicit preset
 amika sandbox create --preset coder
-amika sandbox create --preset claude
+amika sandbox create --preset coder-dind
 
 # Default behavior (coder)
 amika sandbox create
 
 # Use preset in materialize
-amika materialize --preset claude --cmd "claude --help" --destdir /tmp/out
+amika materialize --preset coder-dind --cmd "docker ps" --destdir /tmp/out
 ```
 
 `--preset` and `--image` are mutually exclusive.
@@ -59,7 +63,7 @@ Use `--setup-script` to inject your setup logic when creating a sandbox:
 amika sandbox create --setup-script ./install-deps.sh
 ```
 
-See [Sandbox configuration](/guides/sandbox-configuration) for details.
+See [Sandbox configuration](/reference/sandbox-configuration) for details.
 
 ## Container directory layout
 
@@ -78,7 +82,7 @@ The user-supplied setup hook remains at `/usr/local/etc/amikad/setup/setup.sh`.
 
 ## Reserved ports
 
-Preset images reserve container ports **60899–60999** for Amika internal services (e.g. OpenCode web on 60998, amikad daemon on 60999). See [Sandbox configuration](/guides/sandbox-configuration#reserved-ports) for the full allocation table.
+Preset images reserve container ports **60899–60999** for Amika internal services (e.g. OpenCode web on 60998, amikad daemon on 60999). See [Sandbox configuration](/reference/sandbox-configuration#reserved-ports) for the full allocation table.
 
 ## Custom image prefix
 
@@ -94,9 +98,9 @@ This changes `amika/coder:latest` to `myregistry/amika-coder:latest`.
 
 When you create a sandbox or run materialize, Amika auto-discovers and mounts supported credential files into the container.
 
-This gives agents credentials inside the sandbox without modifying host source files. See [Sandbox configuration](/guides/sandbox-configuration#agent-credential-auto-mounting) for the full list of supported files.
+This gives agents credentials inside the sandbox without modifying host source files. See [Sandbox configuration](/reference/sandbox-configuration#agent-credential-auto-mounting) for the full list of supported files.
 
 ## Related docs
 
-- [Sandbox configuration](/guides/sandbox-configuration)
-- [CLI reference](/reference/cli-reference)
+- [Sandbox configuration](/reference/sandbox-configuration)
+- [CLI reference](/reference/cli)

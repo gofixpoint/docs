@@ -1,0 +1,168 @@
+---
+title: "Types"
+description: "Request and response interfaces for the TypeScript SDK."
+---
+
+All interfaces use camelCase field names. On the wire the API uses
+snake_case JSON; the SDK maps between the two for you.
+
+## Sandboxes
+
+```ts
+interface AgentCredentialRef {
+  kind: string;
+  name?: string;
+  type?: "oauth" | "api_key";
+  none?: boolean;
+}
+
+interface CreateSandboxRequest {
+  name?: string;
+  provider?: string;
+  repoUrl?: string;
+  autoStopInterval?: number;
+  autoDeleteInterval?: number;
+  envVars?: Record<string, string>;
+  secretEnvVars?: Record<string, string>;
+  preset?: string;
+  size?: string;
+  setupScriptText?: string;
+  agentCredentials?: AgentCredentialRef[];
+  branch?: string;
+  newBranchName?: string;
+}
+
+interface ResolvedAgentCredential {
+  kind: string;
+  outcome: "resolved" | "skipped" | string;
+  name?: string;
+  type?: string;
+  source?: string;
+  reason?: string;
+}
+
+interface RemoteSandboxCreator {
+  name: string | null;
+  email: string | null;
+}
+
+interface RemoteSandbox {
+  id: string;
+  name: string;
+  provider: string;
+  repoUrl: string;
+  state: string;
+  createdAt: string;
+  branch: string;
+  errorMessage: string;
+  resolvedAgentCredentials?: ResolvedAgentCredential[];
+  createdBy?: RemoteSandboxCreator | null;
+}
+```
+
+- `secretEnvVars` maps an env-var name to a stored secret name — see
+  [Inject credentials](/guides/inject-credentials).
+- `resolvedAgentCredentials` reports what actually got injected, per kind.
+- `state` is a string, not a fixed enum — see
+  [Sandbox lifecycle](/guides/sandbox-lifecycle).
+
+## SSH
+
+```ts
+interface SSHInfo {
+  sshDestination: string;
+  token: string;
+  expiresAt: string;
+  repoName: string;
+}
+
+interface RevokeSSHRequest {
+  token: string;
+}
+```
+
+## Secrets
+
+```ts
+interface Secret {
+  id: string;
+  name: string;
+  scope: string;
+}
+
+interface CreateSecretRequest {
+  name: string;
+  value: string;
+  scope: string;
+}
+
+interface UpdateSecretRequest {
+  value: string;
+}
+```
+
+## Provider secrets
+
+```ts
+interface CreateProviderSecretRequest {
+  name: string;
+  value: string;
+  type: "oauth" | "api_key";
+}
+
+interface ProviderSecretSummary {
+  id: string;
+  name: string;
+  scope: string;
+}
+
+interface ProviderSecretListItem {
+  id: string;
+  name: string;
+  type: string;
+}
+```
+
+## Agent send
+
+```ts
+interface AgentSendRequest {
+  message: string;
+  newSession?: boolean;
+  sessionId?: string;
+  agent?: string;
+}
+
+interface AgentSendResponse {
+  result: string;     // server-side field name: `response`
+  sessionId: string;
+  isError: boolean;
+}
+```
+
+## Sessions
+
+```ts
+interface Session {
+  id: string;
+  sandboxId: string;
+  orgId: string;
+  agentName: string;
+  status: string;
+  startedAt: string;
+  endedAt: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface CreateSessionRequest {
+  agentName: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface UpdateSessionRequest {
+  status?: string;
+  metadata?: Record<string, unknown>;
+}
+```

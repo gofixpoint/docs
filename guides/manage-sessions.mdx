@@ -1,0 +1,145 @@
+---
+title: "Manage sessions"
+description: "Create, list, fetch, and update agent sessions in a sandbox."
+---
+
+Each sandbox tracks a set of agent sessions. The full session CRUD surface is
+SDK-only today; from the CLI you select sessions through
+[`agent-send`](/guides/send-a-message-to-an-agent) flags.
+
+## Prerequisites
+
+<Note>
+A sandbox in the `active` / `running` / `started` state. See
+[Create a sandbox](/guides/create-a-sandbox).
+</Note>
+
+## CLI: pick or start a session at agent-send time
+
+The CLI doesn't expose session CRUD directly. To control which session a
+prompt runs in, use the flags on `agent-send`.
+
+```bash
+# Start a fresh session
+amika sandbox agent-send dev-box "Plan the migration" --new-session
+
+# Resume a specific session
+amika sandbox agent-send dev-box "Continue from earlier" \
+  --session-id 3f2a...
+```
+
+To get a list of sessions, use the SDK or call the HTTP API directly. See
+[CLI reference — agent-send](/reference/cli#agent-send) for the full flag
+table.
+
+## SDK: full session lifecycle
+
+The SDK exposes create / list / get / get-latest / update on sessions.
+
+### Create a session
+
+<CodeGroup>
+
+```ts TypeScript
+const session = await amika.createSession("dev-box", {
+  agentName: "claude",
+  metadata: { feature: "auth-refactor" },
+});
+```
+
+</CodeGroup>
+
+### List or fetch sessions
+
+<CodeGroup>
+
+```ts TypeScript
+const sessions = await amika.listSessions("dev-box");
+
+// Most recent session — returns null if no sessions exist yet
+const latest = await amika.getLatestSession("dev-box");
+
+// By id
+const one = await amika.getSession("dev-box", session.id);
+```
+
+</CodeGroup>
+
+<Note>
+`getLatestSession` is the only call where a 404 from the server is normal —
+it means "no session yet" and the SDK returns `null` rather than throwing.
+You don't need an error handler for this case.
+</Note>
+
+### Use a session in `agentSend`
+
+<CodeGroup>
+
+```ts TypeScript
+await amika.agentSend("dev-box", {
+  message: "Continue from where you left off",
+  sessionId: session.id,
+});
+```
+
+</CodeGroup>
+
+### Update a session
+
+<CodeGroup>
+
+```ts TypeScript
+await amika.updateSession("dev-box", session.id, {
+  status: "completed",
+  metadata: { feature: "auth-refactor", completedAt: new Date().toISOString() },
+});
+```
+
+</CodeGroup>
+
+## End-to-end example
+
+```ts
+const sandboxName = "dev-box";
+
+// Create a session for this run
+const session = await amika.createSession(sandboxName, {
+  agentName: "claude",
+  metadata: { task: "Add unit tests" },
+});
+
+// Drive the agent inside that session
+const res = await amika.agentSend(sandboxName, {
+  message: "Add unit tests for the auth module",
+  sessionId: session.id,
+});
+
+// Mark the session done
+await amika.updateSession(sandboxName, session.id, { status: "completed" });
+
+console.log(res.result);
+```
+
+## Session shape
+
+```ts
+interface Session {
+  id: string;
+  sandboxId: string;
+  orgId: string;
+  agentName: string;
+  status: string;
+  startedAt: string;
+  endedAt: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+## Next steps
+
+<CardGroup>
+  <Card title="Send a message to an agent" href="/guides/send-a-message-to-an-agent" icon="paper-plane" />
+  <Card title="TypeScript SDK reference" href="/sdks/typescript/client" icon="code" />
+</CardGroup>

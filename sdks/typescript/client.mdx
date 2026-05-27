@@ -1,0 +1,119 @@
+---
+title: "AmikaClient"
+description: "Method-by-method reference for the TypeScript SDK client."
+---
+
+`AmikaClient` is the entry point for the TypeScript SDK. Construct one with a
+base URL and a token, then call methods on it.
+
+## Constructor
+
+```ts
+new AmikaClient({
+  baseUrl: string,              // required, e.g. "https://app.amika.dev"
+  accessToken?: string,         // mutually exclusive with tokenSource
+  tokenSource?: TokenSource,    // mutually exclusive with accessToken
+  fetch?: typeof fetch,         // optional override for testing/polyfills
+})
+```
+
+- `baseUrl` — the API origin. The client appends `/api/v0beta1`.
+- `accessToken` — a static bearer token.
+- `tokenSource` — a provider for dynamic/refreshing tokens. See
+  [Token sources](/sdks/typescript/token-sources).
+- `fetch` — supply a custom `fetch` for tests or non-standard runtimes.
+
+The SDK does not read `AMIKA_API_KEY` from the environment or disk — you
+source the token yourself.
+
+## Methods
+
+All methods are `async`. Paths shown are relative to the `/api/v0beta1`
+prefix.
+
+### Sandboxes
+
+| Method | HTTP |
+| --- | --- |
+| `listSandboxes(): Promise<RemoteSandbox[]>` | `GET /sandboxes` |
+| `createSandbox(req: CreateSandboxRequest): Promise<RemoteSandbox>` | `POST /sandboxes` |
+| `getSandbox(name): Promise<RemoteSandbox>` | `GET /sandboxes/{name}` |
+| `waitForSandbox(name): Promise<RemoteSandbox>` | polls `getSandbox` every 3s |
+| `startSandbox(name): Promise<void>` | `POST /sandboxes/{name}/start` |
+| `waitForSandboxStart(name): Promise<RemoteSandbox>` | polls every 3s |
+| `stopSandbox(name): Promise<void>` | `POST /sandboxes/{name}/stop` |
+| `waitForSandboxStop(name): Promise<RemoteSandbox>` | polls every 3s |
+| `deleteSandbox(name): Promise<void>` | `DELETE /sandboxes/{name}` |
+
+`createSandbox` returns immediately with state `initializing`. Use
+`waitForSandbox` to block until it's ready.
+
+The wait helpers poll every 3 seconds with no client-side timeout. They
+throw an `AmikaError` if the sandbox enters the `failed` state.
+
+### SSH
+
+| Method | HTTP |
+| --- | --- |
+| `getSSH(name): Promise<SSHInfo>` | `POST /sandboxes/{name}/ssh` |
+| `revokeSSH(name, token): Promise<void>` | `DELETE /sandboxes/{name}/ssh` |
+
+`getSSH` returns a destination, a token, an expiry, and the repo subdir —
+hand these to your own SSH client. See
+[SSH and connect](/guides/ssh-and-connect).
+
+### Agent
+
+| Method | HTTP |
+| --- | --- |
+| `agentSend(name, req: AgentSendRequest): Promise<AgentSendResponse>` | `POST /sandboxes/{name}/agent-send` |
+
+`agentSend` blocks until the agent finishes and uses a **10-minute** HTTP
+timeout (every other call defaults to 30 seconds). It detects agent-side
+auth failures and rewrites them to a friendlier error — see
+[Errors](/sdks/typescript/errors).
+
+### Sessions
+
+| Method | HTTP |
+| --- | --- |
+| `createSession(name, req): Promise<Session>` | `POST /sandboxes/{name}/sessions` |
+| `listSessions(name): Promise<Session[]>` | `GET /sandboxes/{name}/sessions` |
+| `getLatestSession(name): Promise<Session \| null>` | `GET /sandboxes/{name}/sessions/latest` |
+| `getSession(name, sessionId): Promise<Session>` | `GET /sandboxes/{name}/sessions/{sessionId}` |
+| `updateSession(name, sessionId, req): Promise<Session>` | `PATCH /sandboxes/{name}/sessions/{sessionId}` |
+
+`getLatestSession` returns `null` on a 404 (meaning "no session yet") rather
+than throwing.
+
+### Secrets
+
+| Method | HTTP |
+| --- | --- |
+| `listSecrets(): Promise<Secret[]>` | `GET /secrets` |
+| `createSecret(req: CreateSecretRequest): Promise<void>` | `POST /secrets` |
+| `updateSecret(id, req: UpdateSecretRequest): Promise<void>` | `PUT /secrets/{id}` |
+
+There is no `deleteSecret` for generic secrets — the server doesn't expose
+one. Provider secrets can be deleted (below).
+
+### Provider secrets
+
+| Method | HTTP |
+| --- | --- |
+| `createProviderSecret(provider, req): Promise<ProviderSecretSummary>` | `POST /secrets/{provider}` |
+| `listProviderSecrets(provider): Promise<ProviderSecretListItem[]>` | `GET /secrets/{provider}` |
+| `deleteProviderSecret(provider, id): Promise<void>` | `DELETE /secrets/{provider}/{id}` |
+
+`provider` is `"claude"` or `"codex"`.
+
+## See also
+
+<CardGroup cols={2}>
+  <Card title="Types" icon="brackets-curly" href="/sdks/typescript/types">
+    Request and response interfaces.
+  </Card>
+  <Card title="Errors" icon="triangle-exclamation" href="/sdks/typescript/errors">
+    Error classes and helpers.
+  </Card>
+</CardGroup>

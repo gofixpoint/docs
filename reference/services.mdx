@@ -93,7 +93,7 @@ Amika validates service definitions when parsing `.amika/config.toml`:
 - **url_scheme entries** must reference a port declared in the same service. Duplicate port entries within `url_scheme` are rejected.
 
 <Warning>
-Container ports **60899–60999** are reserved for internal Amika services and are rejected in service declarations. See [Reserved ports](/guides/sandbox-configuration#reserved-ports) for details.
+Container ports **60899–60999** are reserved for internal Amika services and are rejected in service declarations. See [Reserved ports](/reference/sandbox-configuration#reserved-ports) for details.
 </Warning>
 
 If validation fails, Amika logs a warning and treats the file as having no service definitions. The `[lifecycle]` section is still applied normally.
@@ -168,5 +168,5 @@ On the hosted Amika platform, service definitions can also be managed through th
 
 ## Related docs
 
-- [Sandbox configuration](/guides/sandbox-configuration) — lifecycle scripts, git cloning, reserved ports
-- [CLI reference](/reference/cli-reference) — full command and flag index
+- [Sandbox configuration](/reference/sandbox-configuration) — lifecycle scripts, git cloning, reserved ports
+- [CLI reference](/reference/cli) — full command and flag index

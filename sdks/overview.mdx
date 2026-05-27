@@ -1,0 +1,46 @@
+---
+title: "SDKs overview"
+description: "Official client libraries for the Amika API."
+---
+
+Amika ships official SDKs that wrap the hosted API at
+[app.amika.dev](https://app.amika.dev). Use them when you want to drive
+sandboxes from a program rather than the shell.
+
+## Available SDKs
+
+<CardGroup cols={2}>
+  <Card title="TypeScript" icon="js" href="/sdks/typescript/quickstart">
+    `@amika/sdk` — sandboxes, sessions, secrets, agent invocations.
+  </Card>
+  <Card title="TypeScript source" icon="github" href="https://github.com/gofixpoint/amika/tree/main/sdk/typescript">
+    Read the source on GitHub.
+  </Card>
+</CardGroup>
+
+More languages are coming. In the meantime, you can call the HTTP API
+directly — see [API reference](/reference/api-reference) for the OpenAPI
+spec.
+
+## When to use the SDK vs. the CLI
+
+| Use case | Tool |
+| --- | --- |
+| Day-to-day shell work, ad-hoc sandbox creation | CLI |
+| Building automated pipelines, web apps, or background jobs | SDK |
+| One-off scripts to drive an agent through a task | Either — see [Programmatic usage](/guides/programmatic-usage) |
+| CI: spin up a sandbox per PR | SDK (or CLI in a job that has `AMIKA_API_KEY` set) |
+
+The Guides in this site show both side-by-side, so you can pick whichever
+matches the surface you're working in.
+
+## What the SDK does not do
+
+- **It does not source credentials for you.** The TypeScript SDK doesn't
+  read `AMIKA_API_KEY` from your environment or from disk — you pass a
+  token via `accessToken` or `tokenSource`.
+- **It does not run shell commands.** Use SSH (via
+  [`getSSH`](/sdks/typescript/client#ssh) or
+  [the SSH guide](/guides/ssh-and-connect)) when you need a shell.
+- **It does not stream agent output.** `agentSend` blocks until the agent
+  finishes and returns the full result.
