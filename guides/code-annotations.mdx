@@ -1,26 +1,28 @@
 ---
 title: "Code annotations"
-description: "Mark code that agents shouldn't change, and attach prompts that fire when a symbol is modified."
+description: "Annotate your code to preserve invariants, enforce rules, and inject relevant context when an agent reads or modifies specific files or code symbols."
 ---
 
 import ResearchPreview from "/snippets/research-preview.mdx";
 
 <ResearchPreview />
 
-Code annotations let you tag pieces of your codebase with rules that
-constrain how agents can modify them. The initial release supports two:
+Code annotations are rules embedded directly in your source that control how
+agents can interact with specific symbols. Freeze a function to block all agent
+edits; attach a prompt to fire context at the agent the moment it touches a
+method. Because `amikalyze` enforces these at write time — not by asking a
+model to remember them — you get a hard guarantee, not a soft suggestion. Two
+annotation types are available:
 
 - **`#amika/frozen`** — the next symbol is off-limits. Edits to it are
   blocked.
 - **`#amika/prompt`** — when an agent modifies the next symbol, this prompt
-  is prepended to the agent's context for that edit.
+  is injected into the agent's context for that edit.
 
-Annotations live in regular code comments, so they work in any language
-and travel with the code in git. They are enforced deterministically by
-`amikalyze`, the parser and enforcer bundled with the `amika` CLI.
-`amikalyze` runs in three places: an agent hook (intercepts writes
-locally), a git pre-commit hook, and a PR check — not by a model deciding
-to follow them.
+Annotations live in regular code comments, so they work in any language and
+travel with the code in git. `amikalyze`, the parser and enforcer built into
+the `amika` CLI, runs at the points you configure: agent hooks, git hooks, or
+PR checks.
 
 ## Comment syntax
 
@@ -43,7 +45,7 @@ top-level variable. At the top of a file, it applies to the whole module.
 
 `amikalyze` uses [tree-sitter](https://tree-sitter.github.io/) to find the
 "next symbol", so language support follows whatever tree-sitter grammars
-ship with the release. TypeScript, JavaScript, Python, Go, Rust, and Java
+ship with the release. TypeScript, JavaScript, Python, Go, and Rust
 are the initial targets.
 
 ### Multi-line annotations
@@ -70,7 +72,7 @@ Block comments work the same way:
 
 ```typescript
 /*
- * #amika/frozen { :override "computeChecksum" }
+ * #amika/frozen { :label "computeChecksum" }
  */
 ```
 
@@ -97,44 +99,37 @@ A frozen symbol is blocked at every enforcement point:
   regardless of whether a human or an agent made the edit.
 - **PR check** fails the PR if a commit modifies a frozen symbol.
 
-Freezes apply to all writers, not just agents. This is intentional — once
+Freezes apply to all writers, not just agent hooks. This is intentional — once
 a symbol is frozen, the only way to change it is through an explicit
 override, so the rule survives whether the edit came from a model or a
 person.
 
 ### Override a freeze
 
-When you genuinely need to change frozen code, run `amikalyze` with the
-override flag from your repo root:
-
-```bash
-amikalyze --override SCHEMA_VERSION
-```
-
-The override is single-use and scoped to your next commit on this branch.
-Once that commit lands the override is consumed; subsequent commits will
-be blocked again, and you'll need to re-run the override or remove the
-annotation.
-
-You can also declare a static override on the annotation itself. The
-`:override` value lists other frozen symbols this symbol is allowed to
-edit when it's modified. This is useful when one frozen symbol
-legitimately wraps another:
-
 ```typescript
 /*
- * #amika/frozen { :override "computeChecksum" }
+ * #amika/frozen { :label "frozen-checksum" }
  */
 export function wrappedChecksum(buf: Buffer) {
-  // Editing wrappedChecksum is still blocked, but if a permitted edit
-  // here also needs to change computeChecksum, amikalyze allows it.
+  // The agent is blocked from editing wrappedChecksum unless you override the
+  // "frozen-checksum" label.
   return computeChecksum(buf);
 }
 ```
 
+By default, agents will be stopped from modifying `wrappedChecksum`,
+unless you override the "frozen-checksum" label:
+
+```bash
+amikalyze --ignore frozen-checksum --ignore some-other-label
+
+# or set environment variables when running your coding agent:
+AMIKALYZE_IGNORE="frozen-checksum,some-other-label" claude
+```
+
 ## Attach a prompt to a symbol
 
-`#amika/prompt` adds an instruction that's prepended to the agent's
+`#amika/prompt` adds an instruction that's injected into the agent's
 context whenever it modifies the symbol below the comment.
 
 ```typescript
@@ -232,6 +227,9 @@ The pre-commit hook is the safety net for any edit — human or agent —
 that slipped past the agent hook.
 
 ## Where annotations are enforced
+
+It's up to you where you enforce annotations. You can run `amikalyze` directly,
+or run it at one of these enforcement points:
 
 | Enforcement point | What it catches |
 | --- | --- |
