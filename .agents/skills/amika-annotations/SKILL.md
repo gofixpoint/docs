@@ -86,12 +86,15 @@ trample what they protect.
 
 **Imperative types (acted on, then disposed of; default is delete after acting):**
 
-| Type | Action | Default disposition |
-|------|--------|---------------------|
-| `generate` | Produce the described code/content as the target block (or inline if none). | delete |
-| `expand` | Flesh out the stub/placeholder it targets into a full implementation. | delete |
-| `rewrite` | Rewrite the target block (EDN) or the wrapped content (XML) per the instruction. | delete (XML: unwrap, i.e. drop the tags and keep the rewritten content) |
-| `todo` | Perform the described task on/around the target. | delete |
+| Type | Syntax | Action | Default disposition |
+|------|--------|--------|---------------------|
+| `generate` | EDN or XML | Produce the described code/content as the target block (or inline if none). | delete |
+| `expand` | EDN or XML | Flesh out the stub/placeholder it targets into a full implementation. | delete |
+| `rewrite` | EDN or XML | Rewrite the target block (EDN) or the wrapped content (XML) per the instruction. | delete (XML: unwrap) |
+| `edit` | XML | Rewrite the wrapped content per the instruction in the annotation's `prompt` attribute or its own content. Equivalent to `rewrite` in XML form — prefer this name in prose/MDX files. | unwrap (drop tags, keep rewritten content) |
+| `review-change` | XML | The wrapped content was changed by the author and is flagged for review. Evaluate the change against the surrounding context. If it's an improvement, accept it (unwrap). If it should be reverted, note it as a conflict and leave the tags for the user to handle — you cannot recover the original automatically. | unwrap if accepted; leave tagged if rejected |
+| `todo` | EDN or XML | Perform the described task on/around the target. | delete |
+| `note` | EDN | A standing label or informational marker. Incorporate its content into the surrounding prose or action context, then delete. If it marks something that should remain (e.g. a label the user explicitly wants to keep), leave it — use judgment. | delete |
 
 > The imperative set above is a **starter**. It's safe to extend this table as new types
 > appear; until then, unknown types are handled by inference (below).
