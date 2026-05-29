@@ -274,11 +274,8 @@ size = "m"
 
 ### validate — auto-fix lint errors and test failures
 
-The check runs the linter with auto-fix flags first. If errors remain
-after auto-fix (the kind that require reasoning, not just reformatting),
-it passes the output to `amikactl msg`, which messages the agent on the
-sandbox. The agent patches the files; the check re-runs the linter to
-confirm. The same loop applies to tests.
+The entire check is a single message to the agent. The agent runs lint
+and tests, fixes what's broken, and repeats until both pass.
 
 <CodeGroup>
 
@@ -286,61 +283,20 @@ confirm. The same loop applies to tests.
 #!/bin/bash
 set -e
 
-amikactl check step "lint"
-amikactl check log "running linter with auto-fix"
-
-if ! npm run lint --fix 2>&1 | tee /tmp/lint-out.txt; then
-  amikactl check log "unfixable lint errors — asking agent to fix"
-  amikactl msg "Fix the lint errors below. Do not change logic or tests.
-
-$(cat /tmp/lint-out.txt)"
-  npm run lint   # re-run to confirm; non-zero exit fails the check
-fi
-
-amikactl check step "test"
-amikactl check log "running test suite"
-
-if ! npm test 2>&1 | tee /tmp/test-out.txt; then
-  amikactl check log "tests failed — asking agent to fix"
-  amikactl msg "Fix the failing tests below. Prefer fixing the implementation
-over changing test expectations unless an expectation is clearly wrong.
-
-$(cat /tmp/test-out.txt)"
-  npm test
-fi
+amikactl check step "validate"
+amikactl msg "Run lint and tests. If either fails, fix the errors and run
+again. Repeat until both pass with no errors."
 ```
 
 ```javascript .amika/checks/validate.mjs
 #!/usr/bin/env node
 import * as checks from '@amika/checks'
-import { spawnSync } from 'child_process'
 
-await checks.step("lint", async () => {
-  checks.log("running linter with auto-fix")
-  const lint = spawnSync('npm', ['run', 'lint', '--fix'],
-    { encoding: 'utf8', stdio: 'pipe' })
-  if (lint.status !== 0) {
-    checks.log("unfixable lint errors — asking agent to fix")
-    await checks.msg(
-      `Fix the lint errors below. Do not change logic or tests.\n\n` +
-      lint.stdout + lint.stderr
-    )
-    checks.exec('npm run lint')
-  }
-})
-
-await checks.step("test", async () => {
-  checks.log("running test suite")
-  const test = spawnSync('npm', ['test'], { encoding: 'utf8', stdio: 'pipe' })
-  if (test.status !== 0) {
-    checks.log("tests failed — asking agent to fix")
-    await checks.msg(
-      `Fix the failing tests below. Prefer fixing the implementation ` +
-      `over changing test expectations unless an expectation is clearly wrong.\n\n` +
-      test.stdout + test.stderr
-    )
-    checks.exec('npm test')
-  }
+await checks.step("validate", async () => {
+  await checks.msg(
+    "Run lint and tests. If either fails, fix the errors and run again. " +
+    "Repeat until both pass with no errors."
+  )
 })
 ```
 
