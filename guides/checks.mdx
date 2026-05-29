@@ -54,24 +54,50 @@ executable file inside it. Anything with the executable bit set is treated
 as a check; non-executable files (such as the sibling `config.toml`) are
 ignored.
 
+Here's a contrived example:
+
 ```bash
 mkdir -p .amika/checks
-cat > .amika/checks/lint.sh <<'EOF'
+```
+
+<CodeGroup>
+
+```bash .amika/checks/lint.sh
 #!/bin/bash
 set -e
 
 amikactl check step "install"
+amikactl check log "installing dependencies"
 npm ci
 
 amikactl check step "lint"
 npm run lint
-EOF
-chmod +x .amika/checks/lint.sh
 ```
 
-The `amikactl check step` calls are optional but recommended — they give
-the runner structured progress that surfaces in the PR check UI. Without
-them, the runner only sees the final exit code.
+```javascript .amika/checks/lint.mjs
+#!/usr/bin/env node
+import * as checks from '@amika/checks'
+
+checks.step("install", () => {
+  checks.log("installing dependencies")
+  checks.exec('npm ci')
+})
+
+checks.step("lint", () => {
+  checks.exec('npm run lint')
+})
+```
+
+</CodeGroup>
+
+```bash
+chmod +x .amika/checks/lint.sh   # or lint.mjs
+```
+
+`amikactl check step` and `checks.step` are optional but recommended —
+they give the runner structured progress that surfaces in the PR check UI.
+`amikactl check log` and `checks.log` append messages to the check log.
+Without step calls, the runner only sees the final exit code.
 
 A non-zero exit fails the check. Anything written to stdout and stderr is
 captured as the check log.
@@ -100,6 +126,30 @@ commit_mode = "auto"
 
 `"staging"` is the safer option for checks that rewrite code with an
 agent — you see the diff before it lands on the PR branch.
+
+Here's the corresponding format check:
+
+<CodeGroup>
+
+```bash .amika/checks/format.sh
+#!/bin/bash
+set -e
+amikactl check step "format"
+npm run format
+```
+
+```javascript .amika/checks/format.mjs
+#!/usr/bin/env node
+import * as checks from '@amika/checks'
+
+checks.step("format", () => {
+  checks.exec('npm run format')
+})
+```
+
+</CodeGroup>
+
+If using JavaScript, update the config key to match your filename (`"format.mjs"`).
 
 ## Stop runaway loops
 
@@ -180,7 +230,7 @@ runner refuses these by default.
 </Warning>
 
 If you need to run checks against contributions from outside your org, run
-them locally on a maintainer's machine after review.
+them on an Amika sandbox after review.
 
 ## End-to-end example
 
@@ -211,6 +261,8 @@ display_name = "Unit tests"
 size = "m"
 ```
 
+<CodeGroup>
+
 ```bash .amika/checks/format.sh
 #!/bin/bash
 set -e
@@ -218,12 +270,36 @@ amikactl check step "format"
 npm run format
 ```
 
+```javascript .amika/checks/format.mjs
+#!/usr/bin/env node
+import * as checks from '@amika/checks'
+
+checks.step("format", () => {
+  checks.exec('npm run format')
+})
+```
+
+</CodeGroup>
+
+<CodeGroup>
+
 ```bash .amika/checks/test.sh
 #!/bin/bash
 set -e
 amikactl check step "test"
 npm test
 ```
+
+```javascript .amika/checks/test.mjs
+#!/usr/bin/env node
+import * as checks from '@amika/checks'
+
+checks.step("test", () => {
+  checks.exec('npm test')
+})
+```
+
+</CodeGroup>
 
 When you push a PR, two sandboxes spin up in parallel. `format.sh`
 reformats files and pushes the change back to the PR branch. `test.sh`
