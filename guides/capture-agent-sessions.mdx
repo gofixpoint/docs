@@ -1,6 +1,6 @@
 ---
 title: "Capture agent sessions"
-description: "Record every agent session as a queryable diary of messages, tool calls, file edits, commits, and cost."
+description: "Record every agent session as a queryable timeline of messages, tool calls, file edits, commits, and cost."
 ---
 
 <Note>
@@ -8,20 +8,21 @@ description: "Record every agent session as a queryable diary of messages, tool 
 here may change before general availability.
 </Note>
 
-Every Claude Code, Codex, OpenCode, or `agent-send` run produces a session.
-**Session capture** records that session as a structured, queryable history —
-every message, tool call, file edit, and git commit, along with the model
-used, token counts, and dollar cost.
+Every Claude Code, Codex, OpenCode, or [`agent-send`](/guides/send-a-message-to-an-agent)
+run produces a [session](/guides/manage-sessions). **Session capture** records
+that session as a structured, queryable history — every message, tool call,
+file edit, and git commit, along with the model used, token counts, and dollar
+cost. The session id you get back from `agent-send` is the same id capture
+records under.
 
 Once captured, sessions become useful in three ways:
 
-- **Cost and analytics.** See what your agents did, how reliably, and at what cost — sliced by user, repo, agent, or model.
+- **Cost and analytics.** See what your agents did and at what cost — sliced by user, repo, agent, or model.
 - **Memory.** Search past work to recall how a similar problem was solved, what was decided, and which files were touched.
 - **Mining.** Background jobs read past sessions to file follow-up tickets, encode user corrections into durable rules, and start parallel work.
 
-Capture works the same way for every supported agent. The agent type is just
-an attribute on the session — Claude, Codex, and OpenCode sessions all show
-up in the same list and timeline views.
+Capture is agent-agnostic. Claude, Codex, and OpenCode sessions show up side
+by side in the same list and timeline views.
 
 ## What gets captured
 
@@ -33,32 +34,37 @@ For each session, capture records:
 - **File changes** — repository, path, and change kind for every file the agent touched.
 - **Git commits** — hash, branch, commit message, and the turn that produced each commit.
 - **Errors** — where the agent got stuck, with surrounding context.
-- **Environment** — sandbox snapshot, agent CLI version, and the system prompt and rules in effect.
+- **Environment** — agent CLI version, sandbox identifier, and the system prompt and rules in effect at run time.
 
-These items live on one ordered timeline. You can scrub through a session
-and see, inline, the tool calls and file edits each message produced.
+These items share one ordered timeline. You can scrub through a session and
+see, inline, the tool calls and file edits each message produced.
 
 ## Set up capture
 
-Capture runs locally through a small CLI called `amikalog`. It wraps the
-agent CLIs on your machine and streams events to the sink you configure.
+Capture runs through a small companion CLI called `amikalog`. It ships
+alongside the `amika` CLI — if you've installed `amika`, you already have
+`amikalog`. Configuration is separate, but captured data is queried through
+the same `amika sessions` commands described below.
 
 ### On your local machine
 
-Install `amikalog`, then initialize once:
+Initialize once:
 
 ```bash
 amikalog init
 ```
 
 `init` detects the agent CLIs already on your machine (Claude Code, Codex,
-OpenCode) and the `amika sandbox agent-send` command, and wires capture
-into each. From then on, new sessions are captured automatically.
+OpenCode) and the `amika sandbox agent-send` command, installs small
+launcher shims on your `PATH`, and starts capturing each new session as it
+runs. Sessions started before `amikalog init` are not retroactively
+captured.
 
-<Tip>
-Existing sessions started before `amikalog init` are not retroactively
-captured — only new sessions from that point on.
-</Tip>
+To stop capturing on this machine:
+
+```bash
+amikalog disable
+```
 
 ### On an Amika sandbox
 
@@ -74,11 +80,12 @@ enabled = false
 ## Where sessions are stored
 
 Capture supports two sinks. Pick one at `init` time; switch later with
-`amikalog init --sink ...`.
+`amikalog init --sink ...`. Switching redirects new events — existing data
+stays where it was written.
 
 ### Local files (default)
 
-By default, `amikalog` writes one JSONL file per session to
+`amikalog` writes one JSONL file per session to
 `~/.local/share/amikalog/sessions/`. Each line is a single event — a
 message, tool call, file change, or commit. This sink is free, works
 offline, and is easy to grep:
@@ -86,8 +93,11 @@ offline, and is easy to grep:
 ```bash
 # Find every commit a session produced
 jq 'select(.event_type == "commit")' \
-  ~/.local/share/amikalog/sessions/as_3f2a....jsonl
+  ~/.local/share/amikalog/sessions/3f2a....jsonl
 ```
+
+Local-sink sessions are visible to the `amika sessions` CLI on the same
+machine, but **not** to the web UI or to other people in your org.
 
 <Info>
 A SQLite sink is in the works for faster local querying. Until then, JSONL
@@ -111,16 +121,16 @@ controls.
 
 ### In the web UI
 
-A **session browser** lives in [app.amika.dev](https://app.amika.dev) under
-**Sessions**:
+When you stream to Amika, a **session browser** appears in
+[app.amika.dev](https://app.amika.dev) under **Sessions**:
 
 - **List view** — every session with its title, agent, repo and branch, status, cost, commit and file counts, participants, and timestamps. Filter by repo, agent, user, date, or cost.
-- **Timeline view** — the diarized event stream for a single session. Messages, tool calls, file changes, and commits inline in order. Each commit links to its diff or PR; each turn shows its own cost.
+- **Timeline view** — the event stream for a single session. Messages, tool calls, file changes, and commits inline in order. Each commit links to its diff or PR; each turn shows its own cost.
 - **Cost dashboard** — spend by organization, user, repo, agent, and model over time.
 
 ### From the CLI
 
-List recent sessions:
+List recent sessions (works against either sink):
 
 ```bash
 amika sessions list
@@ -130,7 +140,7 @@ Pull a session's filesystem locally — its messages, events, and any
 artifacts it produced — to a directory you choose:
 
 ```bash
-amika sessions fetch as_3f2a... ./past-session
+amika sessions fetch 3f2a... ./past-session
 ```
 
 The fetched directory mounts cleanly into a new sandbox, so an agent in a
@@ -143,17 +153,17 @@ amika sandbox create review-box \
 
 ### From an agent
 
-Capture exposes **search** and **get session detail** tools over MCP, so an
-agent or background job can query prior sessions as part of its own run.
-See [MCP integrations](/guides/mcp-integrations).
+Capture exposes search and session-detail tools over MCP, so an agent or
+background job can query prior sessions as part of its own run. See
+[MCP integrations](/guides/mcp-integrations).
 
 ## Multi-user sessions
 
 A single session can have more than one author. When two people drive the
 same sandbox — for example, one from the web UI and one from Slack —
 capture records which user sent each message and which surface it came
-from. The session itself stays a single record; the per-message
-attribution makes "who asked for what" answerable later.
+from. The session itself stays a single record; the per-message attribution
+makes "who asked for what" answerable later.
 
 ## Next steps
 
