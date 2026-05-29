@@ -11,9 +11,9 @@ here may change before general availability.
 Every Claude Code, Codex, OpenCode, or [`agent-send`](/guides/send-a-message-to-an-agent)
 run produces a [session](/guides/manage-sessions). **Session capture** records
 that session as a structured, queryable history — every message, tool call,
-file edit, and git commit, along with the model used, token counts, and dollar
-cost. The session id you get back from `agent-send` is the same id capture
-records under.
+file edit, and git commit, along with the model used, token counts, and
+dollar cost. The session id you get back from `agent-send` is the same id
+capture records under.
 
 Once captured, sessions become useful in three ways:
 
@@ -41,10 +41,10 @@ see, inline, the tool calls and file edits each message produced.
 
 ## Set up capture
 
-Capture runs through a small companion CLI called `amikalog`. It ships
-alongside the `amika` CLI — if you've installed `amika`, you already have
-`amikalog`. Configuration is separate, but captured data is queried through
-the same `amika sessions` commands described below.
+Capture is split across two CLIs that ship in the same install package:
+
+- **`amikalog`** — one-time setup on each machine where you want capture to run.
+- **`amika sessions ...`** — list, fetch, and work with captured data (covered below).
 
 ### On your local machine
 
@@ -55,10 +55,13 @@ amikalog init
 ```
 
 `init` detects the agent CLIs already on your machine (Claude Code, Codex,
-OpenCode) and the `amika sandbox agent-send` command, installs small
-launcher shims on your `PATH`, and starts capturing each new session as it
-runs. Sessions started before `amikalog init` are not retroactively
-captured.
+OpenCode) and the `amika sandbox agent-send` command, and wraps each so
+that new sessions are captured as they run.
+
+<Warning>
+**Sessions started before `amikalog init` are not retroactively captured.**
+Only sessions that begin after init produce a record.
+</Warning>
 
 To stop capturing on this machine:
 
@@ -80,8 +83,8 @@ enabled = false
 ## Where sessions are stored
 
 Capture supports two sinks. Pick one at `init` time; switch later with
-`amikalog init --sink ...`. Switching redirects new events — existing data
-stays where it was written.
+`amikalog init --sink local` or `amikalog init --sink amika`. Switching
+redirects new events — existing data stays where it was written.
 
 ### Local files (default)
 
@@ -96,13 +99,13 @@ jq 'select(.event_type == "commit")' \
   ~/.local/share/amikalog/sessions/3f2a....jsonl
 ```
 
-Local-sink sessions are visible to the `amika sessions` CLI on the same
-machine, but **not** to the web UI or to other people in your org.
+Cost and token counts are captured in every event, so you can compute spend
+locally with `jq`. The aggregated **cost dashboard** in the web UI is only
+available with the Amika sink.
 
-<Info>
-A SQLite sink is in the works for faster local querying. Until then, JSONL
-plus `jq` or `grep` is the supported path.
-</Info>
+Local-sink sessions are only visible to `amika sessions` commands run on
+the same machine. They do not appear in the web UI, and other people in
+your organization cannot see them.
 
 ### Stream to Amika
 
@@ -112,10 +115,16 @@ Sign in with `amika auth login`, then re-init with the Amika sink:
 amikalog init --sink amika
 ```
 
-Events stream to Amika, where they're indexed and made available through
-the web UI, the CLI, and search. Streamed sessions are reachable across
-your machines and the rest of your organization, subject to your access
-controls.
+Events stream to Amika's hosted storage as they're produced. Streamed
+sessions are reachable from any machine you sign in on, and are visible to
+other members of your organization who have access to the same sandbox.
+
+<Warning>
+The Amika sink uploads message contents, tool arguments, file paths, and
+commit messages to Amika's servers. Treat captured transcripts the same
+way you treat the source code your agents read — anything that ends up in
+a prompt or a file diff ends up in the stored session.
+</Warning>
 
 ## View and use captured sessions
 
@@ -130,26 +139,29 @@ When you stream to Amika, a **session browser** appears in
 
 ### From the CLI
 
-List recent sessions (works against either sink):
+List recent sessions (reads from the configured sink):
 
 ```bash
 amika sessions list
 ```
 
-Pull a session's filesystem locally — its messages, events, and any
-artifacts it produced — to a directory you choose:
+Pull a session locally — its messages, events, file changes, and commits
+— to a directory you choose:
 
 ```bash
 amika sessions fetch 3f2a... ./past-session
 ```
 
 The fetched directory mounts cleanly into a new sandbox, so an agent in a
-fresh sandbox can read past work as files:
+fresh sandbox can read past work as ordinary files:
 
 ```bash
 amika sandbox create review-box \
   --mount ./past-session:/sessions/auth-refactor:ro
 ```
+
+Inside the new sandbox, `/sessions/auth-refactor` is a read-only directory
+the agent can grep, read, and reason over like any other source tree.
 
 ### From an agent
 
@@ -161,9 +173,9 @@ background job can query prior sessions as part of its own run. See
 
 A single session can have more than one author. When two people drive the
 same sandbox — for example, one from the web UI and one from Slack —
-capture records which user sent each message and which surface it came
-from. The session itself stays a single record; the per-message attribution
-makes "who asked for what" answerable later.
+capture records who sent each message and which surface it came from. The
+session itself stays a single record, but the per-message attribution lets
+you slice cost and activity by user even when a sandbox is shared.
 
 ## Next steps
 
