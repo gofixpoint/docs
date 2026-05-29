@@ -3,11 +3,9 @@ title: "Checks"
 description: "Run sandboxed programs that analyze or modify your repo on every PR, locally, or in CI."
 ---
 
-<Note>
-Checks are in research preview. The CLI surface, config format, and runner
-behavior described here are subject to change. Reach out on
-[Discord](https://discord.gg/xDXk4KjGWg) to join the early access program.
-</Note>
+import ResearchPreview from "/snippets/research-preview.mdx";
+
+<ResearchPreview />
 
 A check is an executable program that runs against your repository inside an
 Amika sandbox. Checks can inspect the code, run tests or static analysis,
