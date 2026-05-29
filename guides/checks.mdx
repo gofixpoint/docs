@@ -27,7 +27,7 @@ at the relevant branch, runs the check file, and collects its results.
 Each executable file inside `.amika/checks/` runs in its own sandbox. If
 you have three check files, you get three parallel sandboxes per trigger.
 
-Three places trigger checks today:
+A check can be triggered from three places:
 
 | Trigger | When it runs |
 | --- | --- |
@@ -90,17 +90,17 @@ commit_mode = "auto"
 | Value | Behavior |
 | --- | --- |
 | `"none"` (default) | Changes stay in the sandbox and are discarded |
-| `"auto"` | Changes are committed to the source branch and pushed |
-| `"staging"` | Changes go to a per-check staging branch you can review before merging |
+| `"auto"` | Changes are committed to the PR branch and pushed |
+| `"staging"` | Changes go to a per-PR, per-check staging branch you can merge back into the PR branch after review |
 
-`"staging"` is the safest option for checks that rewrite code with an
-agent — you get to see what changed before it lands on your branch.
+`"staging"` is the safer option for checks that rewrite code with an
+agent — you see the diff before it lands on the PR branch.
 
 ## Stop runaway loops
 
-A check that fixes code can re-trigger itself: it pushes a commit, the push
-fires the PR check, which re-runs the check, which finds something else to
-fix, and so on. To prevent this, every check has a `loop_limit`:
+A check with `commit_mode = "auto"` can re-trigger itself by pushing
+commits that re-fire the PR check. Every check has a `loop_limit` to cap
+how many times this can happen on a single PR:
 
 ```toml
 loop_limit = 5
@@ -110,10 +110,10 @@ loop_limit = 2
 ```
 
 The top-level `loop_limit` applies to every check; per-check entries
-override it. Once a check exceeds its loop limit on a given PR, the runner
-stops re-triggering that check and marks it as **skipped** in the PR
-check UI. The PR itself is not failed — other checks continue to run
-normally.
+override it. Once a check hits its limit, the runner stops re-triggering
+it for that PR and reports the check as **halted** with a warning in the
+GitHub check UI (neutral status — not pass, not fail). Other checks keep
+running normally.
 
 ## Configure individual checks
 
@@ -155,10 +155,8 @@ amika checks init agenthooks
 
 `init githooks` installs a pre-commit hook that runs every check in
 `.amika/checks/`. `init agenthooks` registers a hook with your local agent
-(Claude Code, Codex, OpenCode) so checks run after each agent turn.
-
-Both modes use the same sandbox-per-check execution as the PR check, so
-behavior matches across environments.
+(Claude Code, Codex, OpenCode) so checks run after each agent turn. Both
+modes reuse the same per-check sandbox execution as the PR check.
 
 ## Security
 

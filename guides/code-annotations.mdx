@@ -12,12 +12,12 @@ program.
 </Note>
 
 Code annotations let you tag pieces of your codebase with rules that
-constrain how agents can modify them. Two annotations exist today:
+constrain how agents can modify them. The initial release supports two:
 
 - **`#amika/frozen`** — the next symbol is off-limits. Edits to it are
   blocked.
 - **`#amika/prompt`** — when an agent modifies the next symbol, this prompt
-  is prepended to its instructions.
+  is prepended to the agent's context for that edit.
 
 Annotations live in regular code comments, so they work in any language
 and travel with the code in git. They are enforced deterministically by
@@ -34,10 +34,8 @@ CI.
 
 ## Comment syntax
 
-Annotations use [EDN](https://github.com/edn-format/edn) inside comments.
-EDN was chosen because it parses cleanly out of any language's comment
-syntax, doesn't collide with JSDoc / docstring / Rustdoc conventions, and
-greps reliably with `amika/\S+`.
+Annotations use [EDN](https://github.com/edn-format/edn) inside ordinary
+comments, so they live in source and travel with the code in git.
 
 The basic shape is `#amika/<name>` followed by an optional EDN value:
 
@@ -52,9 +50,9 @@ An annotation applies to the next symbol below it: a function, class, or
 top-level variable. At the top of a file, it applies to the whole module.
 
 `amikalyze` uses [tree-sitter](https://tree-sitter.github.io/) to find the
-"next symbol", so language support is whatever tree-sitter supports.
-TypeScript, JavaScript, Python, Go, Rust, and Java are well-tested today;
-other tree-sitter grammars work but have seen less use.
+"next symbol", so language support follows whatever tree-sitter grammars
+ship with the release. TypeScript, JavaScript, Python, Go, Rust, and Java
+are the initial targets.
 
 ### Multi-line annotations
 
@@ -115,25 +113,31 @@ person.
 ### Override a freeze
 
 When you genuinely need to change frozen code, run `amikalyze` with the
-override flag:
+override flag from your repo root:
 
 ```bash
 amikalyze --override SCHEMA_VERSION
 ```
 
-The override is scoped to the next commit in your working tree. Once that
-commit lands, the symbol is frozen again — there's no way to permanently
-unfreeze a symbol without removing the annotation.
+This writes a single-use override token to `.amika/state/` that allows
+the next commit on this branch to modify `SCHEMA_VERSION`. After that
+commit lands the override is consumed — subsequent commits will be
+blocked again, and you'll need to re-run the override or remove the
+annotation. The token is per-branch state, not per-terminal, so it
+survives across sessions until the commit consumes it.
 
-You can also declare a static override directly on the annotation, which
-is useful when one frozen symbol legitimately wraps another. The override
-list names other frozen symbols this symbol is allowed to modify on edit:
+You can also declare a static override on the annotation itself. The
+`:override` value lists other frozen symbols this symbol is allowed to
+edit when it's modified. This is useful when one frozen symbol
+legitimately wraps another:
 
 ```typescript
 /*
  * #amika/frozen { :override "computeChecksum" }
  */
 export function wrappedChecksum(buf: Buffer) {
+  // Editing wrappedChecksum is still blocked, but if a permitted edit
+  // here also needs to change computeChecksum, amikalyze allows it.
   return computeChecksum(buf);
 }
 ```
@@ -236,12 +240,12 @@ edit — human or agent — that slipped past the agent hook.
 
 | Enforcement point | What it catches |
 | --- | --- |
-| **Agent hook** (local) | Blocks the agent before it writes to a frozen symbol or fires the prompt before it touches an annotated one |
+| **Agent hook** (local) | Blocks the agent before it writes to a frozen symbol, or fires the prompt before it touches an annotated one |
 | **Git pre-commit hook** | Blocks the commit if a frozen symbol was modified by any writer |
 | **PR check** | Fails the PR if a commit modifies a frozen symbol |
 
-All three use the same `amikalyze` parser, so the rules match across
-environments. A symbol that's frozen locally is frozen in CI.
+All three run the same `amikalyze` parser — a symbol frozen locally is
+frozen in CI.
 
 ## Next steps
 
