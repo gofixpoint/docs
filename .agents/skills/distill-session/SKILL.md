@@ -46,6 +46,6 @@ Have the sub-agent report a punch list of specific simplifications. Don't have t
 
 ## Phase 5: Commit
 
-Stage all changed/created files and commit with a single message describing the distillation. Follow the repo's commit conventions.
+Stage only the distillation files — the agent-doc files edited or created in Phase 3 (the same list passed to the Phase 4 sub-agent). Do not use `git add -A` / `git add .`, since the worktree may contain unrelated in-progress work or the actual session work product. Then commit with a single message describing the distillation, following the repo's commit conventions.
 
 After committing, show the user the diffstat.
