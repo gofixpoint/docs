@@ -41,10 +41,17 @@ see, inline, the tool calls and file edits each message produced.
 
 ## Set up capture
 
-Capture is split across two CLIs that ship in the same install package:
+Capture is split across two CLIs, both included in the standard
+[`amika` install](/install) — there is nothing extra to download:
 
 - **`amikalog`** — one-time setup on each machine where you want capture to run.
 - **`amika sessions ...`** — list, fetch, and work with captured data (covered below).
+
+Once you've initialized, check capture status at any time with:
+
+```bash
+amikalog status
+```
 
 ### On your local machine
 
@@ -71,9 +78,9 @@ amikalog disable
 
 ### On an Amika sandbox
 
-Sandboxes have `amikalog` pre-installed and capture enabled by default. To
-turn it off for a sandbox, set `capture.enabled = false` in its
-`.amika/config.toml`:
+Sandboxes have `amikalog` pre-installed and capture enabled by default,
+configured to use the Amika sink (covered below). To turn it off for a
+sandbox, set `capture.enabled = false` in its `.amika/config.toml`:
 
 ```toml
 [capture]
@@ -89,9 +96,9 @@ redirects new events — existing data stays where it was written.
 ### Local files (default)
 
 `amikalog` writes one JSONL file per session to
-`~/.local/share/amikalog/sessions/`. Each line is a single event — a
-message, tool call, file change, or commit. This sink is free, works
-offline, and is easy to grep:
+`~/.local/share/amikalog/sessions/`. Each line is a single event with an
+`event_type` of `message`, `tool_call`, `file_change`, `commit`, or
+`error`. This sink is free, works offline, and is easy to grep:
 
 ```bash
 # Find every commit a session produced
@@ -109,7 +116,8 @@ your organization cannot see them.
 
 ### Stream to Amika
 
-Sign in with `amika auth login`, then re-init with the Amika sink:
+Sign in with [`amika auth login`](/reference/auth), then re-init with the
+Amika sink:
 
 ```bash
 amikalog init --sink amika
