@@ -7,21 +7,28 @@ import ResearchPreview from "/snippets/research-preview.mdx";
 
 <ResearchPreview />
 
-Every Claude Code, Codex, OpenCode, or [`agent-send`](/guides/send-a-message-to-an-agent)
-run produces a [session](/guides/manage-sessions). **Session capture** records
-that session as a structured, queryable history — every message, tool call,
-file edit, and git commit, along with the model used, token counts, and
-dollar cost. The session id you get back from `agent-send` is the same id
-capture records under.
+**Session capture** records an agent run as a structured, queryable
+[session](/guides/manage-sessions) — every message, tool call, file edit,
+and git commit, along with the model used, token counts, and dollar cost.
+
+It works wherever your agents run:
+
+- **Locally**, against the normal `claude` and `codex` CLIs you already use.
+  Run `amikalog init` once and new sessions are captured as they run — no
+  change to how you invoke the agent.
+- **On an Amika sandbox**, capture is pre-installed and enabled by default,
+  so anything you drive — including [`agent-send`](/guides/send-a-message-to-an-agent)
+  — is instrumented automatically.
+
+Capture is agent-agnostic: the agent is just an attribute of the session.
+Claude, Codex, and OpenCode sessions show up side by side in the same list
+and timeline views.
 
 Once captured, sessions become useful in three ways:
 
 - **Cost and analytics.** See what your agents did and at what cost — sliced by user, repo, agent, or model.
 - **Memory.** Search past work to recall how a similar problem was solved, what was decided, and which files were touched.
 - **Mining.** Background jobs read past sessions to file follow-up tickets, encode user corrections into durable rules, and start parallel work.
-
-Capture is agent-agnostic. Claude, Codex, and OpenCode sessions show up side
-by side in the same list and timeline views.
 
 ## What gets captured
 
@@ -61,8 +68,8 @@ amikalog init
 ```
 
 `init` detects the agent CLIs already on your machine (Claude Code, Codex,
-OpenCode) and the `amika sandbox agent-send` command, and wraps each so
-that new sessions are captured as they run.
+OpenCode) and wraps each so that new sessions are captured as they run. It
+also picks up the `amika sandbox agent-send` command if you use it.
 
 <Warning>
 **Sessions started before `amikalog init` are not retroactively captured.**
