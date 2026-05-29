@@ -1,0 +1,369 @@
+---
+title: "Checks"
+description: "Run sandboxed programs that analyze or modify your repo on every PR, locally, or in CI."
+---
+
+import ResearchPreview from "/snippets/research-preview.mdx";
+
+<ResearchPreview />
+
+A check is an executable program that runs against your repository inside an
+Amika sandbox. Checks can inspect the code, run tests or static analysis,
+and optionally commit fixes back to the branch. Each check is just a file —
+a shell script, a Node program, a Python tool — that you drop into
+`.amika/checks/` at the root of your repo.
+
+Checks are designed to compose like UNIX tools, not be configured like a
+CI YAML. If you can write a script, you can write a check.
+
+## How checks run
+
+When a check is triggered, Amika spins up a sandbox loaded with your repo
+at the relevant branch, runs the check file, and collects its results.
+
+Each executable file inside `.amika/checks/` runs in its own sandbox. If
+you have three check files, you get three parallel sandboxes per trigger.
+
+A check can be triggered from three places:
+
+| Trigger | When it runs |
+| --- | --- |
+| **GitHub PR** | On every push to a pull request branch |
+| **Pre-commit hook** | Before `git commit` on your local machine |
+| **Agent hook** | When a coding agent edits your code, locally or in a sandbox |
+
+The agent hook is one mechanism with two timing modes. Fast in-process
+checks (like the bundled `amikalyze` parser used by
+[code annotations](/guides/code-annotations)) gate each individual write.
+Sandboxed checks defined in `.amika/checks/` run after the agent
+completes a batch of edits, since spinning up a sandbox per write would
+be too slow.
+
+<Note>
+Two CLIs come up in this guide. `amika` runs on your host machine and
+manages sandboxes, hooks, and config. `amikactl` runs **inside** the
+sandbox and lets a running check talk to the runner — to report progress,
+log output, or attach artifacts. Anything you run from your terminal is
+`amika`; anything inside a check script is `amikactl`.
+</Note>
+
+## Write your first check
+
+Create a `.amika/checks/` directory at the root of your repo and drop an
+executable file inside it. Anything with the executable bit set is treated
+as a check; non-executable files (such as the sibling `config.toml`) are
+ignored.
+
+Here's a contrived example:
+
+```bash
+mkdir -p .amika/checks
+```
+
+<CodeGroup>
+
+```bash .amika/checks/lint.sh
+#!/bin/bash
+set -e
+
+amikactl check step "install"
+amikactl check log "installing dependencies"
+npm ci
+
+amikactl check step "lint"
+npm run lint
+```
+
+```javascript .amika/checks/lint.mjs
+#!/usr/bin/env node
+import * as checks from '@amika/checks'
+
+checks.step("install", () => {
+  checks.log("installing dependencies")
+  checks.exec('npm ci')
+})
+
+checks.step("lint", () => {
+  checks.exec('npm run lint')
+})
+```
+
+</CodeGroup>
+
+```bash
+chmod +x .amika/checks/lint.sh   # or lint.mjs
+```
+
+`amikactl check step` and `checks.step` are optional but recommended —
+they give the runner structured progress that surfaces in the PR check UI.
+`amikactl check log` and `checks.log` append messages to the check log.
+Without step calls, the runner only sees the final exit code.
+
+A non-zero exit fails the check. Anything written to stdout and stderr is
+captured as the check log.
+
+## Make a check that commits fixes
+
+A check can modify files in the sandbox's working copy. By default those
+changes stay in the sandbox and are discarded when the check finishes. To
+push them back to the branch, declare the check's commit behavior in
+`.amika/checks/config.toml`:
+
+```toml
+[check."format.sh"]
+display_name = "Format code"
+description = "Runs prettier and commits any changes."
+commit_mode = "auto"
+```
+
+`commit_mode` has three values:
+
+| Value | Behavior |
+| --- | --- |
+| `"none"` (default) | Changes stay in the sandbox and are discarded |
+| `"auto"` | Changes are committed to the PR branch and pushed |
+| `"staging"` | Changes go to a per-PR, per-check staging branch you can merge back into the PR branch after review |
+
+`"staging"` is the safer option for checks that rewrite code with an
+agent — you see the diff before it lands on the PR branch.
+
+Here's the corresponding format check:
+
+<CodeGroup>
+
+```bash .amika/checks/format.sh
+#!/bin/bash
+set -e
+amikactl check step "format"
+npm run format
+```
+
+```javascript .amika/checks/format.mjs
+#!/usr/bin/env node
+import * as checks from '@amika/checks'
+
+checks.step("format", () => {
+  checks.exec('npm run format')
+})
+```
+
+</CodeGroup>
+
+If using JavaScript, update the config key to match your filename (`"format.mjs"`).
+
+## Stop runaway loops
+
+A check with `commit_mode = "auto"` can re-trigger itself by pushing
+commits that re-fire the PR check. Every check has a `loop_limit` to cap
+how many times this can happen on a single PR:
+
+```toml
+loop_limit = 5
+
+[check."format.sh"]
+loop_limit = 2
+```
+
+The top-level `loop_limit` applies to every check; per-check entries
+override it. Once a check hits its limit, the runner stops re-triggering
+it for that PR and reports the check as **halted** with a warning in the
+GitHub check UI (neutral status — not pass, not fail). Other checks keep
+running normally.
+
+## Configure individual checks
+
+`.amika/checks/config.toml` lets you attach metadata to each check without
+changing the script itself.
+
+```toml
+[check."test.sh"]
+display_name = "Unit tests"
+description = "Runs the Jest suite against the PR branch."
+size = "m"
+loop_limit = 1
+```
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `display_name` | string | Name shown in the PR check UI |
+| `description` | string | Subtitle shown alongside the check |
+| `size` | `"xs"`, `"s"`, `"m"`, `"l"` | Sandbox size for this check |
+| `commit_mode` | `"none"`, `"auto"`, `"staging"` | What to do with file changes |
+| `loop_limit` | integer | Max re-triggers per PR before the runner stops |
+
+A top-level `loop_limit` (outside any `[check."..."]` table) sets a
+default applied to every check that doesn't specify its own.
+
+## Run checks locally
+
+The same checks can run on your machine through git hooks or as an agent
+hook. Initialize the hooks with:
+
+<CodeGroup>
+
+```bash Git hooks
+amika checks init githooks
+```
+
+```bash Agent hooks
+amika checks init agenthooks
+```
+
+</CodeGroup>
+
+`init githooks` installs a pre-commit hook that runs every check in
+`.amika/checks/` before `git commit` finalizes. `init agenthooks`
+registers a hook with your local agent (Claude Code, Codex, OpenCode) so
+sandboxed checks run after each batch of agent edits, and so fast
+in-process checks like `amikalyze` can gate individual writes. Both
+modes reuse the same per-check sandbox execution as the PR check.
+
+## Security
+
+The PR check runner has two hard rules:
+
+<Warning>
+Checks **do not run on PRs from forks**, and **do not run for users
+outside your Amika org**. A check that runs arbitrary code from an
+untrusted contributor would be a remote code execution vector, so the
+runner refuses these by default.
+</Warning>
+
+If you need to run checks against contributions from outside your org, run
+them on an Amika sandbox after review.
+
+## End-to-end example
+
+Two checks that go beyond read-only analysis:
+
+- **`validate`** — runs lint with auto-fix, then hands unfixable errors to
+  the sandbox agent. Does the same for failing tests. Auto-commits any fixes.
+- **`consolidate`** — reads the PR diff and asks the agent to replace code
+  that duplicates existing utilities. Sends changes to a staging branch for
+  review.
+
+Both checks use `amikactl msg` to message the agent running on the check's
+sandbox — the in-sandbox equivalent of `amika sandbox agent-send`.
+
+```
+my-repo/
+├── .amika/
+│   └── checks/
+│       ├── config.toml
+│       ├── validate.sh
+│       └── consolidate.sh
+└── src/...
+```
+
+```toml .amika/checks/config.toml
+loop_limit = 3
+
+[check."validate.sh"]
+display_name = "Validate and auto-fix"
+description = "Lints with auto-fix, then runs tests. Agent patches what the linter can't."
+commit_mode = "auto"
+loop_limit = 2
+size = "m"
+
+[check."consolidate.sh"]
+display_name = "Consolidate duplicates"
+description = "Finds PR code that duplicates existing utilities and refactors it."
+commit_mode = "staging"
+size = "m"
+```
+
+### validate — auto-fix lint errors and test failures
+
+The entire check is a single message to the agent. The agent runs lint
+and tests, fixes what's broken, and repeats until both pass.
+
+<CodeGroup>
+
+```bash .amika/checks/validate.sh
+#!/bin/bash
+set -e
+
+amikactl check step "validate"
+amikactl msg "Run lint and tests. If either fails, fix the errors and run
+again. Repeat until both pass with no errors."
+```
+
+```javascript .amika/checks/validate.mjs
+#!/usr/bin/env node
+import * as checks from '@amika/checks'
+
+await checks.step("validate", async () => {
+  await checks.msg(
+    "Run lint and tests. If either fails, fix the errors and run again. " +
+    "Repeat until both pass with no errors."
+  )
+})
+```
+
+</CodeGroup>
+
+### consolidate — replace duplicate code
+
+The check reads the full diff of the PR branch against the base branch
+and passes it to the agent with a consolidation prompt. The agent searches
+the repo for existing implementations that the new code duplicates, then
+refactors. Because the changes are substantive, `commit_mode = "staging"`
+sends them to a per-PR branch for your review before they land.
+
+<CodeGroup>
+
+```bash .amika/checks/consolidate.sh
+#!/bin/bash
+set -e
+
+amikactl check step "analyze"
+amikactl check log "reading PR diff"
+
+DIFF=$(git diff "origin/$AMIKA_BASE_BRANCH"...HEAD)
+
+amikactl check log "asking agent to find duplicate implementations"
+amikactl msg "Review the diff below. Look for new code that reimplements
+something already available in this codebase — utility functions, middleware,
+helpers, or API wrappers. If you find any, refactor the new code to use the
+existing implementation instead. If nothing needs changing, do nothing.
+
+$DIFF"
+```
+
+```javascript .amika/checks/consolidate.mjs
+#!/usr/bin/env node
+import * as checks from '@amika/checks'
+import { execSync } from 'child_process'
+
+await checks.step("analyze", async () => {
+  checks.log("reading PR diff")
+  const diff = execSync(
+    `git diff origin/${process.env.AMIKA_BASE_BRANCH}...HEAD`,
+    { encoding: 'utf8' }
+  )
+  checks.log("asking agent to find duplicate implementations")
+  await checks.msg(
+    `Review the diff below. Look for new code that reimplements something ` +
+    `already available in this codebase — utility functions, middleware, ` +
+    `helpers, or API wrappers. If you find any, refactor the new code to use ` +
+    `the existing implementation instead. If nothing needs changing, do nothing.\n\n` +
+    diff
+  )
+})
+```
+
+</CodeGroup>
+
+When you push a PR, both sandboxes spin up in parallel. `validate` fixes
+what it can and commits the result directly to the PR branch; if it loops
+more than twice without clearing all errors, the runner halts it.
+`consolidate` sends any refactors to a staging branch — you accept or
+discard them from the PR UI before they merge.
+
+## Next steps
+
+<CardGroup>
+  <Card title="Code annotations" href="/guides/code-annotations" icon="code" />
+  <Card title="Repository configuration" href="/reference/repository-configuration" icon="folder-gear" />
+  <Card title="config.toml reference" href="/reference/config-toml" icon="file-code" />
+</CardGroup>

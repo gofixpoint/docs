@@ -55,7 +55,15 @@
             "group": "Agents and sessions",
             "pages": [
               "guides/send-a-message-to-an-agent",
-              "guides/manage-sessions"
+              "guides/manage-sessions",
+              "guides/capture-agent-sessions"
+            ]
+          },
+          {
+            "group": "Code validation",
+            "pages": [
+              "guides/checks",
+              "guides/code-annotations"
             ]
           },
           {
