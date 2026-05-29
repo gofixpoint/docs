@@ -14,7 +14,7 @@ A check is an executable program that runs against your repository inside an
 Amika sandbox. Checks can inspect the code, run tests or static analysis,
 and optionally commit fixes back to the branch. Each check is just a file —
 a shell script, a Node program, a Python tool — that you drop into
-`.amika/checks/`.
+`.amika/checks/` at the root of your repo.
 
 Checks are designed to compose like UNIX tools, not configure like a CI
 YAML. If you can write a script, you can write a check.
@@ -22,9 +22,10 @@ YAML. If you can write a script, you can write a check.
 ## How checks run
 
 When a check is triggered, Amika spins up a sandbox loaded with your repo
-at the relevant branch, runs the check file, and collects its results. The
-check has access to the `amikactl` CLI inside the sandbox so it can report
-progress, log output, and surface findings to the runner.
+at the relevant branch, runs the check file, and collects its results.
+
+Each executable file inside `.amika/checks/` runs in its own sandbox. If
+you have three check files, you get three parallel sandboxes per trigger.
 
 Three places trigger checks today:
 
@@ -34,8 +35,13 @@ Three places trigger checks today:
 | **Git hook** | Pre-commit or pre-push on your local machine |
 | **Agent hook** | After a coding agent finishes a turn inside a sandbox |
 
-Each executable file inside `.amika/checks/` runs in its own sandbox. If
-you have three check files, you get three parallel sandboxes per trigger.
+<Note>
+Two CLIs come up in this guide. `amika` runs on your host machine and
+manages sandboxes, hooks, and config. `amikactl` runs **inside** the
+sandbox and lets a running check talk to the runner — to report progress,
+log output, or attach artifacts. Anything you run from your terminal is
+`amika`; anything inside a check script is `amikactl`.
+</Note>
 
 ## Write your first check
 
@@ -105,19 +111,9 @@ loop_limit = 2
 
 The top-level `loop_limit` applies to every check; per-check entries
 override it. Once a check exceeds its loop limit on a given PR, the runner
-stops re-triggering it and surfaces a warning.
-
-## Enable checks for a repo
-
-The global toggle lives in `.amika/config.toml`:
-
-```toml
-[checks]
-enabled = true
-```
-
-With this set, Amika picks up `.amika/checks/` on the next sandbox run.
-Without it, the directory is ignored.
+stops re-triggering that check and marks it as **skipped** in the PR
+check UI. The PR itself is not failed — other checks continue to run
+normally.
 
 ## Configure individual checks
 
@@ -177,6 +173,54 @@ execution vector.
 
 If you need to run checks against contributions from outside your org, run
 them locally on a maintainer's machine after review.
+
+## End-to-end example
+
+A repo that uses two checks — formatting with auto-commit, and tests in
+read-only mode:
+
+```
+my-repo/
+├── .amika/
+│   ├── config.toml
+│   └── checks/
+│       ├── config.toml
+│       ├── format.sh
+│       └── test.sh
+└── src/...
+```
+
+```toml .amika/checks/config.toml
+loop_limit = 3
+
+[check."format.sh"]
+display_name = "Format code"
+commit_mode = "auto"
+loop_limit = 2
+
+[check."test.sh"]
+display_name = "Unit tests"
+size = "m"
+```
+
+```bash .amika/checks/format.sh
+#!/bin/bash
+set -e
+amikactl check step "format"
+npm run format
+```
+
+```bash .amika/checks/test.sh
+#!/bin/bash
+set -e
+amikactl check step "test"
+npm test
+```
+
+When you push a PR, two sandboxes spin up in parallel. `format.sh`
+reformats files and pushes the change back to the PR branch. `test.sh`
+runs the suite and surfaces failures in the check log. If `format.sh`
+keeps finding new things to fix, it stops after two re-runs.
 
 ## Next steps
 

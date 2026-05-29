@@ -14,14 +14,23 @@ program.
 Code annotations let you tag pieces of your codebase with rules that
 constrain how agents can modify them. Two annotations exist today:
 
-- **`#amika/frozen`** — the next symbol is off-limits to agents. Edits to
-  it fail the check.
+- **`#amika/frozen`** — the next symbol is off-limits. Edits to it are
+  blocked.
 - **`#amika/prompt`** — when an agent modifies the next symbol, this prompt
   is prepended to its instructions.
 
 Annotations live in regular code comments, so they work in any language
 and travel with the code in git. They are enforced deterministically by
-agent hooks, commit hooks, or CI — not by a model deciding to follow them.
+the `amikalyze` tool (the parser and enforcer for these rules), which
+runs as part of an agent hook, a git pre-commit hook, or a PR check — not
+by a model deciding to follow them.
+
+<Note>
+`amikalyze` is bundled with the `amika` CLI. Installing `amika` gives you
+the `amikalyze` binary; nothing extra to install. The same parser runs in
+all three enforcement environments, so a rule that fires locally fires in
+CI.
+</Note>
 
 ## Comment syntax
 
@@ -39,8 +48,41 @@ function computeChecksum(buf: Buffer) {
 }
 ```
 
-An annotation applies to the next symbol below it: a function, class,
-variable, or — at the top of a file — the module itself.
+An annotation applies to the next symbol below it: a function, class, or
+top-level variable. At the top of a file, it applies to the whole module.
+
+`amikalyze` uses [tree-sitter](https://tree-sitter.github.io/) to find the
+"next symbol", so language support is whatever tree-sitter supports.
+TypeScript, JavaScript, Python, Go, Rust, and Java are well-tested today;
+other tree-sitter grammars work but have seen less use.
+
+### Multi-line annotations
+
+For annotations that span multiple lines of comment, repeat the language's
+comment prefix on every line — the parser strips the prefix before reading
+the EDN value:
+
+```typescript
+// #amika/prompt "
+// First line of the prompt.
+// Second line of the prompt.
+// "
+```
+
+```python
+# #amika/prompt "
+# First line of the prompt.
+# Second line of the prompt.
+# "
+```
+
+Block comments work the same way:
+
+```typescript
+/*
+ * #amika/frozen { :override "computeChecksum" }
+ */
+```
 
 ## Freeze a symbol
 
@@ -58,9 +100,17 @@ def parse_legacy_format(blob: bytes) -> dict:
     ...
 ```
 
-When an agent edits a frozen symbol inside an Amika sandbox, the agent
-hook blocks the edit and surfaces the violation. On a PR, the
-`amikalyze` check fails with a list of frozen symbols that were touched.
+A frozen symbol is blocked at every enforcement point:
+
+- **Agent hook** stops an agent from writing the edit in the first place.
+- **Pre-commit hook** blocks the commit if a frozen symbol changed,
+  regardless of whether a human or an agent made the edit.
+- **PR check** fails the PR if a commit modifies a frozen symbol.
+
+Freezes apply to all writers, not just agents. This is intentional — once
+a symbol is frozen, the only way to change it is through an explicit
+override, so the rule survives whether the edit came from a model or a
+person.
 
 ### Override a freeze
 
@@ -71,11 +121,16 @@ override flag:
 amikalyze --override SCHEMA_VERSION
 ```
 
-You can also declare an override directly on the annotation, which is
-useful when one frozen symbol legitimately wraps another:
+The override is scoped to the next commit in your working tree. Once that
+commit lands, the symbol is frozen again — there's no way to permanently
+unfreeze a symbol without removing the annotation.
+
+You can also declare a static override directly on the annotation, which
+is useful when one frozen symbol legitimately wraps another. The override
+list names other frozen symbols this symbol is allowed to modify on edit:
 
 ```typescript
-/**
+/*
  * #amika/frozen { :override "computeChecksum" }
  */
 export function wrappedChecksum(buf: Buffer) {
@@ -145,31 +200,44 @@ works too.
 
 ## Enable code annotations for a repo
 
-Annotations are processed when the `amikalyze` check is enabled in
-`.amika/config.toml`:
+Annotations are processed by the built-in `amikalyze` check. Turn it on
+in `.amika/config.toml`:
 
 ```toml
 [checks.amikalyze]
 enabled = true
 ```
 
-With this set, the check runs as part of `.amika/checks/` and reports any
-annotation violations. To enforce annotations on every local edit, also
-install the agent hook:
+With this set, `amikalyze` runs on every PR alongside any other checks
+you've defined in `.amika/checks/`. See [Checks](/guides/checks) for how
+the runner works.
 
-```bash
+To enforce annotations on every local edit as well, install the agent
+hook and the pre-commit hook:
+
+<CodeGroup>
+
+```bash Agent hook
 amika checks init agenthooks
 ```
 
-The hook intercepts file writes from your local agent before they happen,
-so violations surface immediately instead of at commit time.
+```bash Pre-commit hook
+amika checks init githooks
+```
+
+</CodeGroup>
+
+The agent hook intercepts file writes from your local agent (Claude Code,
+Codex, OpenCode) before they happen, so violations surface immediately
+instead of at commit time. The pre-commit hook is the safety net for any
+edit — human or agent — that slipped past the agent hook.
 
 ## Where annotations are enforced
 
 | Enforcement point | What it catches |
 | --- | --- |
-| **Agent hook** (local) | Blocks the agent before it writes to a frozen symbol |
-| **Git pre-commit hook** | Blocks the commit if a frozen symbol was modified |
+| **Agent hook** (local) | Blocks the agent before it writes to a frozen symbol or fires the prompt before it touches an annotated one |
+| **Git pre-commit hook** | Blocks the commit if a frozen symbol was modified by any writer |
 | **PR check** | Fails the PR if a commit modifies a frozen symbol |
 
 All three use the same `amikalyze` parser, so the rules match across
