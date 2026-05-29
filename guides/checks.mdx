@@ -234,77 +234,175 @@ them on an Amika sandbox after review.
 
 ## End-to-end example
 
-A repo that uses two checks — formatting with auto-commit, and tests in
-read-only mode:
+Two checks that go beyond read-only analysis:
+
+- **`validate`** — runs lint with auto-fix, then hands unfixable errors to
+  the sandbox agent. Does the same for failing tests. Auto-commits any fixes.
+- **`consolidate`** — reads the PR diff and asks the agent to replace code
+  that duplicates existing utilities. Sends changes to a staging branch for
+  review.
+
+Both checks use `amikactl msg` to message the agent running on the check's
+sandbox — the in-sandbox equivalent of `amika sandbox agent-send`.
 
 ```
 my-repo/
 ├── .amika/
-│   ├── config.toml
 │   └── checks/
 │       ├── config.toml
-│       ├── format.sh
-│       └── test.sh
+│       ├── validate.sh
+│       └── consolidate.sh
 └── src/...
 ```
 
 ```toml .amika/checks/config.toml
 loop_limit = 3
 
-[check."format.sh"]
-display_name = "Format code"
+[check."validate.sh"]
+display_name = "Validate and auto-fix"
+description = "Lints with auto-fix, then runs tests. Agent patches what the linter can't."
 commit_mode = "auto"
 loop_limit = 2
+size = "m"
 
-[check."test.sh"]
-display_name = "Unit tests"
+[check."consolidate.sh"]
+display_name = "Consolidate duplicates"
+description = "Finds PR code that duplicates existing utilities and refactors it."
+commit_mode = "staging"
 size = "m"
 ```
 
-<CodeGroup>
+### validate — auto-fix lint errors and test failures
 
-```bash .amika/checks/format.sh
-#!/bin/bash
-set -e
-amikactl check step "format"
-npm run format
-```
-
-```javascript .amika/checks/format.mjs
-#!/usr/bin/env node
-import * as checks from '@amika/checks'
-
-checks.step("format", () => {
-  checks.exec('npm run format')
-})
-```
-
-</CodeGroup>
+The check runs the linter with auto-fix flags first. If errors remain
+after auto-fix (the kind that require reasoning, not just reformatting),
+it passes the output to `amikactl msg`, which messages the agent on the
+sandbox. The agent patches the files; the check re-runs the linter to
+confirm. The same loop applies to tests.
 
 <CodeGroup>
 
-```bash .amika/checks/test.sh
+```bash .amika/checks/validate.sh
 #!/bin/bash
 set -e
+
+amikactl check step "lint"
+amikactl check log "running linter with auto-fix"
+
+if ! npm run lint --fix 2>&1 | tee /tmp/lint-out.txt; then
+  amikactl check log "unfixable lint errors — asking agent to fix"
+  amikactl msg "Fix the lint errors below. Do not change logic or tests.
+
+$(cat /tmp/lint-out.txt)"
+  npm run lint   # re-run to confirm; non-zero exit fails the check
+fi
+
 amikactl check step "test"
-npm test
+amikactl check log "running test suite"
+
+if ! npm test 2>&1 | tee /tmp/test-out.txt; then
+  amikactl check log "tests failed — asking agent to fix"
+  amikactl msg "Fix the failing tests below. Prefer fixing the implementation
+over changing test expectations unless an expectation is clearly wrong.
+
+$(cat /tmp/test-out.txt)"
+  npm test
+fi
 ```
 
-```javascript .amika/checks/test.mjs
+```javascript .amika/checks/validate.mjs
 #!/usr/bin/env node
 import * as checks from '@amika/checks'
+import { spawnSync } from 'child_process'
 
-checks.step("test", () => {
-  checks.exec('npm test')
+await checks.step("lint", async () => {
+  checks.log("running linter with auto-fix")
+  const lint = spawnSync('npm', ['run', 'lint', '--fix'],
+    { encoding: 'utf8', stdio: 'pipe' })
+  if (lint.status !== 0) {
+    checks.log("unfixable lint errors — asking agent to fix")
+    await checks.msg(
+      `Fix the lint errors below. Do not change logic or tests.\n\n` +
+      lint.stdout + lint.stderr
+    )
+    checks.exec('npm run lint')
+  }
+})
+
+await checks.step("test", async () => {
+  checks.log("running test suite")
+  const test = spawnSync('npm', ['test'], { encoding: 'utf8', stdio: 'pipe' })
+  if (test.status !== 0) {
+    checks.log("tests failed — asking agent to fix")
+    await checks.msg(
+      `Fix the failing tests below. Prefer fixing the implementation ` +
+      `over changing test expectations unless an expectation is clearly wrong.\n\n` +
+      test.stdout + test.stderr
+    )
+    checks.exec('npm test')
+  }
 })
 ```
 
 </CodeGroup>
 
-When you push a PR, two sandboxes spin up in parallel. `format.sh`
-reformats files and pushes the change back to the PR branch. `test.sh`
-runs the suite and surfaces failures in the check log. If `format.sh`
-keeps finding new things to fix, it stops after two re-runs.
+### consolidate — replace duplicate code
+
+The check reads the full diff of the PR branch against the base branch
+and passes it to the agent with a consolidation prompt. The agent searches
+the repo for existing implementations that the new code duplicates, then
+refactors. Because the changes are substantive, `commit_mode = "staging"`
+sends them to a per-PR branch for your review before they land.
+
+<CodeGroup>
+
+```bash .amika/checks/consolidate.sh
+#!/bin/bash
+set -e
+
+amikactl check step "analyze"
+amikactl check log "reading PR diff"
+
+DIFF=$(git diff "origin/$AMIKA_BASE_BRANCH"...HEAD)
+
+amikactl check log "asking agent to find duplicate implementations"
+amikactl msg "Review the diff below. Look for new code that reimplements
+something already available in this codebase — utility functions, middleware,
+helpers, or API wrappers. If you find any, refactor the new code to use the
+existing implementation instead. If nothing needs changing, do nothing.
+
+$DIFF"
+```
+
+```javascript .amika/checks/consolidate.mjs
+#!/usr/bin/env node
+import * as checks from '@amika/checks'
+import { execSync } from 'child_process'
+
+await checks.step("analyze", async () => {
+  checks.log("reading PR diff")
+  const diff = execSync(
+    `git diff origin/${process.env.AMIKA_BASE_BRANCH}...HEAD`,
+    { encoding: 'utf8' }
+  )
+  checks.log("asking agent to find duplicate implementations")
+  await checks.msg(
+    `Review the diff below. Look for new code that reimplements something ` +
+    `already available in this codebase — utility functions, middleware, ` +
+    `helpers, or API wrappers. If you find any, refactor the new code to use ` +
+    `the existing implementation instead. If nothing needs changing, do nothing.\n\n` +
+    diff
+  )
+})
+```
+
+</CodeGroup>
+
+When you push a PR, both sandboxes spin up in parallel. `validate` fixes
+what it can and commits the result directly to the PR branch; if it loops
+more than twice without clearing all errors, the runner halts it.
+`consolidate` sends any refactors to a staging branch — you accept or
+discard them from the PR UI before they merge.
 
 ## Next steps
 
