@@ -58,9 +58,13 @@ Placement rules:
 - Frontmatter: `title` + `description`.
 - Bold for UI elements (Click **Settings**); code formatting for file
   names, commands, paths, and code references.
-- Mintlify components in use: `<Info>`, `<Tip>`, `<Warning>`,
-  `<Steps>`/`<Step>`, `<CardGroup cols={N}>` + `<Card icon href>`.
+- Mintlify components in use: `<Note>`, `<Info>`, `<Tip>`, `<Warning>`,
+  `<Steps>`/`<Step>`, `<CardGroup cols={N}>` + `<Card icon href>`,
+  `<CodeGroup>`.
 - Cross-link with bare paths like `/guides/services` — no `.mdx` suffix.
+- Reusable content lives in `snippets/`. Mark a page as research preview by
+  importing `/snippets/research-preview.mdx` at the top — not with an inline
+  `<Note>` or a `tag: "Research preview"` frontmatter pill.
 
 ## Local workflow
 
