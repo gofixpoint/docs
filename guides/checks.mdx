@@ -32,8 +32,15 @@ A check can be triggered from three places:
 | Trigger | When it runs |
 | --- | --- |
 | **GitHub PR** | On every push to a pull request branch |
-| **Git hook** | Pre-commit or pre-push on your local machine |
-| **Agent hook** | After a coding agent finishes a turn inside a sandbox |
+| **Pre-commit hook** | Before `git commit` on your local machine |
+| **Agent hook** | When a coding agent edits your code, locally or in a sandbox |
+
+The agent hook is one mechanism with two timing modes. Fast in-process
+checks (like the bundled `amikalyze` parser used by
+[code annotations](/guides/code-annotations)) gate each individual write.
+Sandboxed checks defined in `.amika/checks/` run after the agent
+completes a batch of edits, since spinning up a sandbox per write would
+be too slow.
 
 <Note>
 Two CLIs come up in this guide. `amika` runs on your host machine and
@@ -137,6 +144,9 @@ loop_limit = 1
 | `commit_mode` | `"none"`, `"auto"`, `"staging"` | What to do with file changes |
 | `loop_limit` | integer | Max re-triggers per PR before the runner stops |
 
+A top-level `loop_limit` (outside any `[check."..."]` table) sets a
+default applied to every check that doesn't specify its own.
+
 ## Run checks locally
 
 The same checks can run on your machine through git hooks or as an agent
@@ -155,8 +165,10 @@ amika checks init agenthooks
 </CodeGroup>
 
 `init githooks` installs a pre-commit hook that runs every check in
-`.amika/checks/`. `init agenthooks` registers a hook with your local agent
-(Claude Code, Codex, OpenCode) so checks run after each agent turn. Both
+`.amika/checks/` before `git commit` finalizes. `init agenthooks`
+registers a hook with your local agent (Claude Code, Codex, OpenCode) so
+sandboxed checks run after each batch of agent edits, and so fast
+in-process checks like `amikalyze` can gate individual writes. Both
 modes reuse the same per-check sandbox execution as the PR check.
 
 ## Security

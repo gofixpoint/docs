@@ -207,9 +207,9 @@ in `.amika/config.toml`:
 enabled = true
 ```
 
-With this set, `amikalyze` runs on every PR alongside any other checks
-you've defined in `.amika/checks/`. See [Checks](/guides/checks) for how
-the runner works.
+With this set, `amikalyze` runs in its own sandbox on every PR,
+alongside any other checks you've defined in `.amika/checks/`. See
+[Checks](/guides/checks) for how the runner works.
 
 To enforce annotations on every local edit as well, install the agent
 hook and the pre-commit hook:
