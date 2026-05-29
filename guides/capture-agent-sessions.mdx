@@ -17,8 +17,9 @@ It works wherever your agents run:
   Run `amikalog init` once and new sessions are captured as they run — no
   change to how you invoke the agent.
 - **On an Amika sandbox**, capture is pre-installed and enabled by default,
-  so anything you drive — including [`agent-send`](/guides/send-a-message-to-an-agent)
-  — is instrumented automatically.
+  so anything you drive is instrumented automatically — the Claude or Codex
+  CLI on the sandbox, chatting in the web UI, or [programmatically messaging
+  an agent](/guides/send-a-message-to-an-agent).
 
 Capture is agent-agnostic: the agent is just an attribute of the session.
 Claude, Codex, and OpenCode sessions show up side by side in the same list
@@ -39,7 +40,6 @@ For each session, capture records:
 - **Tool calls** — tool name, argument summary, outcome, and duration.
 - **File changes** — repository, path, and change kind for every file the agent touched.
 - **Git commits** — hash, branch, commit message, and the turn that produced each commit.
-- **Errors** — where the agent got stuck, with surrounding context.
 - **Environment** — agent CLI version, sandbox identifier, and the system prompt and rules in effect at run time.
 
 These items share one ordered timeline. You can scrub through a session and
@@ -96,15 +96,15 @@ enabled = false
 ## Where sessions are stored
 
 Capture supports two sinks. Pick one at `init` time; switch later with
-`amikalog init --sink local` or `amikalog init --sink amika`. Switching
+`amikalog config sink local` or `amikalog config sink amika`. Switching
 redirects new events — existing data stays where it was written.
 
 ### Local files (default)
 
 `amikalog` writes one JSONL file per session to
 `~/.local/share/amikalog/sessions/`. Each line is a single event with an
-`event_type` of `message`, `tool_call`, `file_change`, `commit`, or
-`error`. This sink is free, works offline, and is easy to grep:
+`event_type` of `message`, `tool_call`, `file_change`, or `commit`. This
+sink is free, works offline, and is easy to grep:
 
 ```bash
 # Find every commit a session produced
@@ -122,11 +122,11 @@ your organization cannot see them.
 
 ### Stream to Amika
 
-Sign in with [`amika auth login`](/reference/auth), then re-init with the
-Amika sink:
+Sign in with [`amika auth login`](/reference/auth), then configure the sink
+to stream to Amika:
 
 ```bash
-amikalog init --sink amika
+amikalog config sink amika
 ```
 
 Events stream to Amika's hosted storage as they're produced. Streamed
@@ -166,22 +166,21 @@ Pull a session locally — its messages, events, file changes, and commits
 amika sessions fetch 3f2a... ./past-session
 ```
 
-The fetched directory mounts cleanly into a new sandbox, so an agent in a
-fresh sandbox can read past work as ordinary files:
+These are written as ordinary files that the agent can read, reason over, and
+edit like any other file tree.
+
+You can run `amika sessions fetch` inside a sandbox, or if you run it on your
+local machine, you can mount the fetched sessions into the sandbox:
 
 ```bash
 amika sandbox create review-box \
-  --mount ./past-session:/sessions/auth-refactor:ro
+  --mount ./past-session:/sessions/auth-refactor
 ```
-
-Inside the new sandbox, `/sessions/auth-refactor` is a read-only directory
-the agent can grep, read, and reason over like any other source tree.
 
 ### From an agent
 
-Capture exposes search and session-detail tools over MCP, so an agent or
-background job can query prior sessions as part of its own run. See
-[MCP integrations](/guides/mcp-integrations).
+Soon, we will expose search and session-detail tools over MCP and the CLI, so an
+agent or background job can query prior sessions as part of its own run.
 
 ## Multi-user sessions
 
@@ -196,5 +195,4 @@ you slice cost and activity by user even when a sandbox is shared.
 <CardGroup>
   <Card title="Send a message to an agent" href="/guides/send-a-message-to-an-agent" icon="paper-plane" />
   <Card title="Manage sessions" href="/guides/manage-sessions" icon="clock-rotate-left" />
-  <Card title="MCP integrations" href="/guides/mcp-integrations" icon="plug" />
 </CardGroup>
