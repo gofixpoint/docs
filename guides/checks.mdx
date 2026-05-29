@@ -1,0 +1,187 @@
+---
+title: "Checks"
+description: "Run sandboxed programs that analyze or modify your repo on every PR, locally, or in CI."
+tag: "Research preview"
+---
+
+<Note>
+Checks are in research preview. The CLI surface, config format, and runner
+behavior described here are subject to change. Reach out on
+[Discord](https://discord.gg/xDXk4KjGWg) to join the early access program.
+</Note>
+
+A check is an executable program that runs against your repository inside an
+Amika sandbox. Checks can inspect the code, run tests or static analysis,
+and optionally commit fixes back to the branch. Each check is just a file —
+a shell script, a Node program, a Python tool — that you drop into
+`.amika/checks/`.
+
+Checks are designed to compose like UNIX tools, not configure like a CI
+YAML. If you can write a script, you can write a check.
+
+## How checks run
+
+When a check is triggered, Amika spins up a sandbox loaded with your repo
+at the relevant branch, runs the check file, and collects its results. The
+check has access to the `amikactl` CLI inside the sandbox so it can report
+progress, log output, and surface findings to the runner.
+
+Three places trigger checks today:
+
+| Trigger | When it runs |
+| --- | --- |
+| **GitHub PR** | On every push to a pull request branch |
+| **Git hook** | Pre-commit or pre-push on your local machine |
+| **Agent hook** | After a coding agent finishes a turn inside a sandbox |
+
+Each executable file inside `.amika/checks/` runs in its own sandbox. If
+you have three check files, you get three parallel sandboxes per trigger.
+
+## Write your first check
+
+Create a `.amika/checks/` directory at the root of your repo and drop an
+executable file inside it. Anything with the executable bit set is treated
+as a check.
+
+```bash
+mkdir -p .amika/checks
+cat > .amika/checks/lint.sh <<'EOF'
+#!/bin/bash
+set -e
+
+amikactl check step "install"
+npm ci
+
+amikactl check step "lint"
+npm run lint
+EOF
+chmod +x .amika/checks/lint.sh
+```
+
+The `amikactl check step` calls are optional but recommended — they give
+the runner structured progress that surfaces in the PR check UI. Without
+them, the runner only sees the final exit code.
+
+A non-zero exit fails the check. Anything written to stdout and stderr is
+captured as the check log.
+
+## Make a check that commits fixes
+
+A check can modify files in the sandbox's working copy. By default those
+changes stay in the sandbox and are discarded when the check finishes. To
+push them back to the branch, declare the check's commit behavior in
+`.amika/checks/config.toml`:
+
+```toml
+[check."format.sh"]
+display_name = "Format code"
+description = "Runs prettier and commits any changes."
+commit_mode = "auto"
+```
+
+`commit_mode` has three values:
+
+| Value | Behavior |
+| --- | --- |
+| `"none"` (default) | Changes stay in the sandbox and are discarded |
+| `"auto"` | Changes are committed to the source branch and pushed |
+| `"staging"` | Changes go to a per-check staging branch you can review before merging |
+
+`"staging"` is the safest option for checks that rewrite code with an
+agent — you get to see what changed before it lands on your branch.
+
+## Stop runaway loops
+
+A check that fixes code can re-trigger itself: it pushes a commit, the push
+fires the PR check, which re-runs the check, which finds something else to
+fix, and so on. To prevent this, every check has a `loop_limit`:
+
+```toml
+loop_limit = 5
+
+[check."format.sh"]
+loop_limit = 2
+```
+
+The top-level `loop_limit` applies to every check; per-check entries
+override it. Once a check exceeds its loop limit on a given PR, the runner
+stops re-triggering it and surfaces a warning.
+
+## Enable checks for a repo
+
+The global toggle lives in `.amika/config.toml`:
+
+```toml
+[checks]
+enabled = true
+```
+
+With this set, Amika picks up `.amika/checks/` on the next sandbox run.
+Without it, the directory is ignored.
+
+## Configure individual checks
+
+`.amika/checks/config.toml` lets you attach metadata to each check without
+changing the script itself.
+
+```toml
+[check."test.sh"]
+display_name = "Unit tests"
+description = "Runs the Jest suite against the PR branch."
+size = "m"
+loop_limit = 1
+```
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `display_name` | string | Name shown in the PR check UI |
+| `description` | string | Subtitle shown alongside the check |
+| `size` | `"xs"`, `"s"`, `"m"`, `"l"` | Sandbox size for this check |
+| `commit_mode` | `"none"`, `"auto"`, `"staging"` | What to do with file changes |
+| `loop_limit` | integer | Max re-triggers per PR before the runner stops |
+
+## Run checks locally
+
+The same checks can run on your machine through git hooks or as an agent
+hook. Initialize the hooks with:
+
+<CodeGroup>
+
+```bash Git hooks
+amika checks init githooks
+```
+
+```bash Agent hooks
+amika checks init agenthooks
+```
+
+</CodeGroup>
+
+`init githooks` installs a pre-commit hook that runs every check in
+`.amika/checks/`. `init agenthooks` registers a hook with your local agent
+(Claude Code, Codex, OpenCode) so checks run after each agent turn.
+
+Both modes use the same sandbox-per-check execution as the PR check, so
+behavior matches across environments.
+
+## Security
+
+The PR check runner has two hard rules:
+
+<Warning>
+Checks **do not run on PRs from forks**, and **do not run for users
+outside your Amika org**. This is non-negotiable — a check that runs
+arbitrary code from an untrusted contributor would be a remote code
+execution vector.
+</Warning>
+
+If you need to run checks against contributions from outside your org, run
+them locally on a maintainer's machine after review.
+
+## Next steps
+
+<CardGroup>
+  <Card title="Code annotations" href="/guides/code-annotations" icon="code" />
+  <Card title="Repository configuration" href="/reference/repository-configuration" icon="folder-gear" />
+  <Card title="config.toml reference" href="/reference/config-toml" icon="file-code" />
+</CardGroup>

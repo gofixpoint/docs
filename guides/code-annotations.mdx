@@ -1,0 +1,184 @@
+---
+title: "Code annotations"
+description: "Mark code that agents shouldn't change, and attach prompts that fire when a symbol is modified."
+tag: "Research preview"
+---
+
+<Note>
+Code annotations are in research preview. The comment syntax, config
+format, and enforcement points described here are subject to change. Reach
+out on [Discord](https://discord.gg/xDXk4KjGWg) to join the early access
+program.
+</Note>
+
+Code annotations let you tag pieces of your codebase with rules that
+constrain how agents can modify them. Two annotations exist today:
+
+- **`#amika/frozen`** — the next symbol is off-limits to agents. Edits to
+  it fail the check.
+- **`#amika/prompt`** — when an agent modifies the next symbol, this prompt
+  is prepended to its instructions.
+
+Annotations live in regular code comments, so they work in any language
+and travel with the code in git. They are enforced deterministically by
+agent hooks, commit hooks, or CI — not by a model deciding to follow them.
+
+## Comment syntax
+
+Annotations use [EDN](https://github.com/edn-format/edn) inside comments.
+EDN was chosen because it parses cleanly out of any language's comment
+syntax, doesn't collide with JSDoc / docstring / Rustdoc conventions, and
+greps reliably with `amika/\S+`.
+
+The basic shape is `#amika/<name>` followed by an optional EDN value:
+
+```typescript
+// #amika/frozen
+function computeChecksum(buf: Buffer) {
+  return crypto.createHash("sha256").update(buf).digest("hex");
+}
+```
+
+An annotation applies to the next symbol below it: a function, class,
+variable, or — at the top of a file — the module itself.
+
+## Freeze a symbol
+
+`#amika/frozen` prevents agents from modifying the symbol that follows.
+
+```typescript
+// #amika/frozen
+export const SCHEMA_VERSION = 7;
+```
+
+```python
+# #amika/frozen
+def parse_legacy_format(blob: bytes) -> dict:
+    # Format spec is locked; don't let agents "improve" this.
+    ...
+```
+
+When an agent edits a frozen symbol inside an Amika sandbox, the agent
+hook blocks the edit and surfaces the violation. On a PR, the
+`amikalyze` check fails with a list of frozen symbols that were touched.
+
+### Override a freeze
+
+When you genuinely need to change frozen code, run `amikalyze` with the
+override flag:
+
+```bash
+amikalyze --override SCHEMA_VERSION
+```
+
+You can also declare an override directly on the annotation, which is
+useful when one frozen symbol legitimately wraps another:
+
+```typescript
+/**
+ * #amika/frozen { :override "computeChecksum" }
+ */
+export function wrappedChecksum(buf: Buffer) {
+  return computeChecksum(buf);
+}
+```
+
+## Attach a prompt to a symbol
+
+`#amika/prompt` adds an instruction that's prepended to the agent's
+context whenever it modifies the symbol below the comment.
+
+```typescript
+// #amika/prompt "
+// This function is on the hot path for request parsing. Avoid
+// allocations in the inner loop. If you need to change the signature,
+// update the matching benchmark in bench/parse.ts.
+// "
+export function parseRequest(raw: string): Request {
+  // ...
+}
+```
+
+The prompt fires once per agent turn that touches the symbol. It's not a
+guarantee — the agent can still make a bad change — but it ensures the
+agent sees the constraint before deciding what to do.
+
+### Prompt options
+
+To pass options to the model, use the two-argument form:
+
+```typescript
+// #amika/prompt (
+//   "Be especially careful here. Prefer minimal diffs."
+//   { :model "claude-opus-4-7", :effort "high" }
+// )
+function migrateUsers() {
+  // ...
+}
+```
+
+| Option | Type | Meaning |
+| --- | --- | --- |
+| `:model` | string | Override the model used for this edit |
+| `:effort` | `"low"`, `"medium"`, `"high"` | Reasoning budget for the edit |
+
+## Apply rules across a directory
+
+Inline annotations are good for single symbols. To freeze whole
+directories or match files by glob, drop a `.amikalyze.edn` file in any
+directory of your repo:
+
+```clojure
+; freeze every file in this directory and its subtree
+#amika/frozen-paths (
+  "schema/**/*.sql"
+  "proto/**/*.proto"
+  "vendor/**"
+)
+```
+
+`.amikalyze.edn` applies to the directory it lives in and everything
+below it. Glob patterns are relative to that directory.
+
+If you'd rather keep the file out of the way, `.amika/amikalyze.edn`
+works too.
+
+## Enable code annotations for a repo
+
+Annotations are processed when the `amikalyze` check is enabled in
+`.amika/config.toml`:
+
+```toml
+[checks.amikalyze]
+enabled = true
+```
+
+With this set, the check runs as part of `.amika/checks/` and reports any
+annotation violations. To enforce annotations on every local edit, also
+install the agent hook:
+
+```bash
+amika checks init agenthooks
+```
+
+The hook intercepts file writes from your local agent before they happen,
+so violations surface immediately instead of at commit time.
+
+## Where annotations are enforced
+
+| Enforcement point | What it catches |
+| --- | --- |
+| **Agent hook** (local) | Blocks the agent before it writes to a frozen symbol |
+| **Git pre-commit hook** | Blocks the commit if a frozen symbol was modified |
+| **PR check** | Fails the PR if a commit modifies a frozen symbol |
+
+All three use the same `amikalyze` parser, so the rules match across
+environments. A symbol that's frozen locally is frozen in CI.
+
+## Next steps
+
+<CardGroup>
+  <Card title="Checks" href="/guides/checks" icon="shield-check" />
+  <Card title="Set up repo config with an agent" href="/guides/setup-repo-config-with-agent" icon="wand-magic-sparkles" />
+  <Card title="config.toml reference" href="/reference/config-toml" icon="file-code" />
+</CardGroup>
