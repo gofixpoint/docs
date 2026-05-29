@@ -21,21 +21,17 @@ constrain how agents can modify them. The initial release supports two:
 
 Annotations live in regular code comments, so they work in any language
 and travel with the code in git. They are enforced deterministically by
-the `amikalyze` tool (the parser and enforcer for these rules), which
-runs as part of an agent hook, a git pre-commit hook, or a PR check — not
-by a model deciding to follow them.
-
-<Note>
-`amikalyze` is bundled with the `amika` CLI. Installing `amika` gives you
-the `amikalyze` binary; nothing extra to install. The same parser runs in
-all three enforcement environments, so a rule that fires locally fires in
-CI.
-</Note>
+`amikalyze`, the parser and enforcer bundled with the `amika` CLI.
+`amikalyze` runs in three places: an agent hook (intercepts writes
+locally), a git pre-commit hook, and a PR check — not by a model deciding
+to follow them.
 
 ## Comment syntax
 
 Annotations use [EDN](https://github.com/edn-format/edn) inside ordinary
-comments, so they live in source and travel with the code in git.
+comments. EDN is used here instead of TOML or JSON because it parses
+cleanly out of any language's comment syntax — the `#amika/foo` tag is a
+single greppable token that survives wrapped lines and mixed indent.
 
 The basic shape is `#amika/<name>` followed by an optional EDN value:
 
@@ -119,12 +115,10 @@ override flag from your repo root:
 amikalyze --override SCHEMA_VERSION
 ```
 
-This writes a single-use override token to `.amika/state/` that allows
-the next commit on this branch to modify `SCHEMA_VERSION`. After that
-commit lands the override is consumed — subsequent commits will be
-blocked again, and you'll need to re-run the override or remove the
-annotation. The token is per-branch state, not per-terminal, so it
-survives across sessions until the commit consumes it.
+The override is single-use and scoped to your next commit on this branch.
+Once that commit lands the override is consumed; subsequent commits will
+be blocked again, and you'll need to re-run the override or remove the
+annotation.
 
 You can also declare a static override on the annotation itself. The
 `:override` value lists other frozen symbols this symbol is allowed to
@@ -164,7 +158,8 @@ agent sees the constraint before deciding what to do.
 
 ### Prompt options
 
-To pass options to the model, use the two-argument form:
+To pass options to the model, wrap the prompt and an options map in
+parens:
 
 ```typescript
 // #amika/prompt (
@@ -231,10 +226,14 @@ amika checks init githooks
 
 </CodeGroup>
 
-The agent hook intercepts file writes from your local agent (Claude Code,
-Codex, OpenCode) before they happen, so violations surface immediately
-instead of at commit time. The pre-commit hook is the safety net for any
-edit — human or agent — that slipped past the agent hook.
+For annotations, the agent hook runs `amikalyze` on each file write the
+agent attempts (Claude Code, Codex, OpenCode), blocking the write if it
+hits a frozen symbol and surfacing prompts inline. `amikalyze` is fast
+enough to gate every write — unlike sandboxed checks, which run after
+the agent's turn ends.
+
+The pre-commit hook is the safety net for any edit — human or agent —
+that slipped past the agent hook.
 
 ## Where annotations are enforced
 

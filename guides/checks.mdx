@@ -16,8 +16,8 @@ and optionally commit fixes back to the branch. Each check is just a file —
 a shell script, a Node program, a Python tool — that you drop into
 `.amika/checks/` at the root of your repo.
 
-Checks are designed to compose like UNIX tools, not configure like a CI
-YAML. If you can write a script, you can write a check.
+Checks are designed to compose like UNIX tools, not be configured like a
+CI YAML. If you can write a script, you can write a check.
 
 ## How checks run
 
@@ -47,7 +47,8 @@ log output, or attach artifacts. Anything you run from your terminal is
 
 Create a `.amika/checks/` directory at the root of your repo and drop an
 executable file inside it. Anything with the executable bit set is treated
-as a check.
+as a check; non-executable files (such as the sibling `config.toml`) are
+ignored.
 
 ```bash
 mkdir -p .amika/checks
@@ -164,9 +165,9 @@ The PR check runner has two hard rules:
 
 <Warning>
 Checks **do not run on PRs from forks**, and **do not run for users
-outside your Amika org**. This is non-negotiable — a check that runs
-arbitrary code from an untrusted contributor would be a remote code
-execution vector.
+outside your Amika org**. A check that runs arbitrary code from an
+untrusted contributor would be a remote code execution vector, so the
+runner refuses these by default.
 </Warning>
 
 If you need to run checks against contributions from outside your org, run
