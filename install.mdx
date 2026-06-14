@@ -62,6 +62,26 @@ make build-cli
 # Binary is at dist/amika
 ```
 
+## amikalog
+
+[amikalog](/guides/capture-agent-sessions) is a separate, independently
+versioned CLI that captures your Claude Code and Codex sessions. Install it
+with the same script by passing `--component amikalog`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install.sh | sh -s -- --component amikalog
+```
+
+Pin a version with `--install-version` (amikalog releases under tags of the
+form `amikalog@v*`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install.sh | sh -s -- --component amikalog --install-version 0.1.0
+```
+
+To build from source instead, run `make build-amikalog` — the binary lands at
+`dist/amikalog`.
+
 ## SDKs
 
 The TypeScript SDK is available now:
