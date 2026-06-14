@@ -133,17 +133,12 @@ amikalog beta:push          # upload not-yet-pushed events
 amikalog beta:fetch <dir>   # download the org bucket into <dir>
 ```
 
-`beta:push` uploads each session file under the object key
-`<repo>/<source>/sessions/<ts>_<session-id>.jsonl`. `<repo>` is the lowercased
-**basename** of the session's `git.repo_root`, sanitized so path separators and
-a few reserved characters become `-`, and falls back to `unknown-repo` when no
-event carries git context — so a repo at `/work/acme/API` lands under `api/...`.
-Pushed files are tracked by size, so repeated runs re-upload only sessions that
-grew new events, and re-pushing is idempotent.
+`beta:push` uploads your not-yet-pushed events to the org bucket. Pushed files
+are tracked by size, so repeated runs re-upload only sessions that grew new
+events, and re-pushing is idempotent.
 
-`beta:fetch` downloads every object in the org bucket into a local directory,
-recreating the bucket's key tree on disk — your whole org's sessions as
-ordinary files.
+`beta:fetch` downloads the org bucket into a local directory — your whole org's
+sessions as ordinary files.
 
 <Warning>
 `beta:push` uploads message contents, tool arguments, file paths, and commit
