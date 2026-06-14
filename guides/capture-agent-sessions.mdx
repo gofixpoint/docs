@@ -49,6 +49,14 @@ The hooks are global: they fire in every repository. Capture is best-effort —
 a failure to record is reported on stderr but never blocks the agent or alters
 its behavior.
 
+<Note>
+**Codex requires trusting the hooks before they run.** On first run Codex marks
+newly added hooks for review and skips them until trusted, printing a warning
+that points you to its `/hooks` command — review and trust the amikalog hook
+there, and Codex sessions start producing events. Claude Code needs no such
+step.
+</Note>
+
 <Warning>
 Sessions started before `amikalog start` are not captured. Only sessions that
 begin after capture is on produce a record.
@@ -70,8 +78,10 @@ directory tree on your own disk. Each event carries the raw hook payload plus
 the git state it fired in — repository, commit, branch, and whether the tree
 was dirty.
 
-Events are written under the amika state directory (`~/.local/state/amika` by
-default; override with `AMIKA_STATE_DIRECTORY`):
+Events are written under the amika state directory, resolved in order:
+`AMIKA_STATE_DIRECTORY` if set, otherwise `$XDG_STATE_HOME/amika`, otherwise
+`~/.local/state/amika`. `amikalog start` prints the resolved paths. Events land
+at:
 
 ```
 <state>/events/{claude,codex}/sessions/<ts>_<session-id>.jsonl
@@ -160,7 +170,7 @@ the source code your agents read.
 
 | Variable                | Purpose                                                       |
 | ----------------------- | ------------------------------------------------------------- |
-| `AMIKA_STATE_DIRECTORY` | Override the state directory (default `~/.local/state/amika`) |
+| `AMIKA_STATE_DIRECTORY` | Override the state directory (else `$XDG_STATE_HOME/amika`, then `~/.local/state/amika`) |
 | `AMIKA_API_KEY`         | Org API key for `beta:push` / `beta:fetch`                    |
 | `AMIKA_API_URL`         | Override the API base URL (default `https://app.amika.dev`)   |
 | `CODEX_HOME`            | Override the Codex config directory (default `~/.codex`)      |
