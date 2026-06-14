@@ -1,198 +1,183 @@
 ---
 title: "Capture agent sessions"
-description: "Record every agent session as a queryable timeline of messages, tool calls, file edits, commits, and cost."
+description: "Capture every Claude Code and Codex session as append-only event files on disk with amikalog."
 ---
 
 import ResearchPreview from "/snippets/research-preview.mdx";
 
 <ResearchPreview />
 
-**Session capture** records an agent run as a structured, queryable
-[session](/guides/manage-sessions) — every message, tool call, file edit,
-and git commit, along with the model used, token counts, and dollar cost.
+[amikalog](https://github.com/gofixpoint/amika#amikalog) is an open-source CLI
+that captures every Claude Code and Codex session as plain, append-only files
+on disk. Your past agent work becomes data that future agents, scripts, and
+pipelines can read, search, and build on. It ships from the `amika` repo but is
+a standalone tool — you can use it on its own.
 
-It works wherever your agents run:
+## Install
 
-- **Locally**, against the normal `claude` and `codex` CLIs you already use.
-  Run `amikalog init` once and new sessions are captured as they run — no
-  change to how you invoke the agent.
-- **On an Amika sandbox**, capture is pre-installed and enabled by default,
-  so anything you drive is instrumented automatically — the Claude or Codex
-  CLI on the sandbox, chatting in the web UI, or [programmatically messaging
-  an agent](/guides/send-a-message-to-an-agent).
+amikalog is versioned and installed independently of the `amika` CLI. Pass
+`--component amikalog` to the [install script](/install):
 
-Capture is agent-agnostic: the agent is just an attribute of the session.
-Claude, Codex, and OpenCode sessions show up side by side in the same list
-and timeline views.
+```bash
+curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install.sh | sh -s -- --component amikalog
+```
 
-Once captured, sessions become useful in three ways:
+Pin a version with `--install-version` (amikalog releases under tags of the
+form `amikalog@v*`), or build from source with `make build-amikalog`.
 
-- **Cost and analytics.** See what your agents did and at what cost — sliced by user, repo, agent, or model.
-- **Memory.** Search past work to recall how a similar problem was solved, what was decided, and which files were touched.
-- **Mining.** Background jobs read past sessions to file follow-up tickets, encode user corrections into durable rules, and start parallel work.
+## Turn on capture
+
+Enable capture once, globally:
+
+```bash
+amikalog start
+```
+
+That's it. Use Claude Code and Codex exactly as before — every session is now
+recorded. amikalog rides the agents' own hook systems, so there is no daemon,
+no proxy, and no change to how you invoke the agent.
+
+`amikalog start` idempotently installs hook entries into:
+
+- `~/.claude/settings.json` — one entry per Claude Code agent-activity hook
+  event (tool use, prompts, permissions, subagents, tasks, turns, context
+  compaction, and session lifecycle).
+- `~/.codex/hooks.json` — one entry per Codex lifecycle event (honors
+  `$CODEX_HOME`).
+
+The hooks are global: they fire in every repository. Capture is best-effort —
+a failure to record is reported on stderr but never blocks the agent or alters
+its behavior.
+
+<Note>
+**Codex requires trusting the hooks before they run.** On first run Codex marks
+newly added hooks for review and skips them until trusted, printing a warning
+that points you to its `/hooks` command — review and trust the amikalog hook
+there, and Codex sessions start producing events. Claude Code needs no such
+step.
+</Note>
+
+<Warning>
+Sessions started before `amikalog start` are not captured. Only sessions that
+begin after capture is on produce a record.
+</Warning>
+
+To turn capture off, run:
+
+```bash
+amikalog stop
+```
+
+`stop` removes only the hooks amikalog installed; unrelated hooks and
+already-captured events are left alone.
 
 ## What gets captured
 
-For each session, capture records:
+amikalog records every session as append-only JSON events under a predictable
+directory tree on your own disk. Each event carries the raw hook payload plus
+the git state it fired in — repository, commit, branch, and whether the tree
+was dirty.
 
-- **Messages** — every turn, in order, with the author (which user sent it) and the source (web, Slack, or API).
-- **Model and usage** — model name and version, input / output / cache-read / cache-write tokens, and dollar cost per message and per session.
-- **Tool calls** — tool name, argument summary, outcome, and duration.
-- **File changes** — repository, path, and change kind for every file the agent touched.
-- **Git commits** — hash, branch, commit message, and the turn that produced each commit.
-- **Environment** — agent CLI version, sandbox identifier, and the system prompt and rules in effect at run time.
+Events are written under the amika state directory, resolved in order:
+`AMIKA_STATE_DIRECTORY` if set, otherwise `$XDG_STATE_HOME/amika`, otherwise
+`~/.local/state/amika`. `amikalog start` prints the resolved paths. Events land
+at:
 
-These items share one ordered timeline. You can scrub through a session and
-see, inline, the tool calls and file edits each message produced.
-
-## Set up capture
-
-Capture is split across two CLIs, both included in the standard
-[`amika` install](/install) — there is nothing extra to download:
-
-- **`amikalog`** — one-time setup on each machine where you want capture to run.
-- **`amika sessions ...`** — list, fetch, and work with captured data (covered below).
-
-Once you've initialized, check capture status at any time with:
-
-```bash
-amikalog status
+```
+<state>/events/{claude,codex}/sessions/<ts>_<session-id>.jsonl
 ```
 
-### On your local machine
+Each session is a single append-only [JSONL](https://jsonlines.org/) file —
+one JSON event per line, and earlier lines are never modified. The files are
+ordinary text you can `grep`, `jq`, sync, or load into a database. Each line
+records:
 
-Initialize once:
+| Field        | Description                                                              |
+| ------------ | ------------------------------------------------------------------------ |
+| `source`     | The agent that fired the hook (`claude` or `codex`)                      |
+| `hook_event` | The hook's event name (e.g. `PostToolUse`)                               |
+| `session_id` | The agent session the event belongs to                                   |
+| `timestamp`  | Capture time (RFC3339 with nanoseconds, UTC)                             |
+| `seq`        | The event's position within its session, starting at 0                   |
+| `cwd`        | The working directory the hook reported                                  |
+| `git`        | Git state of `cwd` (`repo_root`, `commit`, `branch`, `dirty`), or `null` |
+| `payload`    | The raw hook payload exactly as the agent provided it                    |
+
+For example, pull every `PostToolUse` event a session recorded:
 
 ```bash
-amikalog init
+jq 'select(.hook_event == "PostToolUse")' \
+  ~/.local/state/amika/events/claude/sessions/*_3f2a....jsonl
 ```
 
-`init` detects the agent CLIs already on your machine (Claude Code, Codex,
-OpenCode) and wraps each so that new sessions are captured as they run. It
-also picks up the `amika sandbox agent-send` command if you use it.
+## Why capture
+
+Local capture is just JSON on disk, so you can close the loop with whatever you
+already have — `jq`, a script, a cron job, or your agent's own file tools. Past
+sessions feed forward into future runs:
+
+- **Memory** — have a new session read past sessions' event logs in the same
+  repo, so agents stop rediscovering the same context.
+- **Guardrails** — mine past sessions for the rules your team keeps learning
+  the hard way and write them into the instruction files (`CLAUDE.md`,
+  `AGENTS.md`) that future runs load.
+- **Evals** — each session is the full sequence of what an agent actually did,
+  pinned to the exact commit it ran on. Real sessions make the best test cases.
+
+Claude Code and Codex events share one schema, so anything you build on top
+works across agents.
+
+## Share sessions with your org
+
+<Info>
+Org sync is in beta.
+</Info>
+
+Local capture works entirely offline. To pool your org's sessions in one
+place, two beta commands sync the event log with a storage bucket that the
+hosted Amika platform manages for your organization. Both authenticate with an
+org API key set in `AMIKA_API_KEY`:
+
+```bash
+amikalog beta:push          # upload not-yet-pushed events
+amikalog beta:fetch <dir>   # download the org bucket into <dir>
+```
+
+`beta:push` uploads your not-yet-pushed events to the org bucket. Pushed files
+are tracked by size, so repeated runs re-upload only sessions that grew new
+events, and re-pushing is idempotent.
+
+`beta:fetch` downloads the org bucket into a local directory — your whole org's
+sessions as ordinary files.
 
 <Warning>
-**Sessions started before `amikalog init` are not retroactively captured.**
-Only sessions that begin after init produce a record.
+`beta:push` uploads message contents, tool arguments, file paths, and commit
+messages to Amika's servers. Treat captured transcripts the same way you treat
+the source code your agents read.
 </Warning>
 
-To stop capturing on this machine:
+## Command reference
 
-```bash
-amikalog disable
-```
+| Command                     | Description                                                   |
+| --------------------------- | ------------------------------------------------------------- |
+| `amikalog start`            | Register the amikalog hooks with Claude Code and Codex        |
+| `amikalog stop`             | Remove the hooks (already-captured events are kept)           |
+| `amikalog beta:push`        | Upload not-yet-pushed events to your org's storage bucket     |
+| `amikalog beta:fetch <dir>` | Download the entire org storage bucket into a local directory |
+| `amikalog version`          | Print version information                                     |
 
-### On an Amika sandbox
+## Environment variables
 
-Sandboxes have `amikalog` pre-installed and capture enabled by default,
-configured to use the Amika sink (covered below). To turn it off for a
-sandbox, set `capture.enabled = false` in its `.amika/config.toml`:
-
-```toml
-[capture]
-enabled = false
-```
-
-## Where sessions are stored
-
-Capture supports two sinks. Pick one at `init` time; switch later with
-`amikalog config sink local` or `amikalog config sink amika`. Switching
-redirects new events — existing data stays where it was written.
-
-### Local files (default)
-
-`amikalog` writes one JSONL file per session to
-`~/.local/share/amikalog/sessions/`. Each line is a single event with an
-`event_type` of `message`, `tool_call`, `file_change`, or `commit`. This
-sink is free, works offline, and is easy to grep:
-
-```bash
-# Find every commit a session produced
-jq 'select(.event_type == "commit")' \
-  ~/.local/share/amikalog/sessions/3f2a....jsonl
-```
-
-Cost and token counts are captured in every event, so you can compute spend
-locally with `jq`. The aggregated **cost dashboard** in the web UI is only
-available with the Amika sink.
-
-Local-sink sessions are only visible to `amika sessions` commands run on
-the same machine. They do not appear in the web UI, and other people in
-your organization cannot see them.
-
-### Stream to Amika
-
-Sign in with [`amika auth login`](/reference/auth), then configure the sink
-to stream to Amika:
-
-```bash
-amikalog config sink amika
-```
-
-Events stream to Amika's hosted storage as they're produced. Streamed
-sessions are reachable from any machine you sign in on, and are visible to
-other members of your organization who have access to the same sandbox.
-
-<Warning>
-The Amika sink uploads message contents, tool arguments, file paths, and
-commit messages to Amika's servers. Treat captured transcripts the same
-way you treat the source code your agents read — anything that ends up in
-a prompt or a file diff ends up in the stored session.
-</Warning>
-
-## View and use captured sessions
-
-### In the web UI
-
-When you stream to Amika, a **session browser** appears in
-[app.amika.dev](https://app.amika.dev) under **Sessions**:
-
-- **List view** — every session with its title, agent, repo and branch, status, cost, commit and file counts, participants, and timestamps. Filter by repo, agent, user, date, or cost.
-- **Timeline view** — the event stream for a single session. Messages, tool calls, file changes, and commits inline in order. Each commit links to its diff or PR; each turn shows its own cost.
-- **Cost dashboard** — spend by organization, user, repo, agent, and model over time.
-
-### From the CLI
-
-List recent sessions (reads from the configured sink):
-
-```bash
-amika sessions list
-```
-
-Pull a session locally — its messages, events, file changes, and commits
-— to a directory you choose:
-
-```bash
-amika sessions fetch 3f2a... ./past-session
-```
-
-These are written as ordinary files that the agent can read, reason over, and
-edit like any other file tree.
-
-You can run `amika sessions fetch` inside a sandbox, or if you run it on your
-local machine, you can mount the fetched sessions into the sandbox:
-
-```bash
-amika sandbox create --name review-box \
-  --mount ./past-session:/sessions/auth-refactor
-```
-
-### From an agent
-
-Soon, we will expose search and session-detail tools over MCP and the CLI, so an
-agent or background job can query prior sessions as part of its own run.
-
-## Multi-user sessions
-
-A single session can have more than one author. When two people drive the
-same sandbox — for example, one from the web UI and one from Slack —
-capture records who sent each message and which surface it came from. The
-session itself stays a single record, but the per-message attribution lets
-you slice cost and activity by user even when a sandbox is shared.
+| Variable                | Purpose                                                       |
+| ----------------------- | ------------------------------------------------------------- |
+| `AMIKA_STATE_DIRECTORY` | Override the state directory (else `$XDG_STATE_HOME/amika`, then `~/.local/state/amika`) |
+| `AMIKA_API_KEY`         | Org API key for `beta:push` / `beta:fetch`                    |
+| `AMIKA_API_URL`         | Override the API base URL (default `https://app.amika.dev`)   |
+| `CODEX_HOME`            | Override the Codex config directory (default `~/.codex`)      |
 
 ## Next steps
 
 <CardGroup>
   <Card title="Send a message to an agent" href="/guides/send-a-message-to-an-agent" icon="paper-plane" />
-  <Card title="Manage sessions" href="/guides/manage-sessions" icon="clock-rotate-left" />
+  <Card title="amikalog on GitHub" href="https://github.com/gofixpoint/amika#amikalog" icon="github" />
 </CardGroup>
