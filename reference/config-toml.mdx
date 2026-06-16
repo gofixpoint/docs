@@ -30,16 +30,29 @@ size = "m"
 
 ## Sections
 
-- [`[lifecycle]`](#lifecycle) — setup script that runs before the container command
+- [`[lifecycle]`](#lifecycle) — setup and start scripts
 - [`[env]`](#env) — environment variables and secret references
 - [`[services.<name>]`](#services) — named services with port bindings and URL schemes
-- [`[sandbox]`](#sandbox) — default sandbox preset and size
+- [`[sandbox]`](#sandbox) — default sandbox preset, size, and snapshot
+- [`[filesystem]`](#filesystem) — additional repos to clone alongside the primary repo
+- [`[agent_credentials]`](#agent-credentials) — per-agent credential defaults
+- [`[workflow]`](#workflow) — multi-step agent workflows
+
+<Note>
+The open-source `amika` CLI parses only `[lifecycle].setup_script` and `[services.<name>]`. The remaining sections are applied by the hosted platform when a sandbox is created from a repository.
+</Note>
 
 ---
 
 ## `[lifecycle]`
 
-Controls sandbox initialization.
+Controls sandbox initialization. Both keys are optional; a repository can define only setup, only start, or both.
+
+```toml
+[lifecycle]
+setup_script = "scripts/setup.sh"
+start_script = "scripts/start.sh"
+```
 
 ### `setup_script`
 
@@ -49,14 +62,9 @@ Controls sandbox initialization.
 | **Required** | No |
 | **Default** | Built-in no-op script (`exit 0`) |
 
-Path to an executable script that is mounted into the container at `/usr/local/etc/amikad/setup/setup.sh` and run before the container command starts.
+Path to an executable script that is mounted into the container at `/usr/local/etc/amikad/setup/setup.sh` and run once before the container command starts.
 
 Relative paths are resolved from the repository root (the directory containing `.git`). Absolute paths are used as-is.
-
-```toml
-[lifecycle]
-setup_script = "scripts/setup.sh"
-```
 
 **Requirements:**
 - Must be executable (`chmod +x`).
@@ -64,6 +72,20 @@ setup_script = "scripts/setup.sh"
 - Runs with the working directory set to `$AMIKA_AGENT_CWD`.
 
 **CLI override:** `--setup-script` on `amika sandbox create` takes priority over this value.
+
+### `start_script`
+
+| | |
+| --- | --- |
+| **Type** | String (file path) |
+| **Required** | No |
+| **Default** | Built-in no-op script (`exit 0`) |
+
+Path to an executable script mounted at `/usr/local/etc/amikad/setup/start.sh`. Unlike `setup_script`, it runs on **every** sandbox start: after `setup_script` on the initial create, and again each time a stopped sandbox is started.
+
+Use it for steps that must repeat on every boot — starting a long-running dev server, re-opening a tunnel — rather than one-time provisioning, which belongs in `setup_script`. Relative paths resolve from the repository root. The same executability and exit-code requirements as `setup_script` apply.
+
+This key is applied by the hosted platform. The open-source CLI does not run a start script.
 
 ---
 
@@ -252,7 +274,7 @@ See [Presets](/reference/presets) for full details on what each preset includes.
 | **Type** | String |
 | **Required** | No |
 | **Default** | `"m"` |
-| **Values** | `"xs"`, `"m"` |
+| **Values** | `"xs"`, `"m"`, `"l"`, `"xl"` |
 
 The resource allocation size for sandboxes created from this repository.
 
@@ -262,9 +284,139 @@ preset = "coder-dind"
 size = "m"
 ```
 
+### `snapshot`
+
+| | |
+| --- | --- |
+| **Type** | String |
+| **Required** | No |
+| **Default** | None |
+
+The friendly label of a snapshot captured for this repository (for example `custom-snapshot`), **not** the org-qualified Daytona name. Amika maps the label to the full snapshot for your org at creation time, keeping the config portable across orgs.
+
+```toml
+[sandbox]
+snapshot = "custom-snapshot"
+```
+
+When a sandbox is created, the snapshot layer order is: an explicit `snapshot` in the API request, then this repository default, then a repository custom image, then the preset/size default. If the named snapshot is missing or no longer owned by your org, Amika logs a warning and falls through to the preset/size path rather than failing the create.
+
 ### Merge semantics
 
-Preset and size are resolved independently. Database values (saved via the web UI) override TOML values.
+Preset, size, and snapshot are resolved independently. Database values (saved via the web UI) override TOML values. There is no built-in repository default for any of the three — when none is configured, the Create Sandbox dialog applies its own UI defaults.
+
+---
+
+## `[filesystem]`
+
+Declares extra repositories to clone into the sandbox alongside the primary repo.
+
+### `repos`
+
+| | |
+| --- | --- |
+| **Type** | Array of strings (GitHub repo URLs) |
+| **Required** | No |
+| **Default** | Empty (only the primary repo is cloned) |
+
+```toml
+[filesystem]
+repos = [
+  "https://github.com/gofixpoint/amika",
+  "https://github.com/gofixpoint/amika-mono",
+]
+```
+
+Each repo is cloned at its default branch into `~/workspace/<repo-name>`. The primary repo (the one this config lives in) is inferred automatically and need not be listed; if listed, it is deduped.
+
+### Validation and resolution
+
+| Rule | Detail |
+| --- | --- |
+| **URL form** | Must be a GitHub `owner/repo` URL. Non-GitHub URLs and page URLs (`/tree/main`, query strings) are dropped. |
+| **Name collisions** | Two repos with the same basename would share `~/workspace/<name>`; the first seen wins and the rest are dropped. |
+| **Access** | Each repo passes the same per-user GitHub access check as the primary. An inaccessible repo fails the create with `github_repo_not_accessible`. |
+
+**Merge semantics:** DB-wins-all. If additional repos are saved via the Edit Repository UI, that list is used exclusively and the TOML list is ignored.
+
+<Note>
+Additional repos are cloned during the hosted-platform initialization phase. Providers without that phase (for example local Docker) clone only the primary repo and log that the extras were skipped.
+</Note>
+
+---
+
+## `[agent_credentials]`
+
+Pins which credential each agent uses by default for sandboxes created from this repository. This dimension lives only in TOML — there is no database layer.
+
+```toml
+[agent_credentials]
+claude = { type = "api_key" }
+codex = { type = "oauth", name = "work-codex" }
+```
+
+Each key is an agent kind. Each value is an inline table:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `type` | `"api_key"` or `"oauth"` | No | The credential type to use. |
+| `name` | string | No | The name of the credential to select. |
+
+| Rule | Detail |
+| --- | --- |
+| **Agent kinds** | `claude`, `codex`. Entries for unknown kinds are ignored, so a repo may declare a default for an agent the server doesn't support yet. |
+| **Non-empty entry** | An entry must set `type`, `name`, or both. Entries with neither are dropped. |
+| **Unknown fields** | An entry with keys other than `type` and `name` is ignored. |
+
+---
+
+## `[workflow]`
+
+Defines a graph of prompt steps the agent runs in sequence, branching on each step's success or failure.
+
+```toml
+[workflow]
+default_agent = "claude"   # optional: "claude" or "codex"
+start = "implement"        # required: name of the entry step
+
+[workflow.steps.implement]
+prompt_file = ".amika/steps/implement.md"
+on_success = "verify"      # omit to mark terminal-success
+
+[workflow.steps.verify]
+prompt_file = ".amika/steps/verify.md"
+on_failure = "implement"   # omit to mark terminal-failure
+# both transitions omitted -> any outcome is terminal
+```
+
+### Top-level fields
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `start` | string (step name) | Yes | The entry step. Must reference a defined step. |
+| `default_agent` | `"claude"` or `"codex"` | No | Agent used to run the workflow. |
+| `steps` | table of `[workflow.steps.<name>]` | Yes | At least one step must be defined. |
+
+### Step fields
+
+Each `[workflow.steps.<name>]` table accepts:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `prompt_file` | string (repo-relative path) | Yes | Path to the step's prompt. |
+| `on_success` | string (step name) | No | Next step on success. Omit to mark terminal-success. |
+| `on_failure` | string (step name) | No | Next step on failure. Omit to mark terminal-failure. |
+
+### Validation rules
+
+| Rule | Detail |
+| --- | --- |
+| **Step name** | Must match `^[a-zA-Z0-9_][a-zA-Z0-9_-]{0,63}$`. |
+| **References** | `start`, `on_success`, and `on_failure` must each name a defined step. |
+| **`prompt_file`** | Must be repo-relative — no leading `/` and no `..`. Existence is checked at sandbox-create time when the repo is cloned. |
+| **At least one step** | `[workflow.steps]` must define at least one step. |
+
+If the `[workflow]` block is present but malformed, the create reports the validation error.
 
 ---
 
@@ -273,6 +425,7 @@ Preset and size are resolved independently. Database values (saved via the web U
 ```toml
 [lifecycle]
 setup_script = ".amika/setup.sh"
+start_script = ".amika/start.sh"
 
 [env]
 NODE_ENV = "development"
@@ -300,6 +453,26 @@ url_scheme = [
 [sandbox]
 preset = "coder"
 size = "m"
+snapshot = "custom-snapshot"
+
+[filesystem]
+repos = [
+  "https://github.com/gofixpoint/amika",
+]
+
+[agent_credentials]
+claude = { type = "api_key" }
+
+[workflow]
+default_agent = "claude"
+start = "implement"
+
+[workflow.steps.implement]
+prompt_file = ".amika/steps/implement.md"
+on_success = "verify"
+
+[workflow.steps.verify]
+prompt_file = ".amika/steps/verify.md"
 ```
 
 ## Related docs
