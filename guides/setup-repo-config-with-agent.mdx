@@ -13,7 +13,7 @@ In CLI:
 
 ```bash
 cd /path/to/repo
-amika sandbox create --git --no-setup
+amika sandbox create --no-setup
 ```
 
 Or, go to https://app.amika.dev/sandbox and create a sandbox for your repo, then connect to it.
@@ -103,7 +103,7 @@ List the services you discovered and the ports they use. Ask the user:
 - For each service, confirm the port and whether it should have an HTTP/HTTPS URL scheme.
 
 ### Missing runtimes
-Based on the preset's pre-installed tools (Git, curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx), identify what's missing that the setup script will need to install. For example:
+Based on the preset's pre-installed tools (Git, GitHub CLI (`gh`), curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx), identify what's missing that the setup script will need to install. For example:
 - Go (not included in any preset)
 - Rust (not included in any preset)
 - Java/JVM (not included in any preset)
@@ -178,8 +178,8 @@ set -euo pipefail
 
 # --- Phase 1: Install missing system dependencies ---
 # Check what's already installed before installing anything.
-# The preset already includes: Git, curl, zsh, build essentials,
-# Python, Node.js 22, pnpm, TypeScript, tsx.
+# The preset already includes: Git, GitHub CLI (gh), curl, zsh,
+# build essentials, Python, Node.js 22, pnpm, TypeScript, tsx.
 # Only install what's missing (e.g., Go, Rust, specific tools).
 # Run independent installs in parallel with & and wait.
 
@@ -242,9 +242,9 @@ Tell the user what secrets they need to push before creating a sandbox:
 amika secret push <SECRET_NAME>=<value>
 ```
 
-And how to create a sandbox with this config:
+And how to create a sandbox with this config (run from inside the repo; the repo is auto-detected from the current directory):
 ```bash
-amika sandbox create --git
+amika sandbox create
 ```
 
 ---
@@ -285,7 +285,7 @@ Presets are pre-built Docker images for sandboxes. Set via the `[sandbox]` secti
 
 | Preset | Image | Description | Pre-installed tools |
 |--------|-------|-------------|---------------------|
-| `coder` (default) | `amika/coder:latest` | Standard dev environment with Claude Code, Codex, and OpenCode agent CLIs | Ubuntu 24.04, Git, curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx |
+| `coder` (default) | `amika/coder:latest` | Standard dev environment with Claude Code, Codex, and OpenCode agent CLIs | Ubuntu 24.04, Git, GitHub CLI (`gh`), curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx |
 | `coder-dind` | `amika/coder-dind:latest` | Same as `coder`, plus Docker-in-Docker support for running containerized services | Same as coder + Docker |
 
 ### Setup script environment
@@ -302,17 +302,18 @@ Ports 60899–60999 are reserved for Amika internal services. Do not bind to the
 ### Sandbox creation
 
 ```bash
-# Clone current repo into a sandbox (uses preset and size from config.toml)
-amika sandbox create --git
+# Clone current repo into a sandbox (auto-detected from cwd; uses preset and size from config.toml).
+# To target a different repo, pass a path or git URL: amika sandbox create --git <path-or-url>
+amika sandbox create
 
 # Override preset at creation time
-amika sandbox create --git --preset coder-dind
+amika sandbox create --preset coder-dind
 
-# Include uncommitted/untracked files
-amika sandbox create --git --no-clean
+# Include uncommitted/untracked files (local sandboxes only)
+amika sandbox create --no-clean
 
 # Clone a specific branch
-amika sandbox create --git --branch my-branch
+amika sandbox create --branch my-branch
 
 # List running services
 amika service list
@@ -345,10 +346,10 @@ Once the agent has created your `.amika/config.toml` and setup script, you need 
 amika secret push MY_SECRET=the-value
 ```
 
-2. **Create a sandbox** to test the configuration:
+2. **Create a sandbox** to test the configuration (run from inside the repo; the repo is auto-detected):
 
 ```bash
-amika sandbox create --git
+amika sandbox create
 ```
 
 3. **Check that services started** correctly:
