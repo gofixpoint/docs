@@ -35,7 +35,7 @@ size = "m"
 - [`[services.<name>]`](#services) — named services with port bindings and URL schemes
 - [`[sandbox]`](#sandbox) — default sandbox preset, size, and snapshot
 - [`[filesystem]`](#filesystem) — additional repos to clone alongside the primary repo
-- [`[agent_credentials]`](#agent-credentials) — per-agent credential defaults
+- [`[agent_credentials]`](#agent_credentials) — per-agent credential defaults
 
 <Note>
 The open-source `amika` CLI parses only `[lifecycle].setup_script` and `[services.<name>]`. The remaining sections are applied by the hosted platform when a sandbox is created from a repository.
@@ -148,7 +148,7 @@ Environment variables are merged per-key across sources. Database entries (saved
 
 ---
 
-## `[services.<name>]` {#services}
+## `[services.<name>]`
 
 Declares named services with port bindings and optional URL schemes. Each `[services.<name>]` section defines one service. See [Services](/reference/services) for usage examples and runtime behavior.
 
@@ -344,7 +344,7 @@ Additional repos are cloned during the hosted-platform initialization phase. Pro
 
 ---
 
-## `[agent_credentials]` {#agent-credentials}
+## `[agent_credentials]`
 
 Pins which credential each agent uses by default for sandboxes created from this repository. This dimension lives only in TOML — there is no database layer.
 
