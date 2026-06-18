@@ -26,22 +26,25 @@ Repository configuration acts as a template for sandboxes. Settings can come fro
 | 3 | **`.amika/config.toml`** | Committed in the repository |
 | 4 (lowest) | **Built-in default** | Fallback when nothing else is configured |
 
-The first non-empty value wins. Each configuration dimension (setup script, env vars, services, sandbox settings) is resolved independently.
+The first non-empty value wins. Each configuration dimension (setup script, start script, env vars, services, sandbox settings, additional repos, and agent credential defaults) is resolved independently.
 
 <Tip>
 When you save a setting via the web UI, it overrides the corresponding `.amika/config.toml` value for all future sandboxes. The UI shows a notice when a value originates from the TOML file.
 </Tip>
 
-## `[lifecycle]` — Setup script
+## `[lifecycle]` — Setup and start scripts
 
-Declare a setup script that runs before the container command starts. The path is relative to the repository root.
+Declare lifecycle scripts that run at sandbox initialization. Paths are relative to the repository root.
 
 ```toml
 [lifecycle]
 setup_script = "scripts/setup.sh"
+start_script = "scripts/start.sh"
 ```
 
-The script is mounted into the container at `/usr/local/etc/amikad/setup/setup.sh` and runs with the working directory set to the agent's working directory (`$AMIKA_AGENT_CWD`).
+### `setup_script`
+
+The setup script runs once before the container command starts. It is mounted into the container at `/usr/local/etc/amikad/setup/setup.sh` and runs with the working directory set to the agent's working directory (`$AMIKA_AGENT_CWD`).
 
 **Requirements:**
 - The script must be executable (`chmod +x`).
@@ -54,6 +57,12 @@ The script is mounted into the container at `/usr/local/etc/amikad/setup/setup.s
 | `--git` only | `.amika/config.toml` (if present) |
 | `--git --setup-script ./script.sh` | `--setup-script` flag |
 | `--setup-script ./script.sh` (no `--git`) | `--setup-script` flag |
+
+### `start_script`
+
+The start script runs each time a stopped sandbox is started again — not during the initial create, where only `setup_script` runs. Use it for steps that must repeat whenever a sandbox resumes (starting a dev server, re-establishing a tunnel) rather than one-time provisioning. It is re-read on each start, so edits take effect without recreating the sandbox. It is mounted at `/usr/local/etc/amikad/setup/start.sh`.
+
+The same requirements as `setup_script` apply: the script must be executable and exit `0`. The built-in default is a no-op (`exit 0`).
 
 ## `[env]` — Environment variables
 
@@ -101,22 +110,60 @@ url_scheme = [
 
 ## `[sandbox]` — Sandbox settings
 
-Set default sandbox preset and size for the repository.
+Set default sandbox preset, size, and snapshot for the repository.
 
 ```toml
 [sandbox]
-preset = "coder"       # "coder" or "coder-dind"
-size = "m"             # "m" or "xs"
+preset = "coder"             # "coder" or "coder-dind"
+size = "m"                   # "xs", "m", "l", or "xl"
+snapshot = "custom-snapshot" # friendly snapshot label
 ```
 
 | Field | Values | Description |
 | --- | --- | --- |
 | `preset` | `coder`, `coder-dind` | Base image preset. `coder-dind` includes Docker-in-Docker support. |
-| `size` | `xs`, `m` | Sandbox resource allocation. |
+| `size` | `xs`, `m`, `l`, `xl` | Sandbox resource allocation. |
+| `snapshot` | string | Friendly label of a snapshot captured for this repository. |
 
 These values are used as defaults when creating a sandbox from this repository. They can be overridden at creation time via the web UI or API.
 
-You can also set repository-level preset and size defaults from the Edit Repository page in the web UI without committing a TOML change — those values become the "Database" layer in the resolution table above and win over any `[sandbox]` values in `.amika/config.toml`.
+`snapshot` takes the **friendly label** (for example `custom-snapshot`), not the org-qualified name. Amika resolves it to the full snapshot for your org at creation time, so the config stays portable across orgs. If the named snapshot is missing or no longer owned by your org, the create falls back to the preset/size path rather than failing.
+
+You can also set repository-level preset, size, and snapshot defaults from the Edit Repository page in the web UI without committing a TOML change — those values become the "Database" layer in the resolution table above and win over any `[sandbox]` values in `.amika/config.toml`.
+
+## `[filesystem]` — Additional repos
+
+Clone extra repositories into the sandbox alongside the primary repo.
+
+```toml
+[filesystem]
+repos = [
+  "https://github.com/gofixpoint/amika",
+  "https://github.com/gofixpoint/amika-mono",
+]
+```
+
+Each entry is a GitHub repository URL. Repos are cloned at their default branch into `~/workspace/<repo-name>`. The repo that the config lives in (the primary repo) is inferred automatically and does not need to be listed; if you list it, it is deduped.
+
+Non-GitHub URLs and URLs that aren't a bare `owner/repo` (for example links to `/tree/main`) are skipped. Each additional repo is subject to the same per-user GitHub access check as the primary repo — an inaccessible repo fails the create.
+
+**Merge semantics:** DB-wins-all. If additional repos are saved via the Edit Repository UI, that list is used exclusively and the TOML list is ignored.
+
+<Note>
+Additional repos are cloned during the hosted-platform initialization phase. Providers without that phase (for example local Docker) clone only the primary repo and log that the extras were skipped.
+</Note>
+
+## `[agent_credentials]` — Agent credential defaults
+
+Pin which credential each agent uses by default when creating a sandbox from this repository.
+
+```toml
+[agent_credentials]
+claude = { type = "api_key" }
+codex = { type = "oauth", name = "work-codex" }
+```
+
+Each key is an agent kind (`claude` or `codex`). The value is a table with optional `type` (`api_key` or `oauth`) and `name` (the credential's name). Entries for unknown agent kinds are ignored, so a repo can declare a default for an agent the server doesn't support yet. This dimension lives only in TOML — there is no database layer.
 
 ## Branch selection
 

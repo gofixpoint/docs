@@ -13,7 +13,7 @@ In CLI:
 
 ```bash
 cd /path/to/repo
-amika sandbox create --git --no-setup
+amika sandbox create --no-setup
 ```
 
 Or, go to https://app.amika.dev/sandbox and create a sandbox for your repo, then connect to it.
@@ -89,8 +89,10 @@ Explain the available sandbox presets and sizes, and recommend values:
 Recommend `coder` unless the project uses Docker Compose, runs containerized services locally, or otherwise requires Docker.
 
 **Sizes:**
-- **`m`** (default) — Medium resource allocation. Suitable for most projects.
 - **`xs`** — Extra-small resource allocation. Suitable for lightweight tasks like documentation or simple scripts.
+- **`m`** (default) — Medium resource allocation. Suitable for most projects.
+- **`l`** — Large resource allocation. For heavier builds or multiple concurrent services.
+- **`xl`** — Extra-large resource allocation. For the most demanding workloads.
 
 These values are set in the `[sandbox]` section of `.amika/config.toml` and used as defaults when creating a sandbox from this repository. They can be overridden at creation time via CLI flags or the web UI.
 
@@ -101,7 +103,7 @@ List the services you discovered and the ports they use. Ask the user:
 - For each service, confirm the port and whether it should have an HTTP/HTTPS URL scheme.
 
 ### Missing runtimes
-Based on the preset's pre-installed tools (Git, curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx), identify what's missing that the setup script will need to install. For example:
+Based on the preset's pre-installed tools (Git, GitHub CLI (`gh`), curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx), identify what's missing that the setup script will need to install. For example:
 - Go (not included in any preset)
 - Rust (not included in any preset)
 - Java/JVM (not included in any preset)
@@ -131,15 +133,16 @@ After the user confirms, create the following files:
 
 ### `.amika/config.toml`
 
-This is the main configuration file. It has four sections:
+This is the main configuration file. The sections you'll typically generate:
 
 ```toml
 [sandbox]
 preset = "coder"       # "coder" or "coder-dind"
-size = "m"             # "m" or "xs"
+size = "m"             # "xs", "m", "l", or "xl"
 
 [lifecycle]
 setup_script = ".amika/scripts/setup.sh"
+start_script = ".amika/scripts/start.sh"  # optional, runs on each restart
 
 [services.<name>]
 port = <port_number>
@@ -152,8 +155,9 @@ SECRET_VAR = { secret = "secret-name" }
 
 **Rules:**
 - `preset` selects the base image: `"coder"` (default) or `"coder-dind"` (adds Docker-in-Docker). Use `coder-dind` only if the project requires Docker.
-- `size` sets the resource allocation: `"m"` (default, medium) or `"xs"` (extra-small). Use `xs` only for lightweight tasks.
-- `setup_script` is a path relative to the repo root pointing to an executable script.
+- `size` sets the resource allocation: `"xs"`, `"m"` (default), `"l"`, or `"xl"`. Use `xs` only for lightweight tasks; reach for `l`/`xl` for heavy builds or many concurrent services.
+- `setup_script` is a path relative to the repo root pointing to an executable script that runs once when a new sandbox is created, before the agent starts.
+- `start_script` (optional) is an executable script that runs each time a stopped sandbox is started again — not on the initial create, where only `setup_script` runs. Put one-time provisioning in `setup_script`; use `start_script` for steps that must repeat whenever a sandbox resumes.
 - Services expose ports from the sandbox. Each service has a name, port, and optional `url_scheme`. Only set `url_scheme` for HTTP/HTTPS services — omit it for raw TCP services like gRPC.
 - Ports 60899–60999 are reserved by Amika — do not use them.
 - Environment variables can be plain strings or secret references. Secrets must be pushed via `amika secret push` or the Amika web UI before sandbox creation. Use `{ secret = "name" }` syntax for secrets.
@@ -174,8 +178,8 @@ set -euo pipefail
 
 # --- Phase 1: Install missing system dependencies ---
 # Check what's already installed before installing anything.
-# The preset already includes: Git, curl, zsh, build essentials,
-# Python, Node.js 22, pnpm, TypeScript, tsx.
+# The preset already includes: Git, GitHub CLI (gh), curl, zsh,
+# build essentials, Python, Node.js 22, pnpm, TypeScript, tsx.
 # Only install what's missing (e.g., Go, Rust, specific tools).
 # Run independent installs in parallel with & and wait.
 
@@ -192,6 +196,8 @@ set -euo pipefail
 # If services have startup dependencies, add brief sleeps between them.
 ```
 
+**Where to start services:** the setup script runs once, on create; the start script runs each time a stopped sandbox is restarted, but not on the initial create. Start services in the setup script so they come up on a fresh sandbox. If the project will be stopped and resumed, repeat that service startup (Phase 4) in the start script so the services come back. Keep one-time install/build steps (Phases 1–3) in the setup script only.
+
 **Best practices for setup scripts:**
 - Always check if a tool is installed before installing it (`command -v <tool> &>/dev/null`).
 - Use architecture detection to handle both amd64 and arm64.
@@ -203,24 +209,42 @@ set -euo pipefail
 - Add `mkdir -p /var/log/amika` before starting services.
 - Print clear status messages so the user can see progress.
 
+### `.amika/scripts/start.sh`
+
+Only generate this if you set `start_script` in `config.toml`. It runs each time a stopped sandbox is resumed — not on the initial create — so it must bring services back up after a restart. It has the same requirements as the setup script: executable (`chmod +x`), use `$AMIKA_AGENT_CWD` for the repo root, exit 0 on success.
+
+Because `setup_script` runs on create and `start_script` runs on resume, **service startup must happen in both**. Factor the service-startup logic (Phase 4) into a shared script that each one sources, rather than duplicating it:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Bring services back up after a resume. This sources the same helper
+# the setup script uses for Phase 4 so the two stay in sync.
+"$AMIKA_AGENT_CWD/.amika/scripts/start-services.sh"
+```
+
+Then have `setup.sh` Phase 4 call the same `start-services.sh`. Keep one-time install/build steps (Phases 1–3) in `setup.sh` only.
+
 ## Step 4: Verify the configuration
 
 After creating the files, verify:
 1. The setup script is executable (`chmod +x .amika/scripts/setup.sh`)
-2. The config.toml is valid TOML (no syntax errors)
-3. All ports in config.toml match what the setup script starts
-4. All environment variables referenced by the services are defined in the `[env]` section
-5. Secret references use the `{ secret = "name" }` syntax
-6. No ports fall in the reserved range 60899–60999
+2. If `start_script` is set in config.toml, that script exists and is executable, and any shared service-startup helper it references exists and is executable
+3. The config.toml is valid TOML (no syntax errors)
+4. All ports in config.toml match what the scripts start
+5. All environment variables referenced by the services are defined in the `[env]` section
+6. Secret references use the `{ secret = "name" }` syntax
+7. No ports fall in the reserved range 60899–60999
 
 Tell the user what secrets they need to push before creating a sandbox:
 ```bash
-amika secret push --name <secret-name> --value <value>
+amika secret push <SECRET_NAME>=<value>
 ```
 
-And how to create a sandbox with this config:
+And how to create a sandbox with this config (run from inside the repo; the repo is auto-detected from the current directory):
 ```bash
-amika sandbox create --git
+amika sandbox create
 ```
 
 ---
@@ -235,12 +259,16 @@ The file lives at `.amika/config.toml` in the repository root.
 
 **`[sandbox]`** — Default sandbox settings for the repository.
 - `preset` (string, default `"coder"`): The base image to use. Allowed values: `"coder"`, `"coder-dind"`.
-- `size` (string, default `"m"`): Resource allocation. Allowed values: `"xs"` (extra-small), `"m"` (medium).
+- `size` (string, default `"m"`): Resource allocation. Allowed values: `"xs"` (extra-small), `"m"` (medium), `"l"` (large), `"xl"` (extra-large).
 
 These values are used as defaults when creating a sandbox from this repository. They can be overridden at creation time via CLI flags or the web UI.
 
 **`[lifecycle]`** — Sandbox lifecycle hooks.
-- `setup_script` (string): Path to a setup script relative to the repo root. The script runs before the agent starts. It must be executable and exit 0 on success.
+- `setup_script` (string): Path to a setup script relative to the repo root. The script runs once before the agent starts. It must be executable and exit 0 on success.
+- `start_script` (string, optional): Path to an executable script that runs each time a stopped sandbox is restarted — not on the initial create, where only `setup_script` runs. Use it to bring services back up when a sandbox resumes.
+
+**`[filesystem]`** — Additional repos to clone alongside the primary repo.
+- `repos` (list of strings): GitHub repo URLs to clone into the sandbox at `~/workspace/<repo-name>`. The primary repo is inferred automatically and need not be listed. Only set this if the project spans multiple repositories.
 
 **`[services.<name>]`** — Named services with port mappings.
 - `port` (integer or string): Single port binding. Integer defaults to TCP. String allows protocol: `"4838/tcp"` or `"4982/udp"`.
@@ -250,6 +278,7 @@ These values are used as defaults when creating a sandbox from this repository. 
 **`[env]`** — Environment variables injected into the sandbox.
 - Plain values: `DATABASE_HOST = "localhost"`
 - Secret references: `API_KEY = { secret = "my-api-key" }` — the secret must be pushed to the remote store before sandbox creation.
+- Service references: `WEB_URL = { service = "web", field = "url" }` — injects another service's generated `url` or published `port`. `field` is `"url"` or `"port"`; `"url"` requires that service to have a `url_scheme`.
 
 ### Presets
 
@@ -257,7 +286,7 @@ Presets are pre-built Docker images for sandboxes. Set via the `[sandbox]` secti
 
 | Preset | Image | Description | Pre-installed tools |
 |--------|-------|-------------|---------------------|
-| `coder` (default) | `amika/coder:latest` | Standard dev environment with Claude Code, Codex, and OpenCode agent CLIs | Ubuntu 24.04, Git, curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx |
+| `coder` (default) | `amika/coder:latest` | Standard dev environment with Claude Code, Codex, and OpenCode agent CLIs | Ubuntu 24.04, Git, GitHub CLI (`gh`), curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx |
 | `coder-dind` | `amika/coder-dind:latest` | Same as `coder`, plus Docker-in-Docker support for running containerized services | Same as coder + Docker |
 
 ### Setup script environment
@@ -274,17 +303,18 @@ Ports 60899–60999 are reserved for Amika internal services. Do not bind to the
 ### Sandbox creation
 
 ```bash
-# Clone current repo into a sandbox (uses preset and size from config.toml)
-amika sandbox create --git
+# Clone current repo into a sandbox (auto-detected from cwd; uses preset and size from config.toml).
+# To target a different repo, pass a path or git URL: amika sandbox create --git <path-or-url>
+amika sandbox create
 
 # Override preset at creation time
-amika sandbox create --git --preset coder-dind
+amika sandbox create --preset coder-dind
 
-# Include uncommitted/untracked files
-amika sandbox create --git --no-clean
+# Include uncommitted/untracked files (local sandboxes only)
+amika sandbox create --no-clean
 
 # Clone a specific branch
-amika sandbox create --git --branch my-branch
+amika sandbox create --branch my-branch
 
 # List running services
 amika service list
@@ -293,8 +323,13 @@ amika service list
 ### Secrets
 
 ```bash
-# Push a secret (for use in config.toml { secret = "name" } references)
-amika secret push --name my-secret --value "secret-value"
+# Push a secret (for use in config.toml { secret = "name" } references).
+# The KEY is the secret name referenced from config.toml.
+amika secret push MY_SECRET=secret-value
+
+# Push multiple at once, or load from a .env file
+amika secret push API_KEY=abc DB_PASSWORD=xyz
+amika secret push --from-file=.env
 
 # Push Claude Code credentials
 amika secret claude push --type oauth
@@ -306,19 +341,25 @@ amika secret claude push --type api_key --value sk-ant-xxx
 
 Once the agent has created your `.amika/config.toml` and setup script, you need to:
 
-1. **Push any secrets** referenced in your config:
+1. **Commit the `.amika/` files** to the repository. `amika sandbox create` clones a clean copy of the committed tree by default, so uncommitted config and scripts are not picked up:
 
 ```bash
-amika secret push --name my-secret --value "the-value"
+git add .amika && git commit -m "Add Amika sandbox configuration"
 ```
 
-2. **Create a sandbox** to test the configuration:
+2. **Push any secrets** referenced in your config:
 
 ```bash
-amika sandbox create --git
+amika secret push MY_SECRET=the-value
 ```
 
-3. **Check that services started** correctly:
+3. **Create a sandbox** to test the configuration (run from inside the repo; the repo is auto-detected):
+
+```bash
+amika sandbox create
+```
+
+4. **Check that services started** correctly:
 
 ```bash
 amika service list
