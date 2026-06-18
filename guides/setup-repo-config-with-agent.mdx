@@ -142,7 +142,7 @@ size = "m"             # "xs", "m", "l", or "xl"
 
 [lifecycle]
 setup_script = ".amika/scripts/setup.sh"
-start_script = ".amika/scripts/start.sh"  # optional, runs on every start
+start_script = ".amika/scripts/start.sh"  # optional, runs on each restart
 
 [services.<name>]
 port = <port_number>
@@ -157,7 +157,7 @@ SECRET_VAR = { secret = "secret-name" }
 - `preset` selects the base image: `"coder"` (default) or `"coder-dind"` (adds Docker-in-Docker). Use `coder-dind` only if the project requires Docker.
 - `size` sets the resource allocation: `"xs"`, `"m"` (default), `"l"`, or `"xl"`. Use `xs` only for lightweight tasks; reach for `l`/`xl` for heavy builds or many concurrent services.
 - `setup_script` is a path relative to the repo root pointing to an executable script that runs once before the agent starts.
-- `start_script` (optional) is an executable script that runs on **every** sandbox start, after `setup_script` on create and again each time a stopped sandbox restarts. Put one-time provisioning in `setup_script`; put services that must come back up on every boot in `start_script`.
+- `start_script` (optional) is an executable script that runs each time a stopped sandbox is started again — not on the initial create, where only `setup_script` runs. Put one-time provisioning in `setup_script`; use `start_script` for steps that must repeat whenever a sandbox resumes.
 - Services expose ports from the sandbox. Each service has a name, port, and optional `url_scheme`. Only set `url_scheme` for HTTP/HTTPS services — omit it for raw TCP services like gRPC.
 - Ports 60899–60999 are reserved by Amika — do not use them.
 - Environment variables can be plain strings or secret references. Secrets must be pushed via `amika secret push` or the Amika web UI before sandbox creation. Use `{ secret = "name" }` syntax for secrets.
@@ -196,7 +196,7 @@ set -euo pipefail
 # If services have startup dependencies, add brief sleeps between them.
 ```
 
-**Where to start services:** if you defined a `start_script`, put service startup (Phase 4) there instead of in the setup script. The setup script runs only once at create, but the start script runs on every boot, so services started there come back up when a stopped sandbox restarts. Keep one-time install/build steps (Phases 1–3) in the setup script. If you are only generating a setup script, backgrounding services in Phase 4 is fine.
+**Where to start services:** the setup script runs once, on create; the start script runs each time a stopped sandbox is restarted, but not on the initial create. Start services in the setup script so they come up on a fresh sandbox. If the project will be stopped and resumed, repeat that service startup (Phase 4) in the start script so the services come back. Keep one-time install/build steps (Phases 1–3) in the setup script only.
 
 **Best practices for setup scripts:**
 - Always check if a tool is installed before installing it (`command -v <tool> &>/dev/null`).
@@ -247,7 +247,7 @@ These values are used as defaults when creating a sandbox from this repository. 
 
 **`[lifecycle]`** — Sandbox lifecycle hooks.
 - `setup_script` (string): Path to a setup script relative to the repo root. The script runs once before the agent starts. It must be executable and exit 0 on success.
-- `start_script` (string, optional): Path to an executable script that runs on every sandbox start — after `setup_script` on create, and again each time a stopped sandbox restarts. Use it for services that must come back up on every boot.
+- `start_script` (string, optional): Path to an executable script that runs each time a stopped sandbox is restarted — not on the initial create, where only `setup_script` runs. Use it to bring services back up when a sandbox resumes.
 
 **`[filesystem]`** — Additional repos to clone alongside the primary repo.
 - `repos` (list of strings): GitHub repo URLs to clone into the sandbox at `~/workspace/<repo-name>`. The primary repo is inferred automatically and need not be listed. Only set this if the project spans multiple repositories.

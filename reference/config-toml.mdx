@@ -80,9 +80,9 @@ Relative paths are resolved from the repository root (the directory containing `
 | **Required** | No |
 | **Default** | Built-in no-op script (`exit 0`) |
 
-Path to an executable script mounted at `/usr/local/etc/amikad/setup/start.sh`. Unlike `setup_script`, it runs on **every** sandbox start: after `setup_script` on the initial create, and again each time a stopped sandbox is started.
+Path to an executable script mounted at `/usr/local/etc/amikad/setup/start.sh`. Unlike `setup_script`, it does **not** run on the initial create — it runs each time a stopped sandbox is started again. It is re-read on each start, so edits take effect without recreating the sandbox.
 
-Use it for steps that must repeat on every boot — starting a long-running dev server, re-opening a tunnel — rather than one-time provisioning, which belongs in `setup_script`. Relative paths resolve from the repository root. The same executability and exit-code requirements as `setup_script` apply.
+Use it for steps that must repeat whenever a sandbox resumes — starting a long-running dev server, re-opening a tunnel — rather than one-time provisioning, which belongs in `setup_script`. Relative paths resolve from the repository root. The same executability and exit-code requirements as `setup_script` apply.
 
 This key is applied by the hosted platform. The open-source CLI does not run a start script.
 

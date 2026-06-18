@@ -60,7 +60,7 @@ The setup script runs once before the container command starts. It is mounted in
 
 ### `start_script`
 
-The start script runs every time the sandbox starts — including after `setup_script` on the initial create, and again on each subsequent start of a stopped sandbox. Use it for steps that must repeat on every boot (starting a dev server, re-establishing a tunnel) rather than one-time provisioning. It is mounted at `/usr/local/etc/amikad/setup/start.sh`.
+The start script runs each time a stopped sandbox is started again — not during the initial create, where only `setup_script` runs. Use it for steps that must repeat whenever a sandbox resumes (starting a dev server, re-establishing a tunnel) rather than one-time provisioning. It is re-read on each start, so edits take effect without recreating the sandbox. It is mounted at `/usr/local/etc/amikad/setup/start.sh`.
 
 The same requirements as `setup_script` apply: the script must be executable and exit `0`. The built-in default is a no-op (`exit 0`).
 
