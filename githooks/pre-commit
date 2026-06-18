@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Running pre-commit checks..."
+
+if ! command -v mint >/dev/null 2>&1; then
+    echo "warning: 'mint' CLI not found; skipping broken-links check." >&2
+    echo "  Install it with: npm i -g mint" >&2
+    exit 0
+fi
+
+mint broken-links

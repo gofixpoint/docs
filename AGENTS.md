@@ -68,6 +68,9 @@ Placement rules:
 
 ## Local workflow
 
+- Run `./setup-repo.sh` once after cloning to install the git hooks
+  (`core.hooksPath` → `githooks/`). The `pre-commit` hook runs
+  `mint broken-links`; it skips with a warning if `mint` isn't installed.
 - `mint dev` from the repo root to preview at `http://localhost:3000`
   (hot reload).
 - `mint broken-links` to validate internal links.
