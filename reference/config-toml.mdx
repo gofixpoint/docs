@@ -148,7 +148,7 @@ Environment variables are merged per-key across sources. Database entries (saved
 
 ---
 
-## `[services.<name>]`
+## `[services.<name>]` {#services}
 
 Declares named services with port bindings and optional URL schemes. Each `[services.<name>]` section defines one service. See [Services](/reference/services) for usage examples and runtime behavior.
 
@@ -344,7 +344,7 @@ Additional repos are cloned during the hosted-platform initialization phase. Pro
 
 ---
 
-## `[agent_credentials]`
+## `[agent_credentials]` {#agent-credentials}
 
 Pins which credential each agent uses by default for sandboxes created from this repository. This dimension lives only in TOML — there is no database layer.
 
