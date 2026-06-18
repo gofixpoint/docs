@@ -278,6 +278,7 @@ These values are used as defaults when creating a sandbox from this repository. 
 **`[env]`** — Environment variables injected into the sandbox.
 - Plain values: `DATABASE_HOST = "localhost"`
 - Secret references: `API_KEY = { secret = "my-api-key" }` — the secret must be pushed to the remote store before sandbox creation.
+- Service references: `WEB_URL = { service = "web", field = "url" }` — injects another service's generated `url` or published `port`. `field` is `"url"` or `"port"`; `"url"` requires that service to have a `url_scheme`.
 
 ### Presets
 
@@ -340,19 +341,25 @@ amika secret claude push --type api_key --value sk-ant-xxx
 
 Once the agent has created your `.amika/config.toml` and setup script, you need to:
 
-1. **Push any secrets** referenced in your config:
+1. **Commit the `.amika/` files** to the repository. `amika sandbox create` clones a clean copy of the committed tree by default, so uncommitted config and scripts are not picked up:
+
+```bash
+git add .amika && git commit -m "Add Amika sandbox configuration"
+```
+
+2. **Push any secrets** referenced in your config:
 
 ```bash
 amika secret push MY_SECRET=the-value
 ```
 
-2. **Create a sandbox** to test the configuration (run from inside the repo; the repo is auto-detected):
+3. **Create a sandbox** to test the configuration (run from inside the repo; the repo is auto-detected):
 
 ```bash
 amika sandbox create
 ```
 
-3. **Check that services started** correctly:
+4. **Check that services started** correctly:
 
 ```bash
 amika service list
