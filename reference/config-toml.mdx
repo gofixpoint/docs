@@ -36,7 +36,6 @@ size = "m"
 - [`[sandbox]`](#sandbox) — default sandbox preset, size, and snapshot
 - [`[filesystem]`](#filesystem) — additional repos to clone alongside the primary repo
 - [`[agent_credentials]`](#agent-credentials) — per-agent credential defaults
-- [`[workflow]`](#workflow) — multi-step agent workflows
 
 <Note>
 The open-source `amika` CLI parses only `[lifecycle].setup_script` and `[services.<name>]`. The remaining sections are applied by the hosted platform when a sandbox is created from a repository.
@@ -370,56 +369,6 @@ Each key is an agent kind. Each value is an inline table:
 
 ---
 
-## `[workflow]`
-
-Defines a graph of prompt steps the agent runs in sequence, branching on each step's success or failure.
-
-```toml
-[workflow]
-default_agent = "claude"   # optional: "claude" or "codex"
-start = "implement"        # required: name of the entry step
-
-[workflow.steps.implement]
-prompt_file = ".amika/steps/implement.md"
-on_success = "verify"      # omit to mark terminal-success
-
-[workflow.steps.verify]
-prompt_file = ".amika/steps/verify.md"
-on_failure = "implement"   # omit to mark terminal-failure
-# both transitions omitted -> any outcome is terminal
-```
-
-### Top-level fields
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `start` | string (step name) | Yes | The entry step. Must reference a defined step. |
-| `default_agent` | `"claude"` or `"codex"` | No | Agent used to run the workflow. |
-| `steps` | table of `[workflow.steps.<name>]` | Yes | At least one step must be defined. |
-
-### Step fields
-
-Each `[workflow.steps.<name>]` table accepts:
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `prompt_file` | string (repo-relative path) | Yes | Path to the step's prompt. |
-| `on_success` | string (step name) | No | Next step on success. Omit to mark terminal-success. |
-| `on_failure` | string (step name) | No | Next step on failure. Omit to mark terminal-failure. |
-
-### Validation rules
-
-| Rule | Detail |
-| --- | --- |
-| **Step name** | Must match `^[a-zA-Z0-9_][a-zA-Z0-9_-]{0,63}$`. |
-| **References** | `start`, `on_success`, and `on_failure` must each name a defined step. |
-| **`prompt_file`** | Must be repo-relative — no leading `/` and no `..`. Existence is checked at sandbox-create time when the repo is cloned. |
-| **At least one step** | `[workflow.steps]` must define at least one step. |
-
-If the `[workflow]` block is present but malformed, the create reports the validation error.
-
----
-
 ## Full example
 
 ```toml
@@ -462,17 +411,6 @@ repos = [
 
 [agent_credentials]
 claude = { type = "api_key" }
-
-[workflow]
-default_agent = "claude"
-start = "implement"
-
-[workflow.steps.implement]
-prompt_file = ".amika/steps/implement.md"
-on_success = "verify"
-
-[workflow.steps.verify]
-prompt_file = ".amika/steps/verify.md"
 ```
 
 ## Related docs

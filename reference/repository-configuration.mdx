@@ -26,7 +26,7 @@ Repository configuration acts as a template for sandboxes. Settings can come fro
 | 3 | **`.amika/config.toml`** | Committed in the repository |
 | 4 (lowest) | **Built-in default** | Fallback when nothing else is configured |
 
-The first non-empty value wins. Each configuration dimension (setup script, start script, env vars, services, sandbox settings, additional repos, agent credential defaults, and workflow) is resolved independently.
+The first non-empty value wins. Each configuration dimension (setup script, start script, env vars, services, sandbox settings, additional repos, and agent credential defaults) is resolved independently.
 
 <Tip>
 When you save a setting via the web UI, it overrides the corresponding `.amika/config.toml` value for all future sandboxes. The UI shows a notice when a value originates from the TOML file.
@@ -164,26 +164,6 @@ codex = { type = "oauth", name = "work-codex" }
 ```
 
 Each key is an agent kind (`claude` or `codex`). The value is a table with optional `type` (`api_key` or `oauth`) and `name` (the credential's name). Entries for unknown agent kinds are ignored, so a repo can declare a default for an agent the server doesn't support yet. This dimension lives only in TOML — there is no database layer.
-
-## `[workflow]` — Multi-step workflows
-
-Define a graph of prompt steps the agent runs in sequence, branching on each step's success or failure.
-
-```toml
-[workflow]
-default_agent = "claude"   # optional: "claude" or "codex"
-start = "implement"        # required: name of the entry step
-
-[workflow.steps.implement]
-prompt_file = ".amika/steps/implement.md"
-on_success = "verify"      # omit to mark terminal-success
-
-[workflow.steps.verify]
-prompt_file = ".amika/steps/verify.md"
-on_failure = "implement"   # omit to mark terminal-failure
-```
-
-`start` names the entry step and must reference a defined step. Each step points at a repo-relative `prompt_file` and optionally transitions to another step `on_success` or `on_failure`; omitting a transition makes that outcome terminal. See the [config.toml reference](/reference/config-toml#workflow) for the full field and validation list.
 
 ## Branch selection
 
