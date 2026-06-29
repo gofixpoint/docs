@@ -13,6 +13,17 @@ Snapshots are a hosted-platform feature. You capture and launch them from
 the web UI at [app.amika.dev](https://app.amika.dev).
 </Info>
 
+For a walkthrough of the whole flow, watch the demo:
+
+<iframe
+  className="w-full aspect-video rounded-xl"
+  src="https://www.youtube.com/embed/WIdizBsWXYE"
+  title="Create a snapshot in Amika"
+  frameBorder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+  allowFullScreen
+></iframe>
+
 The flow is:
 
 1. Create a base sandbox with the setup script skipped.
@@ -91,14 +102,36 @@ from the captured image instead of the preset.
 
 ### Set a repository default
 
-To boot every new sandbox for a repository from a snapshot automatically:
+Make every new sandbox for a repository boot from a snapshot by default —
+either from the web UI or in your `.amika/config.toml`.
 
-1. Go to **Repositories** and select the repository.
-2. Under **Default Snapshot**, choose your snapshot.
+<Tabs>
+<Tab title=".amika/config.toml">
+Commit the default to your [repository
+configuration](/reference/repository-configuration) so every collaborator
+shares it. Add a `[sandbox]` section to `.amika/config.toml`:
 
-New sandboxes for that repo now boot from it by default. The repository's
-**Sandbox Snapshots** table on the same page lists every snapshot captured
-for the repo.
+```toml
+[sandbox]
+snapshot = "example-repo-base"
+```
+</Tab>
+<Tab title="Web UI">
+1. Go to **Repositories**: https://app.amika.dev/repositories
+2. Click the repo you're configuring.
+3. Under **Default Snapshot**, choose your snapshot.
+
+The repository's **Sandbox Snapshots** table on the same page lists every
+snapshot captured for the repo.
+</Tab>
+</Tabs>
+
+<Note>
+A default set in the web UI (stored in the database) takes precedence over
+the `[sandbox]` value in `.amika/config.toml`. See the
+[`[sandbox]` reference](/reference/config-toml#sandbox) for the full
+resolution order.
+</Note>
 
 ## Next steps
 
