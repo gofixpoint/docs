@@ -48,6 +48,7 @@
             "pages": [
               "guides/create-a-sandbox",
               "guides/sandbox-lifecycle",
+              "guides/create-a-snapshot",
               "guides/ssh-and-connect"
             ]
           },
