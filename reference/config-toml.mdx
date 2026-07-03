@@ -120,12 +120,14 @@ Secrets must be pushed before sandbox creation via `amika secret push` or the we
 ```toml
 [env]
 WEB_URL = { service = "web", field = "url" }
+WEB_HOST = { service = "web", field = "host" }
 WEB_PORT = { service = "web", field = "port" }
 ```
 
 The `service` field references a service declared in the same file's `[services.<name>]` section. The `field` selects which attribute to inject:
 
 - `"url"` — the public URL of the service (e.g. `https://<sandbox>.preview.amika.dev`). Requires the service to have a `url_scheme`.
+- `"host"` — the hostname of that public URL (e.g. `<sandbox>.preview.amika.dev`), with no scheme, port, or path. Like `"url"`, requires the service to have a `url_scheme`.
 - `"port"` — the host-side port (inside the sandbox) the service is exposed on.
 
 Service references are resolved during sandbox initialization and written to the sandbox environment. They're useful when one service needs to reach another by URL.
@@ -138,7 +140,7 @@ Service references are resolved during sandbox initialization and written to the
 | **Value type** | String, `{ secret = "..." }` table, or `{ service = "...", field = "..." }` table |
 | **Secret name** | Must be a non-empty string |
 | **Service name** | Must match a service declared in `[services.<name>]` |
-| **Service field** | Must be `"url"` or `"port"` |
+| **Service field** | Must be `"url"`, `"host"`, or `"port"` |
 
 If validation fails, the `[env]` section is skipped and a warning is logged. Other sections are still applied.
 

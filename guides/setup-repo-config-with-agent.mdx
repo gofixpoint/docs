@@ -278,7 +278,7 @@ These values are used as defaults when creating a sandbox from this repository. 
 **`[env]`** — Environment variables injected into the sandbox.
 - Plain values: `DATABASE_HOST = "localhost"`
 - Secret references: `API_KEY = { secret = "my-api-key" }` — the secret must be pushed to the remote store before sandbox creation.
-- Service references: `WEB_URL = { service = "web", field = "url" }` — injects another service's generated `url` or published `port`. `field` is `"url"` or `"port"`; `"url"` requires that service to have a `url_scheme`.
+- Service references: `WEB_URL = { service = "web", field = "url" }` — injects another service's generated `url`, its `host`, or published `port`. `field` is `"url"`, `"host"`, or `"port"`; `"url"` and `"host"` require that service to have a `url_scheme`.
 
 ### Presets
 
