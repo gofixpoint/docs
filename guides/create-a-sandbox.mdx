@@ -68,6 +68,23 @@ const sb = await amika.createSandbox({
 
 </CodeGroup>
 
+### How the CLI picks a repo
+
+- Run `amika sandbox create` **from inside a git repo** and that repo is used
+  automatically — no flag needed.
+- **Outside a repo** (or to target a different one), pass `--git <path-or-URL>`.
+  The value accepts a local path or a git URL (HTTPS or SSH).
+- Pass `--no-git` to skip auto-detection and create a **repo-less sandbox** — a
+  sandbox with no repository mounted. This is useful for scratch environments or
+  when you clone repos yourself after connecting.
+
+<Note>
+A repo-less sandbox still boots a full environment; it just starts without a
+checked-out repository. Configuration for multi-repo and repo-less sandboxes is
+covered in the [Repository configuration](/reference/repository-configuration)
+guide.
+</Note>
+
 ## Step 2 — Wait until it's ready
 
 A new sandbox starts in state `initializing` and transitions to `active` /

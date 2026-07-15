@@ -9,8 +9,10 @@ tools, and environment already in place — no waiting on a fresh install
 each time.
 
 <Info>
-Snapshots are a hosted-platform feature. You capture and launch them from
-the web UI at [app.amika.dev](https://app.amika.dev).
+Snapshots are a hosted-cloud feature. You can create them from the CLI, the
+web UI, or the HTTP API. Creating snapshots programmatically (CLI or HTTP API)
+works only against the hosted cloud — it is **not** available in local
+open-source mode.
 </Info>
 
 For a walkthrough of the whole flow, watch the demo:
@@ -75,21 +77,59 @@ See [SSH and connect](/guides/ssh-and-connect) for the connection options.
 
 ## Step 3 — Take the snapshot
 
-Open the sandbox's detail page in the web UI (the sandbox must be running)
-and click **Take Snapshot**. Choose a capture mode:
+The source sandbox must be running. Choose a capture mode:
 
-| Mode | What it does |
-| --- | --- |
-| **Snapshot and delete** (recommended) | Removes Amika-injected secrets — credential files and injected environment variables — then captures the snapshot and deletes the source sandbox. |
-| **Full snapshot** | Captures everything as-is, including any secrets, and leaves the sandbox running. |
-
-Give the snapshot a name you'll recognize and confirm.
+| Mode | Value | What it does |
+| --- | --- | --- |
+| **Snapshot and delete** (recommended) | `scrub_and_delete` | Removes Amika-injected secrets — credential files and injected environment variables — then captures the snapshot and deletes the source sandbox. |
+| **Full snapshot** | `full` | Captures everything as-is, including any secrets, and leaves the source sandbox running. |
 
 <Warning>
 A **Full snapshot** captures the filesystem as-is, so any secrets present
 in the sandbox are baked into the image. Prefer **Snapshot and delete** for
 shared base images.
 </Warning>
+
+Capture the snapshot from any of these surfaces:
+
+<Tabs defaultTabIndex={0}>
+<Tab title="CLI">
+`amika snapshot create` is interactive by default: it prompts for the capture
+mode and name, and for `scrub_and_delete` it previews the injected secrets that
+will be removed and asks you to confirm.
+
+```bash
+# Interactive — prompts for mode and name
+amika snapshot create --sandbox base-box
+
+# Non-interactive — requires --mode and --name
+amika snapshot create --sandbox base-box \
+  --name example-repo-base --mode scrub_and_delete --no-interactive
+```
+
+Capture runs in the background. Check progress with `amika snapshot list`.
+</Tab>
+<Tab title="Web UI">
+Open the sandbox's detail page and click **Take Snapshot**. Pick a capture
+mode, give the snapshot a name you'll recognize, and confirm.
+</Tab>
+<Tab title="HTTP API">
+`POST /sandbox-snapshots` returns `202` immediately and captures in the
+background. Reference the source sandbox by `sandbox_name` (or `sandbox_id`).
+
+```bash
+curl -X POST https://app.amika.dev/api/v0beta1/sandbox-snapshots \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"sandbox_name":"base-box","name":"example-repo-base","mode":"scrub_and_delete"}'
+```
+</Tab>
+</Tabs>
+
+<Note>
+A TypeScript SDK method for creating snapshots is coming soon. For now, use the
+CLI or HTTP API to create snapshots programmatically.
+</Note>
 
 The snapshot moves through `capturing` → `finalizing` → `active`. Once it's
 `active` it's ready to launch from.
