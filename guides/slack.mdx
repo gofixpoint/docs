@@ -1,0 +1,91 @@
+---
+title: "Slack"
+description: "Drive sandboxed agents from Slack: install the app, set channel and workspace defaults, and start a conversation."
+---
+
+The Slack integration lets your team talk to Amika's coding agents from a Slack
+channel or DM. Mention the bot with a request and Amika spins up a sandbox for
+that thread, runs the agent, and replies in-thread. Follow-up messages in the
+same thread continue the same sandbox and session.
+
+## Prerequisites
+
+<Note>
+- A connected GitHub App so Amika can see the repositories you want agents to
+  work in. See [GitHub authentication](/guides/github-authentication).
+- Agent credentials configured for whichever agent the bot will run (Claude
+  Code, Codex, OpenCode, etc.). See [Inject credentials](/guides/inject-credentials).
+- The Slack app enabled for your organization. If the integration is not turned
+  on yet, the settings page shows "Slack app hooks are not configured for this
+  org yet" and the connect button is disabled. Contact Amika to enable it.
+</Note>
+
+## Install the Slack app
+
+1. Go to [app.amika.dev/integrations](https://app.amika.dev/integrations).
+2. In the **Slack** section, click **Connect Slack workspace**.
+3. Approve the requested permissions in Slack, then choose the workspace to
+   install into.
+
+After the OAuth flow completes, the workspace appears under **Connected Slack
+workspaces**. Click a workspace to open its settings.
+
+The app requests the scopes it needs to read mentions and channel history, post
+replies, add and remove reactions (the "eyes" acknowledgement the bot shows
+while an agent is thinking), and read your workspace name and icon.
+
+## Set workspace defaults
+
+Open a connected workspace and expand **Workspace defaults**. These are the
+org-wide fallback the bot uses in any channel that has no defaults of its own:
+
+- **Repository** — the repo agents work in.
+- **Agent** — the agent CLI used to process messages. Configure that agent's
+  credentials in the matching settings page.
+- **System prompt** — optional extra instructions passed to the agent on every
+  turn.
+
+Leave a field blank to pass no default for it.
+
+## Set channel defaults
+
+Expand **Channel defaults** on the same page to pin a repository, agent, and
+system prompt per channel. A channel appears in this list once the bot has been
+mentioned in it. Until then, mention `@amika` in the channel to populate its
+name.
+
+A channel that defines its own defaults uses them instead of showing the picker
+card when a new thread starts. Any field left as **Inherit (org default)** falls
+back to the workspace defaults above.
+
+## Start a conversation from Slack
+
+1. Invite the bot to a channel, or open a DM with it.
+2. Mention `@amika` with your request (in a channel), or just message the bot
+   directly (in a DM).
+3. The bot adds an "eyes" reaction to acknowledge the message, runs the agent,
+   and posts the result back in the thread. The reaction is removed once the
+   reply lands.
+
+How Amika picks the repository and agent for a new thread:
+
+1. **Channel defaults**, if the channel has any.
+2. **Workspace defaults**, otherwise.
+3. **The picker card** — if neither is set, the bot prompts you to choose the
+   repository and agent for the thread.
+
+Each Slack thread maps to its own sandbox. Continuing the thread continues that
+sandbox's session, so the agent keeps its context across follow-up messages.
+
+<Tip>
+Set channel or workspace defaults for the channels your team uses most so
+threads start working immediately without the picker card.
+</Tip>
+
+## Next steps
+
+<CardGroup>
+  <Card title="GitHub authentication" href="/guides/github-authentication" icon="github" />
+  <Card title="Inject credentials" href="/guides/inject-credentials" icon="key" />
+  <Card title="Manage sessions" href="/guides/manage-sessions" icon="clock-rotate-left" />
+</CardGroup>
