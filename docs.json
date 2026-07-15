@@ -53,6 +53,13 @@
             ]
           },
           {
+            "group": "Repository configuration",
+            "pages": [
+              "guides/configuration",
+              "guides/config-toml"
+            ]
+          },
+          {
             "group": "Agents and sessions",
             "pages": [
               "guides/send-a-message-to-an-agent",
@@ -70,6 +77,7 @@
           {
             "group": "Credentials",
             "pages": [
+              "guides/env-vars-and-secrets",
               "guides/manage-secrets",
               "guides/inject-credentials"
             ]

@@ -1,0 +1,141 @@
+---
+title: "How configuration works"
+description: "How a repository configures its sandboxes, and how Amika resolves settings across sources."
+---
+
+A sandbox needs to know what image to boot, what to install, what services to
+expose, and which secrets to inject. Amika reads that from **repository
+configuration** — a `.amika/config.toml` file committed at the root of your repo.
+When a sandbox is created from the repo, Amika reads the file and applies the
+settings automatically, so every collaborator gets the same environment without
+passing extra flags.
+
+```
+<repo-root>/
+  .amika/
+    config.toml
+```
+
+This guide explains how configuration reaches a sandbox: where it can come from,
+how Amika resolves conflicts, and how it behaves for multi-repo and repo-less
+sandboxes. For the full field-by-field spec, see
+[config.toml reference](/guides/config-toml).
+
+## What a repo config controls
+
+`.amika/config.toml` is a template for the sandboxes created from a repository.
+Each section maps to one dimension of the sandbox:
+
+- **`[lifecycle]`** — setup and start scripts that provision the environment.
+- **`[env]`** — environment variables and secret references.
+- **`[services.<name>]`** — named services with port bindings and public URLs.
+- **`[sandbox]`** — the default preset, size, and boot snapshot.
+- **`[filesystem]`** — additional repos to clone alongside the primary one.
+- **`[agent_credentials]`** — which stored credential each agent uses by default.
+
+Because the file lives in the repo, it is versioned with your code and easy for
+a coding agent to read and edit. That makes it the **recommended** place to
+declare sandbox settings.
+
+## How configuration is applied
+
+The same setting can be declared in more than one place. Amika resolves each
+setting independently, taking the first non-empty value in this order:
+
+| Priority | Source | Where it comes from |
+| --- | --- | --- |
+| 1 (highest) | **API request / CLI flags** | Values passed at sandbox creation time |
+| 2 | **Database** | Values saved through the web UI |
+| 3 | **`.amika/config.toml`** | Committed in the repository |
+| 4 (lowest) | **Built-in default** | Fallback when nothing else is set |
+
+Resolution is per-dimension: a preset from a CLI flag, env vars from the TOML,
+and a size from a UI setting can all apply to the same sandbox at once. A value
+saved through the web UI becomes the "Database" layer and overrides the
+corresponding `.amika/config.toml` value for all future sandboxes; the UI shows
+a notice when a value originates from the TOML file.
+
+<Tip>
+Prefer `.amika/config.toml` as your source of truth. It is versioned with your
+code, reviewable in pull requests, and easy for coding agents to edit — unlike
+UI or per-request settings, which live outside the repo. Reserve CLI flags and
+the UI for one-off overrides.
+</Tip>
+
+### Setting a value across surfaces
+
+Setting the sandbox preset is a good example — you can declare it once in the
+repo, override it per sandbox from the CLI, or set a repository default in the
+UI. All three feed the resolution table above.
+
+<Tabs defaultTabIndex={0}>
+  <Tab title=".amika/config.toml">
+    Commit the default with your code. It applies to every sandbox created from
+    the repo.
+
+    ```toml
+    [sandbox]
+    preset = "coder-dind"
+    ```
+  </Tab>
+  <Tab title="CLI">
+    Override the preset for a single sandbox at create time.
+
+    ```bash
+    amika sandbox create --git --preset coder-dind
+    ```
+  </Tab>
+  <Tab title="Web UI">
+    On [app.amika.dev](https://app.amika.dev), open **Repositories → your repo →
+    Edit** and set the default preset. This becomes the "Database" layer and
+    wins over the `[sandbox]` value in `.amika/config.toml`.
+  </Tab>
+</Tabs>
+
+## Multi-repo sandboxes
+
+A sandbox can clone more than one repository. List the extra repos under
+[`[filesystem].repos`](/guides/config-toml#filesystem) in the primary repo's
+config. Each is cloned into `~/workspace/<repo-name>` alongside the primary.
+
+<Warning>
+Only the **primary repo's** `.amika/config.toml` is applied. The primary repo is
+the one the sandbox is created from — the repo that carries the `[filesystem]`
+list. Any `.amika/config.toml` in an additional repo is **ignored**: its
+`[env]`, `[services]`, `[lifecycle]`, and other sections have no effect. Declare
+everything the sandbox needs in the primary repo's config.
+</Warning>
+
+```toml
+# In the primary repo's .amika/config.toml
+[filesystem]
+repos = [
+  "https://github.com/gofixpoint/amika",
+  "https://github.com/gofixpoint/amika-mono",
+]
+```
+
+## Repo-less sandboxes
+
+A repository is optional. A sandbox can boot with **no repo** — and therefore no
+`.amika/config.toml`. This is useful for scratch environments, or when you clone
+repos yourself after connecting.
+
+With no config file, every setting falls through to the API request / CLI flags
+layer or the built-in default. Pass the preset, size, env vars, and credentials
+you need at create time.
+
+```bash
+# Create a repo-less sandbox and configure it inline
+amika sandbox create --name scratch --no-git --preset coder --size m
+```
+
+See [Create a sandbox](/guides/create-a-sandbox) for how the CLI picks (or
+skips) a repo.
+
+## Related docs
+
+- [config.toml reference](/guides/config-toml) — full field-by-field spec
+- [Create a sandbox](/guides/create-a-sandbox) — repo detection and `--no-git`
+- [Repository configuration](/reference/repository-configuration) — reference-tab summary
+- [Manage secrets](/guides/manage-secrets) — pushing secrets referenced from `[env]`
