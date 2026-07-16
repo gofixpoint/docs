@@ -1,0 +1,50 @@
+---
+title: "OpenCode"
+description: "Manage the credentials that protect OpenCode web access on your sandboxes."
+---
+
+Sandboxes can serve OpenCode's web console so you can drive the agent from a
+browser. Access to that console is protected by a username and password you
+manage for your organization.
+
+The username is always `opencode`. You set (or clear) the password on the
+OpenCode settings page. These credentials are shared across your organization,
+so every teammate's sandboxes use the same login.
+
+## Set the OpenCode password
+
+1. Go to [app.amika.dev/settings/opencode](https://app.amika.dev/settings/opencode).
+2. Leave **Require password** checked.
+3. Enter a password and click **Save**.
+
+The status pill switches to **Configured**. You can reveal the stored password
+later with **Reveal password**, or change it by entering a new value and
+clicking **Update** (leave the field blank to keep the current password).
+
+<Note>
+Changes apply to new sandboxes and to sandboxes that restart. Running sandboxes
+keep the credentials they were created with.
+</Note>
+
+## Disable password authentication
+
+Uncheck **Require password** and save to turn off the login entirely.
+
+<Warning>
+With password authentication disabled, anyone with the sandbox URL can access
+OpenCode. Only do this for throwaway or fully trusted environments.
+</Warning>
+
+## Reset to defaults
+
+Click **Reset to defaults** to delete your configured credentials. The status
+pill returns to **Using defaults**, and sandboxes fall back to the platform's
+default OpenCode credential behavior.
+
+## Next steps
+
+<CardGroup>
+  <Card title="Send a message to an agent" href="/guides/send-a-message-to-an-agent" icon="paper-plane" />
+  <Card title="Inject credentials" href="/guides/inject-credentials" icon="key" />
+  <Card title="Connect an editor" href="/guides/open-in-editor" icon="window" />
+</CardGroup>

@@ -48,8 +48,7 @@
             "pages": [
               "guides/create-a-sandbox",
               "guides/sandbox-lifecycle",
-              "guides/create-a-snapshot",
-              "guides/ssh-and-connect"
+              "guides/create-a-snapshot"
             ]
           },
           {
@@ -64,7 +63,17 @@
             "pages": [
               "guides/send-a-message-to-an-agent",
               "guides/manage-sessions",
-              "guides/capture-agent-sessions"
+              "guides/capture-agent-sessions",
+              "guides/slack",
+              "guides/opencode"
+            ]
+          },
+          {
+            "group": "Connecting to sandboxes",
+            "pages": [
+              "guides/ssh-and-connect",
+              "guides/open-in-editor",
+              "guides/ide-access"
             ]
           },
           {
@@ -87,7 +96,8 @@
             "pages": [
               "guides/setup-repo-config-with-agent",
               "guides/programmatic-usage",
-              "guides/mcp-integrations"
+              "guides/mcp-integrations",
+              "guides/github-authentication"
             ]
           }
         ]
