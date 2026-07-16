@@ -6,34 +6,28 @@ argument-hint: "[surface...]"
 
 # Surface docs drift
 
-Reads product source to police the docs. Run periodically (monthly) and before a release — the natural sibling to `/changelog`: changelog says what shipped, this says what shipped *and never got documented*.
+Run periodically (monthly) and before a release to surface undocumented features and doc-vs-code contradictions.
 
-**Usage:** `/surface-docs-drift [surface...]`
+**Usage:** `/surface-docs-drift [surface...]` — `surface` is one or more of `api`, `cli`, `sdk`, `ui`, `config` (default: all five).
 
-- `surface` (optional): one or more of `api`, `cli`, `sdk`, `ui`, `config`. If omitted, run all five.
-
-This skill reads product source, not just docs. Subagents read only — they never write to the amika or amika-mono repos, and they don't edit docs either; this skill reports, it doesn't fix.
+Subagents read only and report findings — they don't edit docs or file tickets.
 
 ## Repo paths
 
-Resolve repo roots from the additional working directories configured in Claude Code.
-
-- **amika**: the directory ending in `/amika` (not `amika-mono`)
-- **amika-mono**: the directory ending in `/amika-mono`
-- **docs**: the repo you're already running in
+Resolve from configured working directories: **amika** (ends in `/amika`), **amika-mono**, and **docs** (current repo).
 
 Check which repos the requested surfaces actually need:
 - `api`, `ui`: amika-mono only
 - `cli`, `sdk`: amika only
 - `config`: both
 
-If a repo required by any requested surface is missing from your working directories, tell the user which surfaces will be skipped and stop — you can't diff against source you can't read.
+If a required repo is missing, report which surfaces will be skipped and stop.
 
 ---
 
 ## Phase 1: Fan out one reader per surface
 
-Spawn a Sonnet sub-agent per requested surface (all five by default) with the Agent tool, run in parallel. Give each one the exact entry paths below and nothing else to explore outside them (they can follow imports within the surface, but shouldn't wander into unrelated parts of the repo):
+Spawn one Sonnet sub-agent per requested surface in parallel. Give each the entry paths below; no exploration outside them:
 
 | Surface | Repo | Entry paths |
 |---|---|---|
@@ -45,13 +39,13 @@ Spawn a Sonnet sub-agent per requested surface (all five by default) with the Ag
 
 Brief each subagent to:
 
-1. Enumerate the surface's real, current capabilities: for `api`, every route/method; for `cli`, every command/subcommand/flag; for `sdk`, every exported method/type; for `ui`, every page/major user-facing action; for `config`, every recognized key/section (note where the two parsers diverge — Go and TS should stay in sync, and gaps between them are themselves a finding).
-2. For each capability, grep the full docs tree (all `*.mdx` files, including root-level pages like `quickstart.mdx` and `install.mdx`, plus `docs.json`) for matching coverage.
+1. Enumerate the surface's real capabilities (`api`: routes/methods; `cli`: commands/flags; `sdk`: exported methods/types; `ui`: pages/actions; `config`: keys/sections — note Go/TS parser divergence, those gaps are findings too).
+2. Grep the full docs tree (all `*.mdx` files including root-level pages, plus `docs.json`) for coverage of each capability.
 3. Return a per-item table: capability, evidence (file:line in source), doc status (**Contradicted** / **Undocumented** / **Partial** / **Covered**), and the doc file:line if any exists.
 
 ## Phase 2: Merge and dedupe
 
-Collect all five (or requested) reports. Dedupe across surfaces — a feature can be shipped in the UI and the API but missing from the SDK; that's one finding with multiple surface evidence, not three.
+Collect all reports. Dedupe across surfaces — a feature can be shipped in the UI and the API but missing from the SDK; that's one finding with multiple surface evidence, not three.
 
 ## Phase 3: Rank
 
@@ -61,8 +55,8 @@ Order the merged findings:
 2. **Shipped but fully undocumented** — a real, working capability with zero doc mention.
 3. **Partial** — documented, but thinner than the real surface (missing a flag, an endpoint variant, a config key).
 
-Within each tier, prefer findings with the cleanest fix shape (a single doc page, a single missing table row) over sprawling ones, and call out clean-fix candidates explicitly so they can be picked off first.
+Within each tier, prefer findings with the cleanest fix shape (a single doc page, a single missing table row) and call them out.
 
 ## Phase 4: Report
 
-Emit the ranked list with, for each item: what's shipped (source evidence), what the docs currently say (or don't), and the exact doc page the fix belongs on. Note any config-parser divergence (Go vs. TS) separately, since that's a product bug candidate, not just a docs gap. Do not edit docs or file tickets — hand the report back for a human to act on or turn into doc tickets.
+Emit the ranked list with, for each item: what's shipped (source evidence), what the docs say (or don't), and the fix location. Note Go vs. TS config-parser divergence separately — these are product bugs, not just doc gaps. Do not edit docs or file tickets.

@@ -6,11 +6,11 @@ argument-hint: "<page-or-section-path>"
 
 # Naive reader review
 
-Use when you want to know whether a docs page (or a whole section) actually works for a reader who has no context beyond what's on the page — no tribal knowledge of Amika's terminology, no memory of where things live in the nav.
+Use when you want to know whether a docs page or section works for a cold reader with no prior Amika knowledge.
 
 **Usage:** `/naive-reader-review <page-or-section-path>`
 
-- `page-or-section-path` (required): an `.mdx` file, or a directory (e.g. `guides/`, `reference/sandboxes/`) treated as a section — every `.mdx` page under it in scope.
+- `page-or-section-path` (required): an `.mdx` file or directory; if a directory, all `.mdx` pages under it are in scope.
 
 ---
 
@@ -24,7 +24,7 @@ For each page in scope, spawn a sub-agent with the Agent tool:
 
 - `subagent_type: general-purpose`
 - `model: sonnet`
-- Point it at exactly one page. Tell it to read only that file: no exploring the rest of the docs repo, no following links, no outside knowledge of Amika, no charitable assumptions. It should answer only from the literal words on the page.
+- Point it at exactly one page. Tell it to read only that file: no exploring the repo, no following links, no outside Amika knowledge, no charitable assumptions.
 
 Brief it to act as a blunt, impatient, slightly dim first-time reader who will not fill in gaps, and to answer:
 
@@ -37,7 +37,7 @@ Ask it to flag any term it can't define from the page alone, and to keep the ans
 
 ## Phase 3: Collate across pages
 
-Read every sub-agent's answers. A single-page reader can't see cross-page problems; that's the supervisor's job. Look for:
+Read every sub-agent's answers and look for cross-page issues:
 
 - **Discoverability** — a reader repeatedly says they'd expect to find X here but don't; check whether X exists elsewhere in the docs and isn't linked from here.
 - **Flow** — the assumed-prior-knowledge answers reveal a missing prerequisite step or an out-of-order section.
@@ -53,4 +53,4 @@ Present the proposed fixes to the user before editing anything — this skill's 
 ## Notes
 
 - Run one reader per page even within a small section — cross-page comparison only works if each reader's take is uncontaminated by the others.
-- The point is a cold reader's confusion, not prose polish. Don't let a proposed fix balloon a page's length just to cover every gap a naive reader found.
+- Focus on cold reader confusion, not prose polish. Don't balloon pages to cover every gap a naive reader found.

@@ -19,7 +19,7 @@ Commits are made locally each round. **Push only once, at the very end** (see St
 ## Step 0: Establish context
 
 1. Current branch: `git rev-parse --abbrev-ref HEAD`. If it's `main`/`master`, stop and tell the user there's nothing to review against.
-2. Base branch: if an open PR exists for this branch, use its base. Stacked PRs target a prior branch rather than `main`, and using the wrong base makes the reviewer (Step 2a) diff against `main...HEAD`, pulling in changes that belong to the parent branch. Prefer the PR's `baseRefName`:
+2. Base branch: if an open PR exists, prefer its `baseRefName` (handles stacked PRs correctly):
    ```bash
    gh pr view --json baseRefName --jq .baseRefName 2>/dev/null
    ```
@@ -38,7 +38,7 @@ If this fails or there is no open PR, skip to Step 2.
 
 ### 1a: Watch CI (non-blocking, in a subagent)
 
-Spawn a **background** `general-purpose` subagent so CI-watching does not block the review loop. Brief it to:
+Spawn a background `general-purpose` subagent to watch CI without blocking the loop. Brief it to:
 
 - Run `gh pr checks <number> --watch` (or poll `gh pr checks <number>`) until all checks conclude.
 - Report back, per check: name, conclusion (pass/fail), and for failures the relevant log excerpt via `gh run view <run-id> --log-failed`.
@@ -67,7 +67,7 @@ query($owner:String!,$repo:String!,$pr:Int!,$cursor:String){
 }' -f owner=<owner> -f repo=<repo> -F pr=<number> -F cursor=<endCursor>
 ```
 
-Derive `<owner>`/`<repo>` from `gh repo view --json owner,name`. Page through **all** threads: on the first call pass `-F cursor=null` (use `-F`, not `-f`, so `gh` sends a JSON `null`; `-f cursor=null` would send the string `"null"`, an invalid cursor), then re-run with `-F cursor=<endCursor>` while `pageInfo.hasNextPage` is true. A PR with more than 100 threads would otherwise leave unresolved comments after the first page unaddressed.
+Derive `<owner>`/`<repo>` from `gh repo view --json owner,name`. Page through all threads: on the first call pass `-F cursor=null` (use `-F` not `-f` — `-f` sends the string `"null"`, an invalid cursor), then re-run with `-F cursor=<endCursor>` while `pageInfo.hasNextPage` is true.
 
 For **each thread where `isResolved` is false**, decide one of:
 
@@ -77,9 +77,8 @@ For **each thread where `isResolved` is false**, decide one of:
 Then **reply on the thread** via `gh` explaining the action, and resolve threads you fixed:
 
 - Reply: `gh api repos/<owner>/<repo>/pulls/<number>/comments/<comment-databaseId>/replies -f body='<reply>'`
-  - `<comment-databaseId>` **must be the thread's top-level comment**, i.e. the first entry in the thread's `comments.nodes` (the query returns them in order). GitHub's reply endpoint requires the top-level review comment id and rejects replying to a reply, so on threads that already have replies, using the latest comment's id fails.
-  - For fixes: briefly state what you changed.
-  - For disagree/ignore: briefly state why (be respectful; this is a public reply).
+  - Use the **top-level comment's** `databaseId` (first in `comments.nodes`) — the reply endpoint rejects non-root comment ids.
+  - For fixes: briefly state what you changed. For disagree/ignore: briefly state why.
 - Resolve a thread you fixed:
   ```bash
   gh api graphql -f query='mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread{ isResolved } } }' -f id=<threadId>
@@ -94,18 +93,14 @@ Loop up to **3 times**. Track a round counter.
 
 ### 2a: Spawn a reviewer subagent
 
-Spawn a fresh **`Explore`** (read-only) subagent each round to review the branch. Use `Explore`, not `general-purpose`: the reviewer must not be able to mutate the branch, and `Explore` has no `Edit`/`Write` tools while still having `Bash` to run checks. (A writable reviewer will sometimes "helpfully" refactor files even when told only to report, which silently pollutes the working tree.) Brief it to:
+Spawn a fresh `Explore` (read-only) subagent each round. Use `Explore`, not `general-purpose` — it has no `Edit`/`Write` tools, preventing accidental mutations. Brief it to:
 
 - Review the branch diff against the base: `git diff <base>...HEAD` and read the changed files in full for context.
 - Look for: correctness bugs, logic errors, missing error handling, security issues, broken tests, and violations of the `CLAUDE.md` conventions (e.g. no emdashes, module organization).
 - Run available checks it can (typecheck/lint/tests for the affected package per that package's `AGENTS.md`) and report failures.
-- Return a **structured list of findings**, each with: file:line, severity (blocker/should-fix/nit), a concrete description, and a suggested fix. If nothing is wrong, return an empty list explicitly.
-- The subagent only reports; it does not change code.
+- Return a structured list of findings (file:line, severity, description, suggested fix), or an empty list if nothing is wrong.
 
-**Guard:** before applying fixes in 2b, capture `git status --short`. After the reviewer returns, confirm it did not modify the working tree (it can't via `Explore`, but this also catches stray edits from checks like formatters). To revert stray edits **without clobbering the user's pre-existing uncommitted work**, do not blanket `git checkout -- <file>`: a file may hold both the user's in-progress changes and a check's edits. Instead:
-
-- If the tree was **clean** at Step 0 for that file, `git checkout -- <file>` is safe.
-- If the file had **pre-existing uncommitted changes**, do not check it out. Snapshot the intended state first (e.g. `git stash push -- <files>` before running checks, or save `git diff <file>` to a patch), then restore only the check-induced delta rather than the whole file. When in doubt, leave the file alone and surface the stray edit to the user instead of discarding their work.
+**Guard:** capture `git status --short` before applying fixes. After the reviewer returns, confirm the tree is clean. For any stray edits: `git checkout -- <file>` is safe only if that file was clean at Step 0; if it had pre-existing changes, leave it alone and surface the issue to the user.
 
 **Convention-vs-reality findings:** if a finding is a style rule the surrounding codebase pervasively violates (e.g. emdashes when the whole repo uses them), do not silently rewrite files wholesale. Fix only what this branch added, and surface the broader conflict to the user rather than auto-migrating unrelated code. Never touch user-facing UI strings for a style nit unless asked.
 
@@ -148,9 +143,4 @@ Report a final summary:
 
 ## Commit conventions
 
-Follow the repo conventions from `CLAUDE.md`:
-- Imperative subject, capitalized, no trailing period, ~50 chars.
-- Body wrapped at 72 chars explaining what and why.
-- **No AI attribution** (`Co-Authored-By: Claude` and similar lines are not welcome).
-- No emdashes (and no fake `--` emdashes) anywhere.
-- Stage only the files you changed; never `git add -A` blindly, since the tree may hold unrelated in-progress work.
+Follow `CLAUDE.md`: imperative subject, capitalized, ~50 chars; 72-char body; no AI attribution; no emdashes; stage only changed files (not `git add -A`).
