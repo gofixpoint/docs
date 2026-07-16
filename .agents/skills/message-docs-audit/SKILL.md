@@ -33,7 +33,7 @@ Record, for every claim, the exact doc file and line (or "no match found") backi
 
 ## Phase 3: Verify links
 
-Resolve every URL in the message. For internal doc links, confirm the page exists and any `#anchor` matches a real heading. For external links (app.amika.dev, GitHub, Discord), issue an HTTP HEAD or GET request (`curl -s -o /dev/null -w "%{http_code}" --max-time 10 <url>`) and flag any non-2xx or connection-failure responses as broken. Also flag anything that looks like it points to two different targets for the same thing (e.g. two different API-doc URLs for what should be one canonical page).
+Resolve every URL in the message. For internal doc links, confirm the page exists and any `#anchor` matches a real heading. For external links (e.g., app.amika.dev, github.com, discord.gg), issue an HTTP HEAD or GET request (`curl -s -o /dev/null -w "%{http_code}" --max-time 10 <url>`) and flag any non-2xx or connection-failure responses as broken. Also flag anything that looks like it points to two different targets for the same thing (e.g. two different API-doc URLs for what should be one canonical page).
 
 ## Phase 4: Optional fan-out
 
