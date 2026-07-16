@@ -16,7 +16,7 @@ This skill reads product source, not just docs. Subagents read only — they nev
 
 ## Repo paths
 
-Resolve repo roots the same way `/changelog` does: from the additional working directories configured in Claude Code.
+Resolve repo roots from the additional working directories configured in Claude Code.
 
 - **amika**: the directory ending in `/amika` (not `amika-mono`)
 - **amika-mono**: the directory ending in `/amika-mono`

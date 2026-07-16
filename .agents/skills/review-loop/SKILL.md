@@ -97,7 +97,7 @@ Loop up to **3 times**. Track a round counter.
 Spawn a fresh **`Explore`** (read-only) subagent each round to review the branch. Use `Explore`, not `general-purpose`: the reviewer must not be able to mutate the branch, and `Explore` has no `Edit`/`Write` tools while still having `Bash` to run checks. (A writable reviewer will sometimes "helpfully" refactor files even when told only to report, which silently pollutes the working tree.) Brief it to:
 
 - Review the branch diff against the base: `git diff <base>...HEAD` and read the changed files in full for context.
-- Look for: correctness bugs, logic errors, missing error handling, security issues, broken tests, violations of the project's coding standards (`devdocs/coding-standards.md`) and `CLAUDE.md` conventions (e.g. no emdashes, module organization).
+- Look for: correctness bugs, logic errors, missing error handling, security issues, broken tests, and violations of the `CLAUDE.md` conventions (e.g. no emdashes, module organization).
 - Run available checks it can (typecheck/lint/tests for the affected package per that package's `AGENTS.md`) and report failures.
 - Return a **structured list of findings**, each with: file:line, severity (blocker/should-fix/nit), a concrete description, and a suggested fix. If nothing is wrong, return an empty list explicitly.
 - The subagent only reports; it does not change code.
@@ -151,6 +151,6 @@ Report a final summary:
 Follow the repo conventions from `CLAUDE.md`:
 - Imperative subject, capitalized, no trailing period, ~50 chars.
 - Body wrapped at 72 chars explaining what and why.
-- **No AI attribution** (a pre-commit hook blocks `Co-Authored-By: Claude` and similar).
+- **No AI attribution** (`Co-Authored-By: Claude` and similar lines are not welcome).
 - No emdashes (and no fake `--` emdashes) anywhere.
 - Stage only the files you changed; never `git add -A` blindly, since the tree may hold unrelated in-progress work.
