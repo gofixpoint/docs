@@ -22,7 +22,12 @@ Resolve repo roots from the additional working directories configured in Claude 
 - **amika-mono**: the directory ending in `/amika-mono`
 - **docs**: the repo you're already running in
 
-If `amika` or `amika-mono` is missing from your working directories, tell the user and stop — you can't diff against source you can't read.
+Check which repos the requested surfaces actually need:
+- `api`, `ui`: amika-mono only
+- `cli`, `sdk`: amika only
+- `config`: both
+
+If a repo required by any requested surface is missing from your working directories, tell the user which surfaces will be skipped and stop — you can't diff against source you can't read.
 
 ---
 
