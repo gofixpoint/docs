@@ -22,13 +22,16 @@ hosted-platform user first.
 Amika's source lives in two repos that may or may not be present on disk.
 If they are, they're typically siblings of this repo:
 
-- `amika` (`../amika`) — Go CLI (`cmd/amika/`), OSS `amika-server`
-  (`cmd/amika-server/`, `internal/httpapi/`), preset images, the
-  `.amika/config.toml` CLI parser (`internal/amikaconfig/`), `ROADMAP.md`.
-- `amika-mono` (`../amika-mono`) — Next.js webapp (`js/coding-agents/`),
-  hosted API routes (`js/coding-agents/src/app/api/`), DB schema, the
-  fuller `.amika/config.toml` parser
-  (`js/coding-agents/src/lib/repositories/repo-config/toml/`), `specs/`.
+- `amika` (`../amika`) — all Go code lives under `go/`: CLI
+  (`go/cmd/amika/`), OSS `amika-server` (`go/cmd/amika-server/`,
+  `go/internal/httpapi/`), the `.amika/config.toml` CLI parser
+  (`go/internal/amikaconfig/`). Also the TypeScript SDK
+  (`sdk/typescript/`), preset images, and `ROADMAP.md`.
+- `amika-mono` (`../amika-mono`) — Next.js webapp (`js/coding-agents/`).
+  Hosted API route groups live in `js/coding-agents/src/server/v0beta1/`
+  (a Hono app mounted at `js/coding-agents/src/app/api/[[...route]]/`); DB
+  schema; the fuller `.amika/config.toml` parser
+  (`js/coding-agents/src/lib/repositories/repo-config/toml/`); `specs/`.
 
 Verify CLI flags, config keys, and API shapes against source before
 documenting them. Don't invent.
