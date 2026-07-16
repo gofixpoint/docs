@@ -96,7 +96,8 @@ amika sandbox create --name dev-sandbox --git --remote \
 | `--preset <name>` | | Use a preset environment, e.g. `coder` or `coder-dind` (mutually exclusive with `--image`) |
 | `--mount <spec>` | | Mount a host path (`source:target[:mode]`, mode defaults to `rwcopy`). Repeatable |
 | `--volume <spec>` | | Mount an existing named volume (`name:target[:mode]`, mode defaults to `rw`). Repeatable |
-| `--git [path]` | | Mount the git repo root (or repo containing `path`) to `/home/amika/workspace/{repo}` |
+| `--git [path-or-URL]` | | Mount a git repo (accepts a local path or a git URL over HTTPS or SSH) to `/home/amika/workspace/{repo}`. If omitted and the cwd is inside a git repo, that repo is used automatically |
+| `--no-git` | `false` | Skip git repo auto-detection; create a repo-less sandbox with no repo mounted |
 | `--no-clean` | `false` | With `--git`, include untracked/uncommitted files instead of a clean clone |
 | `--env <KEY=VALUE>` | | Set environment variable. Repeatable |
 | `--port <spec>` | | Publish a container port (`hostPort:containerPort[/protocol]`). Repeatable |
@@ -263,6 +264,80 @@ amika sandbox agent-send my-sandbox "Review this code" --agent codex
 | `--agent <name>` | `claude` | Agent CLI to use |
 | `--session-id <id>` | | Resume an existing agent session. Remote sandboxes only |
 | `--new-session` | `false` | Start a new agent session instead of resuming. Remote sandboxes only |
+
+## `amika snapshot`
+
+Manage snapshots captured from running sandboxes. Snapshots are a hosted-cloud
+concept — every subcommand talks to the API — so they are not available in local
+open-source mode. See [Create a snapshot](/guides/create-a-snapshot) for the
+end-to-end flow.
+
+### Create
+
+Capture a snapshot from a running sandbox. Interactive by default: it prompts for
+the capture mode and name, and for `scrub_and_delete` it previews the injected
+secrets that will be removed and asks for confirmation. Pass `--no-interactive`
+for a non-prompting run, which then requires `--mode` and `--name`.
+
+```bash
+# Interactive
+amika snapshot create --sandbox base-box
+
+# Non-interactive
+amika snapshot create --sandbox base-box \
+  --name example-repo-base --mode scrub_and_delete --no-interactive
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--sandbox <name-or-id>` | **(required)** | Source sandbox to snapshot |
+| `--name <name>` | | Name for the snapshot (prompted if omitted in interactive mode) |
+| `--mode <mode>` | | Capture mode: `scrub_and_delete` or `full` (required with `--no-interactive`) |
+| `--description <text>` | | Optional description shown in the snapshot list |
+| `--no-interactive` | `false` | Do not prompt; requires `--mode` and `--name` |
+
+Capture modes:
+
+| Mode | Behavior |
+| --- | --- |
+| `scrub_and_delete` (default) | Remove Amika-injected secrets, capture the snapshot, then delete the source sandbox |
+| `full` | Capture everything as-is (keeps secrets and the source sandbox; unsafe for shared images) |
+
+Capture runs in the background; check progress with `amika snapshot list`.
+
+### List
+
+Aliases: `ls`
+
+```bash
+amika snapshot list
+amika snapshot ls --long
+amika snapshot list --sandbox base-box
+amika snapshot list --repo example-repo
+```
+
+Output columns: `NAME`, `STATE`, `PROVIDER`, `SOURCE`, `CREATED` (plus `SIZE`,
+`BASE`, `DESCRIPTION`, and `ERROR` with `--long`).
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-l`, `--long` | `false` | Show additional columns |
+| `--sandbox <name-or-id>` | | Only show snapshots captured from this sandbox |
+| `--repo <name-or-id>` | | Only show snapshots for this repository |
+
+### Delete
+
+Aliases: `rm`, `remove`
+
+```bash
+amika snapshot delete example-repo-base
+amika snapshot rm snap-1 snap-2
+amika snapshot delete example-repo-base --force
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-f`, `--force` | `false` | Skip confirmation prompt |
 
 ## `amika volume`
 
