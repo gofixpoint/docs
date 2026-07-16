@@ -36,12 +36,12 @@ Spawn a Sonnet sub-agent per requested surface (all five by default) with the Ag
 | `cli` | amika | `go/cmd/amika/*.go` (each file is roughly one command group: `sandbox.go`, `snapshot.go`, `secrets.go`, `service.go`, `volume.go`, `auth.go`, `materialize.go`, etc.) |
 | `sdk` | amika | `sdk/typescript/src/*` (`client.ts`, `http.ts`, `token.ts`, `types.ts`, `errors.ts`, `index.ts`) |
 | `ui` | amika-mono | `js/coding-agents/src/app/(dashboard)/*` (`organization`, `settings`, `repositories`, `integrations`, `docker-registries`, `sandbox`) |
-| `config` | both | Go parser: `amika/go/internal/amikaconfig/config.go`; TS parser: `amika-mono/js/coding-agents/src/lib/repositories/repo-config/toml/*` |
+| `config` | both | Go parser (amika): `go/internal/amikaconfig/config.go`; TS parser (amika-mono): `js/coding-agents/src/lib/repositories/repo-config/toml/*` |
 
 Brief each subagent to:
 
 1. Enumerate the surface's real, current capabilities: for `api`, every route/method; for `cli`, every command/subcommand/flag; for `sdk`, every exported method/type; for `ui`, every page/major user-facing action; for `config`, every recognized key/section (note where the two parsers diverge — Go and TS should stay in sync, and gaps between them are themselves a finding).
-2. For each capability, grep the docs repo (`docs.json`, `guides/`, `reference/`, `sdks/`, `architecture/`) for matching coverage.
+2. For each capability, grep the full docs tree (all `*.mdx` files, including root-level pages like `quickstart.mdx` and `install.mdx`, plus `docs.json`) for matching coverage.
 3. Return a per-item table: capability, evidence (file:line in source), doc status (**Contradicted** / **Undocumented** / **Partial** / **Covered**), and the doc file:line if any exists.
 
 ## Phase 2: Merge and dedupe
