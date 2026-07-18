@@ -1,0 +1,494 @@
+---
+title: "config.toml reference"
+description: "Every table and key you can set in .amika/config.toml, with examples."
+---
+
+This is the full field-by-field guide to `.amika/config.toml`, the file that
+declares sandbox defaults for a repository. For how these settings reach a
+sandbox — resolution precedence, multi-repo, and repo-less behavior — read
+[How configuration works](/guides/configuration) first.
+
+The file lives at the root of a Git repository:
+
+```
+<repo-root>/
+  .amika/
+    config.toml
+```
+
+## Quick start
+
+A minimal config that sets up a Node project with a secret and a web server:
+
+```toml
+[lifecycle]
+setup_script = ".amika/setup.sh"
+
+[env]
+NODE_ENV = "development"
+API_KEY = { secret = "my-api-key" }
+
+[services.web]
+port = 3000
+url_scheme = "http"
+
+[sandbox]
+preset = "coder"
+size = "m"
+```
+
+## Sections
+
+- [`[lifecycle]`](#lifecycle) — setup and start scripts
+- [`[env]`](#env) — environment variables and secret references
+- [`[services.<name>]`](#services) — named services with port bindings and URL schemes
+- [`[sandbox]`](#sandbox) — default sandbox preset, size, and snapshot
+- [`[filesystem]`](#filesystem) — additional repos to clone alongside the primary repo
+- [`[agent_credentials]`](#agent_credentials) — per-agent credential defaults
+
+<Note>
+**CLI vs. hosted scope.** The open-source `amika` CLI parses only
+`[lifecycle].setup_script` and `[services.<name>]`. The remaining sections
+(`[env]`, `[sandbox]`, `[filesystem]`, `[agent_credentials]`, and
+`[lifecycle].start_script`) are applied by the hosted platform when a sandbox is
+created from a repository.
+</Note>
+
+---
+
+## `[lifecycle]`
+
+Controls sandbox initialization. Both keys are optional; a repository can define
+only setup, only start, or both.
+
+```toml
+[lifecycle]
+setup_script = "scripts/setup.sh"
+start_script = "scripts/start.sh"
+```
+
+### `setup_script`
+
+| | |
+| --- | --- |
+| **Type** | String (file path) |
+| **Required** | No |
+| **Default** | Built-in no-op script (`exit 0`) |
+
+Path to an executable script that is mounted into the container at
+`/usr/local/etc/amikad/setup/setup.sh` and run once before the container command
+starts.
+
+Relative paths are resolved from the repository root (the directory containing
+`.git`). Absolute paths are used as-is.
+
+**Requirements:**
+- Must be executable (`chmod +x`).
+- Must exit with status code `0` on success. A non-zero exit prevents the container command from running.
+- Runs with the working directory set to `$AMIKA_AGENT_CWD`.
+
+**CLI override:** `--setup-script` on `amika sandbox create` takes priority over
+this value.
+
+### `start_script`
+
+| | |
+| --- | --- |
+| **Type** | String (file path) |
+| **Required** | No |
+| **Default** | Built-in no-op script (`exit 0`) |
+
+Path to an executable script mounted at
+`/usr/local/etc/amikad/setup/start.sh`. Unlike `setup_script`, it does **not**
+run on the initial create — it runs each time a stopped sandbox is started
+again. It is re-read on each start, so edits take effect without recreating the
+sandbox.
+
+Use it for steps that must repeat whenever a sandbox resumes — starting a
+long-running dev server, re-opening a tunnel — rather than one-time
+provisioning, which belongs in `setup_script`. Relative paths resolve from the
+repository root. The same executability and exit-code requirements as
+`setup_script` apply.
+
+This key is applied by the hosted platform. The open-source CLI does not run a
+start script.
+
+---
+
+## `[env]`
+
+Declares environment variables that are set inside the sandbox. Each key is a
+variable name and each value is either a plain string or a reference table. See
+[Environment variables vs. secrets](/guides/env-vars-and-secrets) for how to
+choose between a plain value and a secret reference.
+
+### Plain string
+
+```toml
+[env]
+DATABASE_HOST = "localhost"
+NODE_ENV = "production"
+PORT = "3000"
+```
+
+The value is set as-is in the sandbox environment.
+
+### Secret reference
+
+```toml
+[env]
+ANTHROPIC_API_KEY = { secret = "my-anthropic-key" }
+AWS_SECRET_KEY = { secret = "My AWS Secret" }
+```
+
+The `secret` field references a secret by name in the Amika secrets store. The
+secret is resolved at sandbox creation time and its value is injected as the
+environment variable.
+
+Secrets must be pushed before sandbox creation via `amika secret push` or the
+web UI.
+
+### Service reference
+
+```toml
+[env]
+WEB_URL = { service = "web", field = "url" }
+WEB_HOST = { service = "web", field = "host" }
+WEB_PORT = { service = "web", field = "port" }
+```
+
+The `service` field references a service declared in the same file's
+`[services.<name>]` section. The `field` selects which attribute to inject:
+
+- `"url"` — the public URL of the service (e.g. `https://<sandbox>.preview.amika.dev`). Requires the service to have a `url_scheme`.
+- `"host"` — the hostname of that public URL (e.g. `<sandbox>.preview.amika.dev`), with no scheme, port, or path. Like `"url"`, requires the service to have a `url_scheme`.
+- `"port"` — the host-side port (inside the sandbox) the service is exposed on.
+
+Service references are resolved during sandbox initialization and written to the
+sandbox environment. They're useful when one service needs to reach another by
+URL.
+
+### Validation rules
+
+| Rule | Detail |
+| --- | --- |
+| **Name format** | Must match `^[A-Z_][A-Z0-9_]*$` (UPPER_SNAKE_CASE) |
+| **Value type** | String, `{ secret = "..." }` table, or `{ service = "...", field = "..." }` table |
+| **Secret name** | Must be a non-empty string |
+| **Service name** | Must match a service declared in `[services.<name>]` |
+| **Service field** | Must be `"url"`, `"host"`, or `"port"` |
+
+If validation fails, the `[env]` section is skipped and a warning is logged.
+Other sections are still applied.
+
+### Merge semantics
+
+Environment variables are merged per-key across sources. Database entries (saved
+via the web UI) override TOML entries with the same name, but TOML-only entries
+are preserved.
+
+---
+
+## `[services.<name>]`
+
+Declares named services with port bindings and optional URL schemes. Each
+`[services.<name>]` section defines one service. See
+[Services](/reference/services) for usage examples and runtime behavior.
+
+<Note>
+The singular `[service.<name>]` is accepted as an alias for
+`[services.<name>]`. Use one form or the other consistently within a file.
+</Note>
+
+### Fields
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `port` | integer or `"port/protocol"` string | No | Single port declaration |
+| `ports` | array of integer or `"port/protocol"` string | No | Multiple port declarations |
+| `url_scheme` | string or array of `{ port, scheme }` tables | No | URL generation scheme |
+
+`port` and `ports` are mutually exclusive. A service may omit both to act as a
+metadata-only entry with no port bindings.
+
+### Port format
+
+Each port value is either:
+
+- **Integer** — interpreted as `containerPort/tcp` (TCP is the default protocol).
+- **String** `"containerPort/protocol"` — sets the protocol explicitly.
+
+```toml
+# These are equivalent
+port = 4838
+port = "4838/tcp"
+```
+
+### `url_scheme`
+
+Controls URL generation for service ports. Allowed values: `"http"`, `"https"`.
+
+**Single-port services** accept a string or a single-element array:
+
+```toml
+[services.api]
+port = 4838
+url_scheme = "http"
+```
+
+**Multi-port services** must use the array form. Only listed ports get URLs:
+
+```toml
+[services.web]
+ports = [4211, "9872/tcp", "4982/udp"]
+url_scheme = [
+  { port = 4211, scheme = "http" },
+  { port = 9872, scheme = "https" },
+]
+# 4982/udp gets no URL
+```
+
+### Validation rules
+
+| Rule | Detail |
+| --- | --- |
+| **Port range** | 1–65535 |
+| **Reserved range** | Ports 60899–60999 are reserved for Amika internal services and are rejected |
+| **Protocol** | `tcp` or `udp` |
+| **Mutual exclusivity** | Cannot specify both `port` and `ports` on the same service |
+| **Uniqueness** | No duplicate `(port, protocol)` pair across all services in the file |
+| **url_scheme ports** | Must reference a port declared in the same service |
+| **url_scheme uniqueness** | No duplicate port entries within `url_scheme` |
+
+If validation fails, service definitions are skipped and a warning is logged.
+Other sections (e.g. `[lifecycle]`, `[env]`) are still applied.
+
+### Merge semantics
+
+Service definitions use DB-wins-all semantics: if any service definitions are
+saved via the web UI, those are used exclusively and TOML definitions are
+ignored.
+
+### Examples
+
+**Simple web server:**
+
+```toml
+[services.web]
+port = 3000
+url_scheme = "http"
+```
+
+**API with multiple ports:**
+
+```toml
+[services.api]
+ports = [8000, "8001/udp"]
+url_scheme = [
+  { port = 8000, scheme = "http" },
+]
+```
+
+**Metadata-only service (no ports):**
+
+```toml
+[services.worker]
+# No port or ports — acts as a named reference only
+```
+
+---
+
+## `[sandbox]`
+
+Sets default sandbox settings for the repository.
+
+### `preset`
+
+| | |
+| --- | --- |
+| **Type** | String |
+| **Required** | No |
+| **Default** | `"coder"` |
+| **Values** | `"coder"`, `"coder-dind"` |
+
+The base image preset for sandboxes created from this repository.
+
+- `coder` — Ubuntu 24.04 with Git, Node.js, Python, and agent CLIs (Claude Code, Codex, OpenCode).
+- `coder-dind` — Same as `coder` with Docker-in-Docker support.
+
+See [Presets](/reference/presets) for full details on what each preset includes.
+
+### `size`
+
+| | |
+| --- | --- |
+| **Type** | String |
+| **Required** | No |
+| **Default** | `"m"` |
+| **Values** | `"xs"`, `"m"`, `"l"`, `"xl"` |
+
+The resource allocation size for sandboxes created from this repository.
+
+```toml
+[sandbox]
+preset = "coder-dind"
+size = "m"
+```
+
+### `snapshot`
+
+| | |
+| --- | --- |
+| **Type** | String |
+| **Required** | No |
+| **Default** | None |
+
+The friendly label of a snapshot captured for this repository (for example
+`custom-snapshot`), **not** the org-qualified Daytona name. Amika maps the label
+to the full snapshot for your org at creation time, keeping the config portable
+across orgs.
+
+```toml
+[sandbox]
+snapshot = "custom-snapshot"
+```
+
+When a sandbox is created, the snapshot layer order is: an explicit `snapshot`
+in the API request, then this repository default, then a repository custom
+image, then the preset/size default. If the named snapshot is missing or no
+longer owned by your org, Amika logs a warning and falls through to the
+preset/size path rather than failing the create.
+
+### Merge semantics
+
+Preset, size, and snapshot are resolved independently. Database values (saved
+via the web UI) override TOML values. There is no built-in repository default
+for any of the three — when none is configured, the Create Sandbox dialog
+applies its own UI defaults.
+
+---
+
+## `[filesystem]`
+
+Declares extra repositories to clone into the sandbox alongside the primary
+repo. See [Multi-repo sandboxes](/guides/configuration#multi-repo-sandboxes) for
+the key rule: only the primary repo's `.amika/config.toml` is applied.
+
+### `repos`
+
+| | |
+| --- | --- |
+| **Type** | Array of strings (GitHub repo URLs) |
+| **Required** | No |
+| **Default** | Empty (only the primary repo is cloned) |
+
+```toml
+[filesystem]
+repos = [
+  "https://github.com/gofixpoint/amika",
+  "https://github.com/gofixpoint/amika-mono",
+]
+```
+
+Each repo is cloned at its default branch into `~/workspace/<repo-name>`. The
+primary repo (the one this config lives in) is inferred automatically and need
+not be listed; if listed, it is deduped.
+
+### Validation and resolution
+
+| Rule | Detail |
+| --- | --- |
+| **URL form** | Must be a GitHub `owner/repo` URL. Non-GitHub URLs and page URLs (`/tree/main`, query strings) are dropped. |
+| **Name collisions** | Two repos with the same basename would share `~/workspace/<name>`; the first seen wins and the rest are dropped. |
+| **Access** | Each repo passes the same per-user GitHub access check as the primary. An inaccessible repo fails the create with `github_repo_not_accessible`. |
+
+**Merge semantics:** DB-wins-all. If additional repos are saved via the Edit
+Repository UI, that list is used exclusively and the TOML list is ignored.
+
+<Note>
+Additional repos are cloned during the hosted-platform initialization phase.
+Providers without that phase (for example local Docker) clone only the primary
+repo and log that the extras were skipped.
+</Note>
+
+---
+
+## `[agent_credentials]`
+
+Pins which credential each agent uses by default for sandboxes created from this
+repository. This dimension lives only in TOML — there is no database layer.
+
+```toml
+[agent_credentials]
+claude = { type = "api_key" }
+codex = { type = "oauth", name = "work-codex" }
+```
+
+Each key is an agent kind. Each value is an inline table:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `type` | `"api_key"` or `"oauth"` | No | The credential type to use. |
+| `name` | string | No | The name of the credential to select. |
+
+| Rule | Detail |
+| --- | --- |
+| **Agent kinds** | `claude`, `codex`. Entries for unknown kinds are ignored, so a repo may declare a default for an agent the server doesn't support yet. |
+| **Non-empty entry** | An entry must set `type`, `name`, or both. Entries with neither are dropped. |
+| **Unknown fields** | An entry with keys other than `type` and `name` is ignored. |
+
+See [Inject credentials](/guides/inject-credentials) for how these defaults
+interact with per-sandbox credential selection.
+
+---
+
+## Full example
+
+```toml
+[lifecycle]
+setup_script = ".amika/setup.sh"
+start_script = ".amika/start.sh"
+
+[env]
+NODE_ENV = "development"
+DATABASE_URL = "postgresql://localhost:5432/mydb"
+ANTHROPIC_API_KEY = { secret = "my-anthropic-key" }
+AWS_ACCESS_KEY_ID = { secret = "aws-access-key" }
+
+[services.web]
+port = 3000
+url_scheme = "https"
+
+[services.api]
+port = 8080
+url_scheme = "http"
+
+[services.db]
+port = 5432
+
+[services.worker]
+ports = [9000, "9001/udp"]
+url_scheme = [
+  { port = 9000, scheme = "http" },
+]
+
+[sandbox]
+preset = "coder"
+size = "m"
+snapshot = "custom-snapshot"
+
+[filesystem]
+repos = [
+  "https://github.com/gofixpoint/amika",
+]
+
+[agent_credentials]
+claude = { type = "api_key" }
+```
+
+## Related docs
+
+- [How configuration works](/guides/configuration) — resolution precedence, multi-repo, repo-less
+- [config.toml key lookup](/reference/config-toml) — every key at a glance
+- [Environment variables vs. secrets](/guides/env-vars-and-secrets) — choosing plain values vs. secrets
+- [Services](/reference/services) — service runtime behavior, port resolution, and listing

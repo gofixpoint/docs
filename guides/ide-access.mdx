@@ -1,0 +1,70 @@
+---
+title: "IDE and ADE access"
+description: "Connect Cursor, VS Code, or another SSH-capable IDE or ADE to a running sandbox."
+---
+
+A running sandbox is reachable over SSH, so you can attach any IDE or ADE
+(agentic development environment) that supports remote SSH — Cursor, VS Code,
+and their forks — and edit the sandbox's files as if they were local.
+
+## Prerequisites
+
+<Note>
+- A remote sandbox in the `active` / `running` / `started` state. See
+  [Create a sandbox](/guides/create-a-sandbox).
+- An editor with a remote-SSH extension (for example **Remote - SSH** in Cursor
+  or VS Code).
+</Note>
+
+## Cursor
+
+Use the CLI to open the sandbox directly:
+
+```bash
+amika sandbox code dev-box
+```
+
+This registers the managed SSH alias and launches Cursor against it. See
+[Open a sandbox in your editor](/guides/open-in-editor) for details and
+troubleshooting.
+
+## VS Code and other Remote-SSH editors
+
+Any editor that reads your `~/.ssh/config` can connect to a sandbox through the
+Amika-managed SSH host alias.
+
+1. Run `amika sandbox code dev-box` once. This writes the alias
+   `amika-<sandbox-id>` into `~/.ssh/amika.conf` and ensures your `~/.ssh/config`
+   includes that file.
+2. In your editor, open the remote-SSH host picker and choose the
+   `amika-<sandbox-id>` host.
+3. Open the repository folder inside the sandbox (typically under
+   `/home/amika/workspace`).
+
+Alternatively, get the raw SSH destination and hand it to your editor or SSH
+client directly:
+
+```bash
+amika sandbox ssh dev-box --print
+```
+
+<Note>
+SSH connection tokens are time-bounded and rotate. The managed alias tracks the
+current details, so re-running `amika sandbox code` refreshes it if a connection
+stops working. See [SSH and connect](/guides/ssh-and-connect) for the full SSH
+surface, including revoking a token.
+</Note>
+
+## Browser access
+
+To drive an agent from the browser instead of a local editor, use the OpenCode
+web console. See [OpenCode](/guides/opencode) for managing its access
+credentials.
+
+## Next steps
+
+<CardGroup>
+  <Card title="Open a sandbox in your editor" href="/guides/open-in-editor" icon="window" />
+  <Card title="SSH and connect" href="/guides/ssh-and-connect" icon="terminal" />
+  <Card title="OpenCode" href="/guides/opencode" icon="globe" />
+</CardGroup>

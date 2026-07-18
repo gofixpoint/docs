@@ -1,0 +1,61 @@
+---
+title: "Open a sandbox in your editor"
+description: "Open a running sandbox in Cursor over SSH with amika sandbox code."
+---
+
+`amika sandbox code` opens a remote sandbox in your editor over SSH. Today it
+supports Cursor.
+
+## Prerequisites
+
+<Note>
+- A remote sandbox in the `active` / `running` / `started` state. The command
+  does not work on local sandboxes. See [Create a sandbox](/guides/create-a-sandbox).
+- The Cursor CLI (`cursor`) on your `PATH`. Install it from **Cursor >
+  Settings > Extensions > cursor-cli**.
+- The **Remote - SSH** extension installed in Cursor.
+</Note>
+
+## Open the sandbox
+
+```bash
+amika sandbox code dev-box
+
+# --editor is optional; cursor is the default and currently the only choice
+amika sandbox code dev-box --editor cursor
+```
+
+The command opens Cursor connected to the sandbox and drops you into the repo
+directory. If the file explorer is not visible, press `Cmd+Shift+E` in Cursor to
+open it.
+
+## What it does
+
+Under the hood, `amika sandbox code`:
+
+1. Fetches fresh SSH connection details for the sandbox.
+2. Writes a stable host alias, `amika-<sandbox-id>`, into the Amika-managed SSH
+   config at `~/.ssh/amika.conf` (included from your `~/.ssh/config`). The alias
+   is keyed on the sandbox id, so it stays valid even as the underlying
+   connection token rotates.
+3. Launches `cursor --remote ssh-remote+amika-<sandbox-id> <repo-path>`.
+
+Because the alias is stable, you can reuse it from any Remote-SSH-capable editor
+after running the command once. See [IDE and ADE access](/guides/ide-access).
+
+## Troubleshooting
+
+- **`cursor CLI is not installed or not in PATH`** — install the Cursor CLI from
+  **Cursor > Settings > Extensions > cursor-cli**.
+- **`unsupported editor`** — only `cursor` is supported today. Omit `--editor`
+  or pass `--editor cursor`.
+- **Cursor opens but cannot connect** — make sure the **Remote - SSH** extension
+  is installed in Cursor.
+
+## Next steps
+
+<CardGroup>
+  <Card title="IDE and ADE access" href="/guides/ide-access" icon="window" />
+  <Card title="SSH and connect" href="/guides/ssh-and-connect" icon="terminal" />
+  <Card title="Sandbox lifecycle" href="/guides/sandbox-lifecycle" icon="rotate" />
+</CardGroup>

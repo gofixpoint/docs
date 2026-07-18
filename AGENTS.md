@@ -22,32 +22,42 @@ hosted-platform user first.
 Amika's source lives in two repos that may or may not be present on disk.
 If they are, they're typically siblings of this repo:
 
-- `amika` (`../amika`) — Go CLI (`cmd/amika/`), OSS `amika-server`
-  (`cmd/amika-server/`, `internal/httpapi/`), preset images, the
-  `.amika/config.toml` CLI parser (`internal/amikaconfig/`), `ROADMAP.md`.
-- `amika-mono` (`../amika-mono`) — Next.js webapp (`js/coding-agents/`),
-  hosted API routes (`js/coding-agents/src/app/api/`), DB schema, the
-  fuller `.amika/config.toml` parser
-  (`js/coding-agents/src/lib/repositories/repo-config/toml/`), `specs/`.
+- `amika` (`../amika`) — all Go code lives under `go/`: CLI
+  (`go/cmd/amika/`), OSS `amika-server` (`go/cmd/amika-server/`,
+  `go/internal/httpapi/`), the `.amika/config.toml` CLI parser
+  (`go/internal/amikaconfig/`). Also the TypeScript SDK
+  (`sdk/typescript/`), preset images, and `ROADMAP.md`.
+- `amika-mono` (`../amika-mono`) — Next.js webapp (`js/coding-agents/`).
+  Hosted API route groups live in `js/coding-agents/src/server/v0beta1/`
+  (a Hono app mounted at `js/coding-agents/src/app/api/[[...route]]/`); DB
+  schema; the fuller `.amika/config.toml` parser
+  (`js/coding-agents/src/lib/repositories/repo-config/toml/`); `specs/`.
 
 Verify CLI flags, config keys, and API shapes against source before
 documenting them. Don't invent.
 
 ## Navigation
 
-`docs.json` defines three tabs:
+`docs.json` defines four tabs:
 
-- **Guides** — getting started, how-tos.
-- **API and CLI Reference** — flag and config tables, endpoint lists.
+- **Guides** — getting started and how-tos. Groups: Get started, Sandboxes,
+  Repository configuration, Agents and sessions, Connecting to sandboxes, Code
+  validation, Credentials, Advanced.
+- **SDKs** — the TypeScript SDK reference.
+- **CLI and API Reference** — flag and config tables, endpoint lists,
+  `.amika/config.toml` key lookup.
 - **Architecture** — system design, roadmap.
 
 Placement rules:
 
 - New how-to → Guides.
-- New flag table or endpoint → Reference.
+- New flag table, config key, or endpoint → Reference.
 - New design direction → Architecture.
 - Adding a page is a deliberate choice — prefer editing existing pages.
 - Any new `.mdx` must be wired into `docs.json` to appear.
+- Conceptual/how-config-works content is canonical in the Guides
+  "Repository configuration" group; `reference/config-toml` is a slim key
+  lookup that links back to it.
 
 ## Style
 
@@ -65,6 +75,32 @@ Placement rules:
 - Reusable content lives in `snippets/`. Mark a page as research preview by
   importing `/snippets/research-preview.mdx` at the top — not with an inline
   `<Note>` or a `tag: "Research preview"` frontmatter pill.
+
+### Surface toggles
+
+When a page (or a single instruction) can be done through more than one surface,
+show the surfaces with a synced toggle. Use Mintlify `<CodeGroup>` when every
+surface is a single code block, and `<Tabs>`/`<Tab>` when at least one surface
+needs prose or steps (always the case when Web UI is a surface). Both sync
+across the page by matching tab `title`, so a page can mix them and still read as
+one control.
+
+- **Canonical titles (byte-identical, case-sensitive).** Use exactly `CLI`,
+  `Web UI`, `TypeScript`, `HTTP API`, and `.amika/config.toml`. Never vary them
+  (not "amika CLI", not "Command line") — sync is string-exact.
+- **Display order.** `CLI` · `Web UI` · `TypeScript` · `HTTP API`. On
+  configuration pages, `.amika/config.toml` leads:
+  `.amika/config.toml` · `CLI` · `Web UI` · `TypeScript` · `HTTP API`.
+- **Include only supported surfaces.** Drop tabs for surfaces that don't support
+  the thing being documented; don't show an empty or "N/A" tab. If a surface is
+  imminent, a one-line `<Note>` in the nearest tab beats a stub.
+- **Default with `defaultTabIndex`.** Configuration pages default to
+  `.amika/config.toml` (index 0); action pages omit it and default to `CLI`.
+
+## Internal endpoints (not documented)
+
+`GET /config` (the public server-config endpoint) is internal and intentionally
+undocumented. Do not add a reference page or examples for it.
 
 ## Local workflow
 
