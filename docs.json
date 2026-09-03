@@ -77,8 +77,7 @@
             "pages": [
               "guides/remote-control",
               "guides/ssh-and-connect",
-              "guides/open-in-editor",
-              "guides/ide-access"
+              "guides/open-in-editor"
             ]
           },
           {
@@ -185,6 +184,12 @@
       ]
     }
   },
+  "redirects": [
+    {
+      "source": "/guides/ide-access",
+      "destination": "/guides/open-in-editor"
+    }
+  ],
   "navbar": {
     "links": [
       {
