@@ -40,10 +40,10 @@ explorer is not visible, press `Cmd+Shift+E`.
 Any editor that reads your `~/.ssh/config` and supports remote SSH can use the
 Amika-managed host alias.
 
-1. Run `amika sandbox code dev-box` once to write `amika-<sandbox-id>` to
+1. Run `amika sandbox code dev-box` once to write the sandbox alias to
    `~/.ssh/amika.conf` and include it from your SSH config.
 2. Open your editor's remote-SSH host picker and select
-   `amika-<sandbox-id>`.
+   `<sandbox-name>.<sandbox-id>.<environment>.amika`.
 3. Open the repository directory in the sandbox, typically under
    `/home/amika/workspace`.
 
@@ -56,15 +56,34 @@ To work with an agent without a local editor, use the OpenCode web console. See
 
 Under the hood, `amika sandbox code`:
 
-1. Fetches fresh SSH connection details for the sandbox.
-2. Writes a stable host alias, `amika-<sandbox-id>`, into the Amika-managed SSH
-   config at `~/.ssh/amika.conf` (included from your `~/.ssh/config`). The alias
-   is keyed on the sandbox id, so it stays valid even as the underlying
-   connection token rotates.
-3. Opens or configures the selected editor or coding agent with that alias.
+1. Creates a direct SSH session and pins the sandbox's Ed25519 host key.
+2. Builds an alias in the format
+   `<sandbox-name>.<sandbox-id>.<environment>.amika`.
+3. Ensures `~/.ssh/config` includes the Amika-managed `~/.ssh/amika.conf`.
+4. Adds a concrete host entry so editors can discover the sandbox. An
+   environment-scoped wildcard entry supplies the shared connection settings:
 
-Because the alias is stable, you can reuse it from any Remote-SSH-capable editor
-after running the command once.
+```ssh-config
+# dev-box
+Host dev-box.<sandbox-id>.app-amika-dev.amika
+
+Host *.app-amika-dev.amika
+  User amika
+  IdentityFile ~/.ssh/amika_id_ed25519
+  IdentitiesOnly yes
+  StrictHostKeyChecking yes
+  UserKnownHostsFile ~/.ssh/amika_known_hosts
+  ProxyCommand amika plumbing ssh-stdio-proxy %h
+  ServerAliveInterval 15
+  ServerAliveCountMax 3
+```
+
+5. Opens or configures the selected editor or coding agent with the alias.
+
+The concrete entry intentionally has no connection options. OpenSSH gets those
+from the wildcard entry for the current Amika environment. This lets one config
+support sandboxes from multiple control planes without sending an alias through
+the wrong proxy.
 
 ## Troubleshooting
 
