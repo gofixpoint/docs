@@ -77,23 +77,33 @@ amika session list
 
 If you want to self-host, read the [self-hosting guide](https://github.com/gofixpoint/amika/blob/main/docs/self-hosting.md).
 
-{/* #amika/annotate "
-  replace the 'Next steps' with the same 'Where to start' (but call it 'Next steps')
-  and 'See also' from guides/overview.mdx
-  "
-  
-  */}
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Repository configuration" icon="sliders-horizontal" href="/reference/repository-configuration">
-    Configure sandbox defaults with .amika/config.toml — precedence rules plus
-    multi-repo and repo-less sandboxes.
+  <Card title="Create a sandbox" icon="cube" href="/guides/create-a-sandbox">
+    Spin up a sandbox loaded with your repo and agent credentials.
   </Card>
-  <Card title="Authentication" icon="key-round" href="/reference/auth">
-    Export discovered keys for Claude, Codex, and OpenCode.
+  <Card title="Send a message to an agent" icon="paper-plane" href="/guides/send-a-message-to-an-agent">
+    Run Claude, Codex, or another agent inside a sandbox synchronously.
   </Card>
+  <Card title="Sandbox and repository configuration" icon="sliders-horizontal" href="/guides/configuration">
+    Each sandbox boots from a repository, whose `.amika/config.toml` configures the sandbox and agents.
+  </Card>
+  <Card title="Remote control agents and sandboxes" icon="monitor-smartphone" href="/guides/remote-control">
+    Remote-control agents and sandboxes from Slack, Linear, the Codex app, or SSH.
+  </Card>
+</CardGroup>
+
+## See also
+
+<CardGroup cols={3}>
   <Card title="CLI reference" icon="square-terminal" href="/reference/cli">
-    See full command and flag documentation.
+    Full flag listing for every `amika` command.
+  </Card>
+  <Card title="TypeScript SDK" icon="code" href="/sdks/typescript/quickstart">
+    Method-by-method reference, types, and errors.
+  </Card>
+  <Card title="HTTP API" icon="cloud" href="/reference/api-reference">
+    Interactive docs and OpenAPI spec for the hosted API.
   </Card>
 </CardGroup>

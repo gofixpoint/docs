@@ -75,6 +75,7 @@
           {
             "group": "Connecting to sandboxes",
             "pages": [
+              "guides/remote-control",
               "guides/ssh-and-connect",
               "guides/open-in-editor",
               "guides/ide-access"
