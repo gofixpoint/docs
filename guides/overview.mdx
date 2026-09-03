@@ -1,12 +1,12 @@
 ---
 title: "Guides overview"
-description: "Task-oriented walkthroughs for the CLI and the TypeScript SDK."
 ---
 
-Amika gives you two main ways to drive sandboxes: the `amika` CLI for
-day-to-day shell use, and the `@amika/sdk` TypeScript SDK for programs and
-pipelines. The guides in this section walk through one task at a time and
-show both side-by-side, so you can pick whichever interface fits the job.
+Amika gives you three main ways to drive sandboxes and agents:
+
+1. the web UI at https://app.amika.dev/
+2. the `amika` CLI
+3. the `@amika/sdk` TypeScript SDK
 
 ## Where to start
 
@@ -17,38 +17,16 @@ show both side-by-side, so you can pick whichever interface fits the job.
   <Card title="Send a message to an agent" icon="paper-plane" href="/guides/send-a-message-to-an-agent">
     Run Claude, Codex, or another agent inside a sandbox synchronously.
   </Card>
-  <Card title="Manage secrets" icon="key" href="/guides/manage-secrets">
+  {/* #amika/todo "swap this to guides/configuration" */}
+  <Card title="Manage secrets and agent providers" icon="key" href="/guides/manage-secrets">
     Store API keys and OAuth credentials in the Amika vault.
   </Card>
+  {/* #amika/todo "get rid the 'inject credentials' card" */ }
   <Card title="Inject credentials" icon="syringe" href="/guides/inject-credentials">
     Wire stored credentials into a sandbox at create time.
   </Card>
+  {/* #amika/todo "Add a 'Remote control agents and sandboxes' under the 'Connecting to sandboxes' section, and then add a card here for it" */ }
 </CardGroup>
-
-## CLI and SDK in one place
-
-Every guide shows the same step with a `<CodeGroup>`: the CLI snippet first,
-the TypeScript snippet second. Use whichever tab matches the surface you're
-working in.
-
-<CodeGroup>
-
-```bash CLI
-amika sandbox create --name dev-box --preset coder
-```
-
-```ts TypeScript
-import { AmikaClient } from "@amika/sdk";
-
-const amika = new AmikaClient({
-  baseUrl: process.env.AMIKA_API_URL ?? "https://app.amika.dev",
-  accessToken: process.env.AMIKA_API_KEY!,
-});
-
-await amika.createSandbox({ name: "dev-box", preset: "coder" });
-```
-
-</CodeGroup>
 
 ## What you need
 
@@ -66,11 +44,11 @@ storage for you.
 ## See also
 
 <CardGroup cols={3}>
-  <Card title="TypeScript SDK" icon="code" href="/sdks/typescript/quickstart">
-    Method-by-method reference, types, and errors.
-  </Card>
   <Card title="CLI reference" icon="square-terminal" href="/reference/cli">
     Full flag listing for every `amika` command.
+  </Card>
+  <Card title="TypeScript SDK" icon="code" href="/sdks/typescript/quickstart">
+    Method-by-method reference, types, and errors.
   </Card>
   <Card title="HTTP API" icon="cloud" href="/reference/api-reference">
     Interactive docs and OpenAPI spec for the hosted API.

@@ -52,13 +52,6 @@
             ]
           },
           {
-            "group": "Repository configuration",
-            "pages": [
-              "guides/configuration",
-              "guides/config-toml"
-            ]
-          },
-          {
             "group": "Agents and sessions",
             "pages": [
               "guides/send-a-message-to-an-agent",
@@ -66,6 +59,17 @@
               "guides/capture-agent-sessions",
               "guides/slack",
               "guides/opencode"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "guides/configuration",
+              "guides/config-toml",
+              "guides/env-vars-and-secrets",
+              "guides/manage-secrets",
+              "guides/inject-credentials"
+
             ]
           },
           {
@@ -84,41 +88,12 @@
             ]
           },
           {
-            "group": "Credentials",
-            "pages": [
-              "guides/env-vars-and-secrets",
-              "guides/manage-secrets",
-              "guides/inject-credentials"
-            ]
-          },
-          {
             "group": "Advanced",
             "pages": [
               "guides/setup-repo-config-with-agent",
               "guides/programmatic-usage",
               "guides/mcp-integrations",
               "guides/github-authentication"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "SDKs",
-        "groups": [
-          {
-            "group": "Overview",
-            "pages": [
-              "sdks/overview"
-            ]
-          },
-          {
-            "group": "TypeScript",
-            "pages": [
-              "sdks/typescript/quickstart",
-              "sdks/typescript/client",
-              "sdks/typescript/types",
-              "sdks/typescript/errors",
-              "sdks/typescript/token-sources"
             ]
           }
         ]
@@ -151,6 +126,27 @@
               "reference/api-reference",
               "reference/http-api",
               "reference/amika-server-cli-reference"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "SDKs",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "sdks/overview"
+            ]
+          },
+          {
+            "group": "TypeScript",
+            "pages": [
+              "sdks/typescript/quickstart",
+              "sdks/typescript/client",
+              "sdks/typescript/types",
+              "sdks/typescript/errors",
+              "sdks/typescript/token-sources"
             ]
           }
         ]
