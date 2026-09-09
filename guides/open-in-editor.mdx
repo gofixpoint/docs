@@ -1,19 +1,17 @@
 ---
 title: "Open a sandbox in your editor"
-description: "Open a running sandbox in Cursor over SSH with amika sandbox code."
+description: "Open a running sandbox in Cursor, VS Code, Claude Desktop, or Codex over SSH."
 ---
 
-`amika sandbox code` opens a remote sandbox in your editor over SSH. Today it
-supports Cursor.
+`amika sandbox code` opens a remote sandbox in Cursor, VS Code, Claude Desktop,
+or Codex over SSH. Cursor is the default.
 
 ## Prerequisites
 
 <Note>
-- A remote sandbox in the `active` / `running` / `started` state. The command
-  does not work on local sandboxes. See [Create a sandbox](/guides/create-a-sandbox).
-- The Cursor CLI (`cursor`) on your `PATH`. Install it from **Cursor >
-  Settings > Extensions > cursor-cli**.
-- The **Remote - SSH** extension installed in Cursor.
+- An SSH identity. Create one with `amika secret ssh-keygen`.
+- For Cursor or VS Code, its CLI (`cursor` or `code`) on your `PATH` and the
+  **Remote - SSH** extension installed.
 </Note>
 
 ## Open the sandbox
@@ -21,41 +19,85 @@ supports Cursor.
 ```bash
 amika sandbox code dev-box
 
-# --editor is optional; cursor is the default and currently the only choice
+# Cursor is the default
 amika sandbox code dev-box --editor cursor
+amika sandbox code dev-box --editor vscode
+amika sandbox code dev-box --editor claude
+amika sandbox code dev-box --editor codex
 ```
 
-The command opens Cursor connected to the sandbox and drops you into the repo
-directory. If the file explorer is not visible, press `Cmd+Shift+E` in Cursor to
-open it.
+Use `cursor` or `vscode` to open the repository in that editor. Use `claude` to
+register the sandbox as a Claude Desktop SSH environment, then select
+`Amika: <sandbox-name>` from its environment dropdown. Use `codex` to add the
+sandbox as a Codex remote connection, then enable the host in **Settings >
+Connections**.
+
+For Cursor and VS Code, the command opens the repository directory. If the file
+explorer is not visible, press `Cmd+Shift+E`.
+
+## Use another Remote-SSH editor
+
+Any editor that reads your `~/.ssh/config` and supports remote SSH can use the
+Amika-managed host alias.
+
+1. Run `amika sandbox code dev-box` once to write the sandbox alias to
+   `~/.ssh/amika.conf` and include it from your SSH config.
+2. Open your editor's remote-SSH host picker and select
+   `<sandbox-name>.<sandbox-id>.<environment>.amika`.
+3. Open the repository directory in the sandbox, typically under
+   `/home/amika/workspace`.
+
+## Use a browser
+
+To work with an agent without a local editor, use the OpenCode web console. See
+[OpenCode](/guides/opencode) for access and credentials.
 
 ## What it does
 
 Under the hood, `amika sandbox code`:
 
-1. Fetches fresh SSH connection details for the sandbox.
-2. Writes a stable host alias, `amika-<sandbox-id>`, into the Amika-managed SSH
-   config at `~/.ssh/amika.conf` (included from your `~/.ssh/config`). The alias
-   is keyed on the sandbox id, so it stays valid even as the underlying
-   connection token rotates.
-3. Launches `cursor --remote ssh-remote+amika-<sandbox-id> <repo-path>`.
+1. Creates a direct SSH session and pins the sandbox's Ed25519 host key.
+2. Builds an alias in the format
+   `<sandbox-name>.<sandbox-id>.<environment>.amika`.
+3. Ensures `~/.ssh/config` includes the Amika-managed `~/.ssh/amika.conf`.
+4. Adds a concrete host entry so editors can discover the sandbox. An
+   environment-scoped wildcard entry supplies the shared connection settings:
 
-Because the alias is stable, you can reuse it from any Remote-SSH-capable editor
-after running the command once. See [IDE and ADE access](/guides/ide-access).
+```ssh-config
+# dev-box
+Host dev-box.<sandbox-id>.app-amika-dev.amika
+
+Host *.app-amika-dev.amika
+  User amika
+  IdentityFile ~/.ssh/amika_id_ed25519
+  IdentitiesOnly yes
+  StrictHostKeyChecking yes
+  UserKnownHostsFile ~/.ssh/amika_known_hosts
+  ProxyCommand amika plumbing ssh-stdio-proxy %h
+  ServerAliveInterval 15
+  ServerAliveCountMax 3
+```
+
+5. Opens or configures the selected editor or coding agent with the alias.
+
+The concrete entry intentionally has no connection options. OpenSSH gets those
+from the wildcard entry for the current Amika environment. This lets one config
+support sandboxes from multiple control planes without sending an alias through
+the wrong proxy.
 
 ## Troubleshooting
 
-- **`cursor CLI is not installed or not in PATH`** — install the Cursor CLI from
-  **Cursor > Settings > Extensions > cursor-cli**.
-- **`unsupported editor`** — only `cursor` is supported today. Omit `--editor`
-  or pass `--editor cursor`.
-- **Cursor opens but cannot connect** — make sure the **Remote - SSH** extension
-  is installed in Cursor.
+- **`cursor` or `code` CLI is not installed or not in `PATH`** — install the
+  editor's shell command from its command palette.
+- **`unsupported editor`** — pass one of `cursor`, `vscode`, `claude`, or
+  `codex`.
+- **Cursor or VS Code opens but cannot connect** — make sure its **Remote -
+  SSH** extension is installed.
 
 ## Next steps
 
 <CardGroup>
-  <Card title="IDE and ADE access" href="/guides/ide-access" icon="window" />
   <Card title="SSH and connect" href="/guides/ssh-and-connect" icon="terminal" />
+  <Card title="OpenCode" href="/guides/opencode" icon="globe" />
   <Card title="Sandbox lifecycle" href="/guides/sandbox-lifecycle" icon="rotate" />
 </CardGroup>

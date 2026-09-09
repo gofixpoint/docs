@@ -1,39 +1,45 @@
 ---
 title: "Introduction"
-description: "Infra to build your software factory."
+description: "Multiplayer cloud workstations for coding agents and humans"
 ---
 
-Amika is infra for building your software factory. Spin up multiplayer sandboxes
-pre-loaded with any coding agent, and run autonomous background agents for
-code-generation jobs.
+## Multiplayer cloud workstations for coding agents and humans
 
-Control agents via CLI, web UI, or HTTP API. Seamlessly switch between
-programmaticly automated agent workflows and human-steered vibe coding with
-Codex, Claude Code, OpenCode, and more.
+Amika lets you **provision VMs on any cloud or computer, load them with your favorite agent(s), and then remote control the agents from any chat surface or app.**
 
-Amika is currently in beta and invite-only. The open source CLI is available at
-https://github.com/gofixpoint/amika. You can also run this CLI in "local" mode
-to run sandboxed Docker coding agent containers without the Amika hosted
-service.
+Each VM is configured as **a sandboxed workstation tuned for coding agents and humans** to collaborate in.
 
-<div style={{position: "relative", paddingBottom: "64.67065868263472%", height: 0}}>
-  <iframe
-    src="https://www.loom.com/embed/495e3ce8be2447dfbb7c6717cdca6cce"
-    allowFullScreen
-    style={{position: "absolute", top: 0, left: 0, width: "100%", height: "100%"}}
-  />
-</div>
+- **Run anywhere.** Use Kubernetes, E2B, or your own computer.
+- **Bring any agent.** Use Codex, Claude, OpenCode, Pi, or your own agent with existing subscriptions and API keys.
+- **Control from anywhere.** Use chat apps, the web UI, API, CLI, SSH, or your editor or ADE.
 
-## What you can do with Amika
+![Amika sandbox dashboard showing OpenCode and Pi coding agents, exposed services, and sandbox controls.](/images/amika-sandbox-dashboard.png)
 
-Amika combines these core capabilities:
+## What can an Amika sandbox do?
 
-- Run sandboxes loaded with any coding agent and set up with a per-sandbox dev environment
-- Clone one or more Git repos onto the sandbox
-- Expose any TCP or UDP port to preview changes to the app, database, backend, whatever!
-- Programatically control the sandboxed agents for code-gen jobs
-- Record the entire agent chat session as additional context and attach alongside the Git commits *(coming soon)*
-- Run arbitrary "materialization" scripts to collect context data from elsewhere and output it onto the sandbox's filesystem *(coming soon)*
+On a sandbox, you can
+
+- **run 1 or more agents** simultaneously
+- **expose the HTTPS URLs** of the apps your agent is working on
+- let sandboxes and their agents **communicate with each other**
+- **programmatically control** the sandbox and its agents
+- **connect** to the sandbox from tools like the **Codex app, Cursor, and cmux**
+
+Each sandbox can be short-lived or persistent, depending on whether you want it to disappear when your PR is done, or whether you want to keep it around more permanently.
+
+Amika **automatically wires your Git repos and agent configs and credentials** into each sandbox.
+
+## What can you use Amika for?
+
+Since Amika schedules cloud VMs and then gives you networking, agent messaging, and chat UIs, you can use it in many ways. Some examples:
+
+- create **multiplayer cloud devboxes** for engineers that are pre-configured with your tech stack
+- build **managed cloud agents** that you **control via API** to automate work in the background
+- **plug into your GitHub CI** to not only run unit tests, but **auto-fix failures*
+- make **custom agents for non-technical teammates** to chat with on the web
+- **talk with agents** from other **tools like Slack and Linear**
+
+You can use Amika for anything where you need cloud VMs and control over the VMs, their agents, and their file contents or git repos.
 
 ## Start here
 

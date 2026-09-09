@@ -52,13 +52,6 @@
             ]
           },
           {
-            "group": "Repository configuration",
-            "pages": [
-              "guides/configuration",
-              "guides/config-toml"
-            ]
-          },
-          {
             "group": "Agents and sessions",
             "pages": [
               "guides/send-a-message-to-an-agent",
@@ -69,11 +62,22 @@
             ]
           },
           {
+            "group": "Configuration",
+            "pages": [
+              "guides/configuration",
+              "guides/config-toml",
+              "guides/env-vars-and-secrets",
+              "guides/manage-secrets",
+              "guides/inject-credentials"
+
+            ]
+          },
+          {
             "group": "Connecting to sandboxes",
             "pages": [
+              "guides/remote-control",
               "guides/ssh-and-connect",
-              "guides/open-in-editor",
-              "guides/ide-access"
+              "guides/open-in-editor"
             ]
           },
           {
@@ -84,41 +88,12 @@
             ]
           },
           {
-            "group": "Credentials",
-            "pages": [
-              "guides/env-vars-and-secrets",
-              "guides/manage-secrets",
-              "guides/inject-credentials"
-            ]
-          },
-          {
             "group": "Advanced",
             "pages": [
               "guides/setup-repo-config-with-agent",
               "guides/programmatic-usage",
               "guides/mcp-integrations",
               "guides/github-authentication"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "SDKs",
-        "groups": [
-          {
-            "group": "Overview",
-            "pages": [
-              "sdks/overview"
-            ]
-          },
-          {
-            "group": "TypeScript",
-            "pages": [
-              "sdks/typescript/quickstart",
-              "sdks/typescript/client",
-              "sdks/typescript/types",
-              "sdks/typescript/errors",
-              "sdks/typescript/token-sources"
             ]
           }
         ]
@@ -156,6 +131,27 @@
         ]
       },
       {
+        "tab": "SDKs",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "sdks/overview"
+            ]
+          },
+          {
+            "group": "TypeScript",
+            "pages": [
+              "sdks/typescript/quickstart",
+              "sdks/typescript/client",
+              "sdks/typescript/types",
+              "sdks/typescript/errors",
+              "sdks/typescript/token-sources"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "Architecture",
         "groups": [
           {
@@ -188,6 +184,12 @@
       ]
     }
   },
+  "redirects": [
+    {
+      "source": "/guides/ide-access",
+      "destination": "/guides/open-in-editor"
+    }
+  ],
   "navbar": {
     "links": [
       {

@@ -1,5 +1,6 @@
 [lifecycle]
 setup_script = ".amika/setup.sh"
+start_script = ".amika/start.sh"
 
 [services.docs]
 port = 3000
