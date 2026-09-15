@@ -1,14 +1,14 @@
 ---
 title: "Quickstart"
-description: "Install the CLI and create your first sandbox."
+description: "Install the CLI and create your first rig."
 ---
 
 This quickstart walks you through a minimal Amika flow:
 
 1. Log into Amika.
 2. Install the CLI.
-3. Create a sandbox and message a sandboxed agent from the CLI.
-   1. you can also do the same from our web UI or the Typescript SDK
+3. Create a rig and message an agent from the CLI.
+   1. You can also use the web UI or the TypeScript SDK.
 
 ## Prerequisites
 
@@ -18,7 +18,7 @@ This quickstart walks you through a minimal Amika flow:
 
 Sign up at https://app.amika.dev/signup and follow onboarding.
 
-## Step 2: setup the CLI
+## Step 2: Set up the CLI
 
 1. Download the CLI
 
@@ -35,13 +35,13 @@ Sign up at https://app.amika.dev/signup and follow onboarding.
    ```
 
 
-## Step 3: create sandboxes and message agents
+## Step 3: Create rigs and message agents
 
-Now, you can either (a) create a sandbox and then connect to it however you choose, or (b) directly start an agent chat session, which will provision its own sandbox behind the scenes. Both can be done from the https://app.amika.dev/, and also from the CLI.
+Now, you can either (a) create a rig and then connect to it however you choose, or (b) directly start an agent chat session, which will provision its own rig behind the scenes. Both can be done from the https://app.amika.dev/, and also from the CLI.
 
-### creating a sandbox
+### Create a rig
 
-If you want to create a sandbox and then chat with it from Codex, Cursor, OpenCode, SSH, etc., you can create a sandbox without first making an agent session.
+If you want to create a rig and then chat with it from Codex, Cursor, OpenCode, SSH, etc., you can create a rig without first making an agent session.
 
 Assuming you connected GitHub during web onboarding:
 
@@ -50,24 +50,24 @@ Assuming you connected GitHub during web onboarding:
 amika secret ssh-keygen
 
 cd path/to/git/repo/you/want/to/work/on
-amika sandbox create --name my-first-sandbox
-amika sandbox ssh my-first-sandbox
+amika rig create --name my-first-rig
+amika rig ssh my-first-rig
 ```
 
-This spins up a sandbox, pre-loaded with your Git repo and agent credentials. List your sandboxes with:
+This spins up a rig, pre-loaded with your Git repo and agent credentials. List your rigs with:
 
 ```bash
-amika sandbox list
+amika rig list
 ```
 
-### creating an agent chat session
+### Create an agent chat session
 
 ```bash
 cd path/to/git/repo/you/want/to/work/on
 amika send --agent codex "What does this repo do?"
 ```
 
-This will spin up a sandbox in the background and send the message to a Codex agent on the sandbox. You can list agent sessions with:
+This will spin up a rig in the background and send the message to a Codex agent on the rig. You can list agent sessions with:
 
 ```bash
 amika session list
@@ -80,17 +80,17 @@ If you want to self-host, read the [self-hosting guide](https://github.com/gofix
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Create a sandbox" icon="cube" href="/guides/create-a-sandbox">
-    Spin up a sandbox loaded with your repo and agent credentials.
+  <Card title="Create a rig" icon="cube" href="/guides/create-a-rig">
+    Spin up a rig loaded with your repo and agent credentials.
   </Card>
   <Card title="Send a message to an agent" icon="paper-plane" href="/guides/send-a-message-to-an-agent">
-    Run Claude, Codex, or another agent inside a sandbox synchronously.
+    Run Claude, Codex, or another agent inside a rig synchronously.
   </Card>
-  <Card title="Sandbox and repository configuration" icon="sliders-horizontal" href="/guides/configuration">
-    Each sandbox boots from a repository, whose `.amika/config.toml` configures the sandbox and agents.
+  <Card title="Rig and repository configuration" icon="sliders-horizontal" href="/guides/configuration">
+    Each rig boots from a repository, whose `.amika/config.toml` configures the rig and agents.
   </Card>
-  <Card title="Remote control agents and sandboxes" icon="monitor-smartphone" href="/guides/remote-control">
-    Remote-control agents and sandboxes from Slack, Linear, the Codex app, or SSH.
+  <Card title="Remote control agents and rigs" icon="monitor-smartphone" href="/guides/remote-control">
+    Remote-control agents and rigs from Slack, Linear, the Codex app, or SSH.
   </Card>
 </CardGroup>
 

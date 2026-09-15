@@ -1,9 +1,9 @@
 ---
 title: "Services"
-description: "Declare named services with port mappings and URL schemes for your sandboxes."
+description: "Declare named services with port mappings and URL schemes for your rigs."
 ---
 
-Services let you declare network-facing components in `.amika/config.toml` so that sandboxes automatically publish the right ports and generate URLs when they start.
+Services let you declare network-facing components in `.amika/config.toml` so that rigs automatically publish the right ports and generate URLs when they start.
 
 ## Defining services in config.toml
 
@@ -93,14 +93,14 @@ Amika validates service definitions when parsing `.amika/config.toml`:
 - **url_scheme entries** must reference a port declared in the same service. Duplicate port entries within `url_scheme` are rejected.
 
 <Warning>
-Container ports **60899–60999** are reserved for internal Amika services and are rejected in service declarations. See [Reserved ports](/reference/sandbox-configuration#reserved-ports) for details.
+Container ports **60899–60999** are reserved for internal Amika services and are rejected in service declarations. See [Reserved ports](/reference/rig-configuration#reserved-ports) for details.
 </Warning>
 
 If validation fails, Amika logs a warning and treats the file as having no service definitions. The `[lifecycle]` section is still applied normally.
 
 ## Port resolution
 
-When you run `amika sandbox create --git` and the repository contains service declarations, Amika resolves host ports for each service port:
+When you run `amika rig create --git` and the repository contains service declarations, Amika resolves host ports for each service port:
 
 1. **Direct mirror** — try binding `hostPort = containerPort`. If the port is available on the host, use it.
 2. **Random fallback** — if the direct mirror is taken, bind to port 0 and let the OS assign an available port.
@@ -113,7 +113,7 @@ For ports with a `url_scheme`, Amika generates a URL at resolution time:
 <scheme>://localhost:<hostPort>
 ```
 
-Resolved ports and URLs are visible in `amika sandbox list` and API responses.
+Resolved ports and URLs are visible in `amika rig list` and API responses.
 
 <Note>
 URL generation only applies to TCP ports. UDP ports with a `url_scheme` do not produce runtime URLs.
@@ -125,14 +125,14 @@ When `--port` flags are passed alongside `--git`, the two sets of port bindings 
 
 ```bash
 # --port publishes 5432; service config publishes its own ports
-amika sandbox create --git --port 5432:5432
+amika rig create --git --port 5432:5432
 ```
 
 If a container port/protocol pair appears in both `--port` flags and a service declaration, Amika returns an error — there is no silent override.
 
 ## Listing services
 
-Use `amika service list` to see services across all sandboxes:
+Use `amika service list` to see services across all rigs:
 
 ```bash
 amika service list
@@ -141,12 +141,12 @@ amika service list --sandbox-name teal-tokyo
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--sandbox-name <name>` | (none) | Filter services to a specific sandbox |
+| `--sandbox-name <name>` | (none) | Filter services to a specific rig |
 
 Output columns: `SERVICE`, `SANDBOX`, `PORTS`, `URL`.
 
 ```
-SERVICE    SANDBOX       PORTS                            URL
+SERVICE    SANDBOX   PORTS                            URL
 api        teal-tokyo    127.0.0.1:4838->4838/tcp         http://localhost:4838
 metrics    teal-tokyo    127.0.0.1:9090->9090/tcp         -
 frontend   blue-paris    127.0.0.1:3000->3000/tcp         https://localhost:3000
@@ -156,7 +156,7 @@ frontend   blue-paris    127.0.0.1:3000->3000/tcp         https://localhost:3000
 
 On the hosted Amika platform, service definitions can also be managed through the web UI or the platform API.
 
-**Resolution precedence** — when creating a sandbox for a repository, the platform resolves service definitions in this order:
+**Resolution precedence** — when creating a rig for a repository, the platform resolves service definitions in this order:
 
 1. **Database** — if any service definitions have been saved via the UI or API, use those exclusively.
 2. **Repository config** — if no database definitions exist, parse `[services.*]` sections from `.amika/config.toml`.
@@ -168,5 +168,5 @@ On the hosted Amika platform, service definitions can also be managed through th
 
 ## Related docs
 
-- [Sandbox configuration](/reference/sandbox-configuration) — lifecycle scripts, git cloning, reserved ports
+- [Rig configuration](/reference/rig-configuration) — lifecycle scripts, git cloning, reserved ports
 - [CLI reference](/reference/cli) — full command and flag index

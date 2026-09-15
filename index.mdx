@@ -7,27 +7,27 @@ description: "Multiplayer cloud workstations for coding agents and humans"
 
 Amika lets you **provision VMs on any cloud or computer, load them with your favorite agent(s), and then remote control the agents from any chat surface or app.**
 
-Each VM is configured as **a sandboxed workstation tuned for coding agents and humans** to collaborate in.
+Each VM is configured as an **Amika Rig**, a **workstation tuned for coding agents and humans** to collaborate in.
 
 - **Run anywhere.** Use Kubernetes, E2B, or your own computer.
 - **Bring any agent.** Use Codex, Claude, OpenCode, Pi, or your own agent with existing subscriptions and API keys.
 - **Control from anywhere.** Use chat apps, the web UI, API, CLI, SSH, or your editor or ADE.
 
-![Amika sandbox dashboard showing OpenCode and Pi coding agents, exposed services, and sandbox controls.](/images/amika-sandbox-dashboard.png)
+![Amika Rig dashboard showing OpenCode and Pi coding agents, exposed services, and Rig controls.](/images/amika-rig-dashboard.png)
 
-## What can an Amika sandbox do?
+## What can an Amika Rig do?
 
-On a sandbox, you can
+On a Rig, you can
 
 - **run 1 or more agents** simultaneously
 - **expose the HTTPS URLs** of the apps your agent is working on
-- let sandboxes and their agents **communicate with each other**
-- **programmatically control** the sandbox and its agents
-- **connect** to the sandbox from tools like the **Codex app, Cursor, and cmux**
+- let Rigs and their agents **communicate with each other**
+- **programmatically control** the Rig and its agents
+- **connect** to the Rig from tools like the **Codex app, Cursor, and cmux**
 
-Each sandbox can be short-lived or persistent, depending on whether you want it to disappear when your PR is done, or whether you want to keep it around more permanently.
+Each Rig can be short-lived or persistent, depending on whether you want it to disappear when your PR is done, or whether you want to keep it around more permanently.
 
-Amika **automatically wires your Git repos and agent configs and credentials** into each sandbox.
+Amika **automatically wires your Git repos and agent configs and credentials** into each Rig.
 
 ## What can you use Amika for?
 
@@ -44,18 +44,21 @@ You can use Amika for anything where you need cloud VMs and control over the VMs
 ## Start here
 
 <CardGroup cols={2}>
+  <Card title="What is a rig?" icon="server" href="/guides/what-is-a-rig">
+    Learn how VM Rigs give agents and people a shared workstation.
+  </Card>
   <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Install the CLI and create your first sandbox.
+    Install the CLI and create your first rig.
   </Card>
   <Card title="Repository configuration" icon="gear" href="/reference/repository-configuration">
-    Configure sandbox defaults with .amika/config.toml, including precedence
-    rules and multi-repo or repo-less sandboxes.
+    Configure rig defaults with .amika/config.toml, including precedence
+    rules and multi-repo or repo-less rigs.
   </Card>
   <Card title="CLI reference" icon="square-terminal" href="/reference/cli">
     Browse command syntax, key flags, and examples.
   </Card>
   <Card title="Pricing" icon="dollar-sign" href="https://www.amika.dev/pricing">
-    Compare plan tiers, billing units, and managed sandbox costs.
+    Compare plan tiers, billing units, and managed rig costs.
   </Card>
 </CardGroup>
 

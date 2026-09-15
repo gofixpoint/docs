@@ -20,6 +20,6 @@ Changes merged to `main` are deployed automatically via the Mintlify GitHub app.
 
 - `docs.json` — site configuration (navigation, theme, metadata)
 - `index.mdx` / `quickstart.mdx` — landing and getting-started pages
-- `guides/` — how-to guides (sandbox config, presets, authentication)
+- `guides/` — how-to guides (rig configuration, presets, authentication)
 - `reference/` — CLI and HTTP API reference
 - `architecture/` — system design and roadmap

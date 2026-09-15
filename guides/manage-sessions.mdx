@@ -1,17 +1,17 @@
 ---
 title: "Manage sessions"
-description: "Create, list, fetch, and update agent sessions in a sandbox."
+description: "Create, list, fetch, and update agent sessions in a rig."
 ---
 
-Each sandbox tracks a set of agent sessions. The full session CRUD surface is
+Each rig tracks a set of agent sessions. The full session CRUD surface is
 SDK-only today; from the CLI you select sessions through
 [`agent-send`](/guides/send-a-message-to-an-agent) flags.
 
 ## Prerequisites
 
 <Note>
-A sandbox in the `active` / `running` / `started` state. See
-[Create a sandbox](/guides/create-a-sandbox).
+A rig in the `active` / `running` / `started` state. See
+[Create a rig](/guides/create-a-rig).
 </Note>
 
 ## CLI: pick or start a session at agent-send time
@@ -21,10 +21,10 @@ prompt runs in, use the flags on `agent-send`.
 
 ```bash
 # Start a fresh session
-amika sandbox agent-send dev-box "Plan the migration" --new-session
+amika rig agent-send dev-box "Plan the migration" --new-session
 
 # Resume a specific session
-amika sandbox agent-send dev-box "Continue from earlier" \
+amika rig agent-send dev-box "Continue from earlier" \
   --session-id 3f2a...
 ```
 

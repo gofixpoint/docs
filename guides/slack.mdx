@@ -1,12 +1,12 @@
 ---
 title: "Slack"
-description: "Drive sandboxed agents from Slack: install the app, set channel and workspace defaults, and start a conversation."
+description: "Drive isolated agents from Slack: install the app, set channel and workspace defaults, and start a conversation."
 ---
 
 The Slack integration lets your team talk to Amika's coding agents from a Slack
-channel or DM. Mention the bot with a request and Amika spins up a sandbox for
+channel or DM. Mention the bot with a request and Amika spins up a rig for
 that thread, runs the agent, and replies in-thread. Follow-up messages in the
-same thread continue the same sandbox and session.
+same thread continue the same rig and session.
 
 ## Prerequisites
 
@@ -74,8 +74,8 @@ How Amika picks the repository and agent for a new thread:
 3. **The picker card** — if neither is set, the bot prompts you to choose the
    repository and agent for the thread.
 
-Each Slack thread maps to its own sandbox. Continuing the thread continues that
-sandbox's session, so the agent keeps its context across follow-up messages.
+Each Slack thread maps to its own rig. Continuing the thread continues that
+rig's session, so the agent keeps its context across follow-up messages.
 
 <Tip>
 Set channel or workspace defaults for the channels your team uses most so

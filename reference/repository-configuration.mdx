@@ -1,16 +1,16 @@
 ---
 title: "Repository configuration"
-description: "How .amika/config.toml configures sandboxes, and how settings resolve across sources."
+description: "How .amika/config.toml configures rigs, and how settings resolve across sources."
 ---
 
-Repository configuration lets you commit sandbox settings alongside your code in
-`.amika/config.toml`. When a sandbox is created from a repository, Amika reads
+Repository configuration lets you commit rig settings alongside your code in
+`.amika/config.toml`. When a rig is created from a repository, Amika reads
 this file and applies the settings automatically — every collaborator gets the
 same environment without passing extra flags.
 
 <Info>
 This page is the reference-tab summary. For the full concept guide — including
-multi-repo and repo-less sandboxes — see
+multi-repo and repo-less rigs — see
 [How configuration works](/guides/configuration). For the field-by-field spec,
 see the [config.toml reference](/guides/config-toml).
 </Info>
@@ -24,30 +24,30 @@ see the [config.toml reference](/guides/config-toml).
 ```
 
 Amika looks for this file at the root of the repository whenever you use `--git`
-with `amika sandbox create`, or when creating a sandbox from a repository on the
+with `amika rig create`, or when creating a rig from a repository on the
 hosted platform.
 
 ## Configuration resolution
 
-Repository configuration acts as a template for sandboxes. Settings can come
+Repository configuration acts as a template for rigs. Settings can come
 from multiple sources, and Amika resolves them in priority order:
 
 | Priority | Source | Description |
 | --- | --- | --- |
-| 1 (highest) | **API request / CLI flags** | Values provided at sandbox creation time |
+| 1 (highest) | **API request / CLI flags** | Values provided at rig creation time |
 | 2 | **Database** | Values saved via the web UI |
 | 3 | **`.amika/config.toml`** | Committed in the repository |
 | 4 (lowest) | **Built-in default** | Fallback when nothing else is configured |
 
 The first non-empty value wins. Each configuration dimension (setup script,
-start script, env vars, services, sandbox settings, additional repos, and agent
+start script, env vars, services, rig settings, additional repos, and agent
 credential defaults) is resolved independently.
 
 <Tip>
 Prefer `.amika/config.toml` as your source of truth: it is versioned with your
 code, reviewable in pull requests, and easy for coding agents to edit. When you
 save a setting via the web UI it becomes the Database layer and overrides the
-corresponding TOML value for all future sandboxes; the UI shows a notice when a
+corresponding TOML value for all future rigs; the UI shows a notice when a
 value originates from the TOML file.
 </Tip>
 
@@ -66,7 +66,7 @@ value originates from the TOML file.
 
 ## `[lifecycle]` — Setup and start scripts
 
-Lifecycle scripts run at sandbox initialization. Paths are relative to the
+Lifecycle scripts run at rig initialization. Paths are relative to the
 repository root.
 
 ```toml
@@ -78,8 +78,8 @@ start_script = "scripts/start.sh"
 - **`setup_script`** runs once before the container command starts, mounted at
   `/usr/local/etc/amikad/setup/setup.sh`, with the working directory set to
   `$AMIKA_AGENT_CWD`. It must be executable and exit `0`. Passing
-  `--setup-script` to `amika sandbox create` takes priority.
-- **`start_script`** runs each time a stopped sandbox is started again — not on
+  `--setup-script` to `amika rig create` takes priority.
+- **`start_script`** runs each time a stopped rig is started again — not on
   the initial create. It is re-read on each start. Use it for steps that must
   repeat on resume (starting a dev server, re-opening a tunnel).
 
@@ -93,7 +93,7 @@ See the [`[lifecycle]` spec](/guides/config-toml#lifecycle) for full details.
 
 ## `[filesystem]` — Additional repos
 
-Clone extra repositories into the sandbox alongside the primary repo.
+Clone extra repositories into the rig alongside the primary repo.
 
 ```toml
 [filesystem]
@@ -110,7 +110,7 @@ not be listed.
 <Warning>
 Only the **primary repo's** `.amika/config.toml` is applied. A
 `.amika/config.toml` in an additional repo is ignored. See
-[multi-repo sandboxes](/guides/configuration#multi-repo-sandboxes).
+[multi-repo rigs](/guides/configuration#multi-repo-rigs).
 </Warning>
 
 See the [`[filesystem]` spec](/guides/config-toml#filesystem) for validation and
@@ -118,12 +118,12 @@ merge semantics.
 
 ## Branch selection
 
-When `--branch` is specified on `amika sandbox create`, the `.amika/config.toml`
+When `--branch` is specified on `amika rig create`, the `.amika/config.toml`
 file is read from that branch rather than the repository's default branch. This
-allows different branches to carry different sandbox configurations.
+allows different branches to carry different rig configurations.
 
 ```bash
-amika sandbox create --git --branch feature/new-api
+amika rig create --git --branch feature/new-api
 ```
 
 ## Example
@@ -158,8 +158,8 @@ preset = "coder"
 size = "m"
 ```
 
-Running `amika sandbox create --git` from anywhere inside `my-project` will:
-1. Clone the repository into the sandbox.
+Running `amika rig create --git` from anywhere inside `my-project` will:
+1. Clone the repository into the rig.
 2. Mount `.amika/setup.sh` as the setup script.
 3. Set `NODE_ENV=development` and resolve `API_KEY` from the secrets store.
 4. Publish port 3000 with an HTTP URL.
@@ -169,5 +169,5 @@ Running `amika sandbox create --git` from anywhere inside `my-project` will:
 
 - [How configuration works](/guides/configuration) — concept guide: precedence, multi-repo, repo-less
 - [config.toml reference](/guides/config-toml) — full field-by-field spec
-- [Sandbox configuration](/reference/sandbox-configuration) — CLI flags, credential mounting, reserved ports
+- [Rig configuration](/reference/rig-configuration) — CLI flags, credential mounting, reserved ports
 - [Services](/reference/services) — full `[services.<name>]` reference

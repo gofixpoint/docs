@@ -4,8 +4,8 @@ description: "Every table and key you can set in .amika/config.toml, with exampl
 ---
 
 This is the full field-by-field guide to `.amika/config.toml`, the file that
-declares sandbox defaults for a repository. For how these settings reach a
-sandbox — resolution precedence, multi-repo, and repo-less behavior — read
+declares rig defaults for a repository. For how these settings reach a
+rig — resolution precedence, multi-repo, and repo-less behavior — read
 [How configuration works](/guides/configuration) first.
 
 The file lives at the root of a Git repository:
@@ -42,15 +42,20 @@ size = "m"
 - [`[lifecycle]`](#lifecycle) — setup and start scripts
 - [`[env]`](#env) — environment variables and secret references
 - [`[services.<name>]`](#services) — named services with port bindings and URL schemes
-- [`[sandbox]`](#sandbox) — default sandbox preset, size, and snapshot
+- [`[sandbox]`](#sandbox) — default rig preset, size, and snapshot
 - [`[filesystem]`](#filesystem) — additional repos to clone alongside the primary repo
 - [`[agent_credentials]`](#agent_credentials) — per-agent credential defaults
+
+<Note>
+The rig settings table retains the name `[sandbox]` for compatibility. Use that
+exact table name in `.amika/config.toml`.
+</Note>
 
 <Note>
 **CLI vs. hosted scope.** The open-source `amika` CLI parses only
 `[lifecycle].setup_script` and `[services.<name>]`. The remaining sections
 (`[env]`, `[sandbox]`, `[filesystem]`, `[agent_credentials]`, and
-`[lifecycle].start_script`) are applied by the hosted platform when a sandbox is
+`[lifecycle].start_script`) are applied by the hosted platform when a rig is
 created from a repository.
 </Note>
 
@@ -58,7 +63,7 @@ created from a repository.
 
 ## `[lifecycle]`
 
-Controls sandbox initialization. Both keys are optional; a repository can define
+Controls rig initialization. Both keys are optional; a repository can define
 only setup, only start, or both.
 
 ```toml
@@ -87,7 +92,7 @@ Relative paths are resolved from the repository root (the directory containing
 - Must exit with status code `0` on success. A non-zero exit prevents the container command from running.
 - Runs with the working directory set to `$AMIKA_AGENT_CWD`.
 
-**CLI override:** `--setup-script` on `amika sandbox create` takes priority over
+**CLI override:** `--setup-script` on `amika rig create` takes priority over
 this value.
 
 ### `start_script`
@@ -100,11 +105,11 @@ this value.
 
 Path to an executable script mounted at
 `/usr/local/etc/amikad/setup/start.sh`. Unlike `setup_script`, it does **not**
-run on the initial create — it runs each time a stopped sandbox is started
+run on the initial create — it runs each time a stopped rig is started
 again. It is re-read on each start, so edits take effect without recreating the
-sandbox.
+rig.
 
-Use it for steps that must repeat whenever a sandbox resumes — starting a
+Use it for steps that must repeat whenever a rig resumes — starting a
 long-running dev server, re-opening a tunnel — rather than one-time
 provisioning, which belongs in `setup_script`. Relative paths resolve from the
 repository root. The same executability and exit-code requirements as
@@ -117,7 +122,7 @@ start script.
 
 ## `[env]`
 
-Declares environment variables that are set inside the sandbox. Each key is a
+Declares environment variables that are set inside the rig. Each key is a
 variable name and each value is either a plain string or a reference table. See
 [Environment variables vs. secrets](/guides/env-vars-and-secrets) for how to
 choose between a plain value and a secret reference.
@@ -131,7 +136,7 @@ NODE_ENV = "production"
 PORT = "3000"
 ```
 
-The value is set as-is in the sandbox environment.
+The value is set as-is in the rig environment.
 
 ### Secret reference
 
@@ -142,10 +147,10 @@ AWS_SECRET_KEY = { secret = "My AWS Secret" }
 ```
 
 The `secret` field references a secret by name in the Amika secrets store. The
-secret is resolved at sandbox creation time and its value is injected as the
+secret is resolved at rig creation time and its value is injected as the
 environment variable.
 
-Secrets must be pushed before sandbox creation via `amika secret push` or the
+Secrets must be pushed before rig creation via `amika secret push` or the
 web UI.
 
 ### Service reference
@@ -160,12 +165,12 @@ WEB_PORT = { service = "web", field = "port" }
 The `service` field references a service declared in the same file's
 `[services.<name>]` section. The `field` selects which attribute to inject:
 
-- `"url"` — the public URL of the service (e.g. `https://<sandbox>.preview.amika.dev`). Requires the service to have a `url_scheme`.
-- `"host"` — the hostname of that public URL (e.g. `<sandbox>.preview.amika.dev`), with no scheme, port, or path. Like `"url"`, requires the service to have a `url_scheme`.
-- `"port"` — the host-side port (inside the sandbox) the service is exposed on.
+- `"url"` — the public URL of the service (e.g. `https://<rig>.preview.amika.dev`). Requires the service to have a `url_scheme`.
+- `"host"` — the hostname of that public URL (e.g. `<rig>.preview.amika.dev`), with no scheme, port, or path. Like `"url"`, requires the service to have a `url_scheme`.
+- `"port"` — the host-side port (inside the rig) the service is exposed on.
 
-Service references are resolved during sandbox initialization and written to the
-sandbox environment. They're useful when one service needs to reach another by
+Service references are resolved during rig initialization and written to the
+rig environment. They're useful when one service needs to reach another by
 URL.
 
 ### Validation rules
@@ -300,7 +305,7 @@ url_scheme = [
 
 ## `[sandbox]`
 
-Sets default sandbox settings for the repository.
+Sets default rig settings for the repository.
 
 ### `preset`
 
@@ -311,7 +316,7 @@ Sets default sandbox settings for the repository.
 | **Default** | `"coder"` |
 | **Values** | `"coder"`, `"coder-dind"` |
 
-The base image preset for sandboxes created from this repository.
+The base image preset for rigs created from this repository.
 
 - `coder` — Ubuntu 24.04 with Git, Node.js, Python, and agent CLIs (Claude Code, Codex, OpenCode).
 - `coder-dind` — Same as `coder` with Docker-in-Docker support.
@@ -327,7 +332,7 @@ See [Presets](/reference/presets) for full details on what each preset includes.
 | **Default** | `"m"` |
 | **Values** | `"xs"`, `"m"`, `"l"`, `"xl"` |
 
-The resource allocation size for sandboxes created from this repository.
+The resource allocation size for rigs created from this repository.
 
 ```toml
 [sandbox]
@@ -353,7 +358,7 @@ across orgs.
 snapshot = "custom-snapshot"
 ```
 
-When a sandbox is created, the snapshot layer order is: an explicit `snapshot`
+When a rig is created, the snapshot layer order is: an explicit `snapshot`
 in the API request, then this repository default, then a repository custom
 image, then the preset/size default. If the named snapshot is missing or no
 longer owned by your org, Amika logs a warning and falls through to the
@@ -363,15 +368,15 @@ preset/size path rather than failing the create.
 
 Preset, size, and snapshot are resolved independently. Database values (saved
 via the web UI) override TOML values. There is no built-in repository default
-for any of the three — when none is configured, the Create Sandbox dialog
+for any of the three — when none is configured, the Create Rig dialog
 applies its own UI defaults.
 
 ---
 
 ## `[filesystem]`
 
-Declares extra repositories to clone into the sandbox alongside the primary
-repo. See [Multi-repo sandboxes](/guides/configuration#multi-repo-sandboxes) for
+Declares extra repositories to clone into the rig alongside the primary
+repo. See [Multi-repo rigs](/guides/configuration#multi-repo-rigs) for
 the key rule: only the primary repo's `.amika/config.toml` is applied.
 
 ### `repos`
@@ -415,7 +420,7 @@ repo and log that the extras were skipped.
 
 ## `[agent_credentials]`
 
-Pins which credential each agent uses by default for sandboxes created from this
+Pins which credential each agent uses by default for rigs created from this
 repository. This dimension lives only in TOML — there is no database layer.
 
 ```toml
@@ -438,7 +443,7 @@ Each key is an agent kind. Each value is an inline table:
 | **Unknown fields** | An entry with keys other than `type` and `name` is ignored. |
 
 See [Inject credentials](/guides/inject-credentials) for how these defaults
-interact with per-sandbox credential selection.
+interact with per-rig credential selection.
 
 ---
 
