@@ -1,0 +1,81 @@
+---
+title: "What is a rig?"
+description: "Learn how Amika VM Rigs give coding agents and people a shared cloud workstation."
+---
+
+A rig is a sandboxed VM tuned for coding agents. It is a shared workstation
+where agents and people can work in the same repository and environment.
+
+Each rig can include:
+
+- One or more agent harnesses, such as Claude Code, Codex, OpenCode, or Pi
+- Your Git repositories, dependencies, tools, and development services
+- Agent credentials, environment variables, and secrets
+- SSH access and URLs for exposed services
+
+Amika provisions the VM, prepares it from your repository configuration, and
+connects it to the control plane. You can then operate the rig and its agents
+from the web UI, CLI, TypeScript SDK, HTTP API, chat integrations, or your
+editor.
+
+## Shared by agents and people
+
+A rig is not only a background execution environment. You and your teammates
+can connect to it while agents are working. You can inspect files, run commands,
+open the repository in an editor, view services, and continue an agent session
+without moving the work to another machine.
+
+A single rig can run multiple agents at the same time. Rigs and their agents can
+also communicate with other rigs when work needs to span environments.
+
+## Persistent or temporary
+
+Choose the lifetime that fits the task:
+
+- **Temporary rigs** start clean for a branch, pull request, check, or one-off
+  task. Delete them when the work is complete.
+- **Persistent rigs** keep their filesystem and environment available for an
+  ongoing project or durable automation. Stop them when idle and start them
+  again later.
+
+You can capture a configured rig as a snapshot to create more rigs from the same
+starting point.
+
+## Where rigs run
+
+By default, rigs run on Amika's hosted platform. Amika can also schedule rigs on
+infrastructure you connect, including your own computers or cloud environment.
+The control surface stays consistent across locations.
+
+## Rig and sandbox terminology
+
+`rig` is the product term and the canonical CLI command. A rig is sandboxed
+compute, so `sandbox`, `sandboxed`, and `sandboxing` remain accurate when you
+describe its isolation or generic sandbox providers.
+
+```bash
+amika rig create
+amika rig list
+```
+
+Some compatibility and configuration interfaces still use `sandbox` in exact
+identifiers. For example, `amika sandbox` remains a CLI alias, and repository
+configuration uses the `[sandbox]` table. Keep those identifiers as written when
+an example or reference page shows them.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Create a rig" href="/guides/create-a-rig" icon="cube">
+    Provision a rig with your repository and agent credentials.
+  </Card>
+  <Card title="Rig lifecycle" href="/guides/rig-lifecycle" icon="rotate">
+    List, stop, start, and delete rigs.
+  </Card>
+  <Card title="Connect to a rig" href="/guides/ssh-and-connect" icon="terminal">
+    Open a shell or connect with an editor.
+  </Card>
+  <Card title="Configure a repository" href="/guides/configuration" icon="gear">
+    Define reproducible rig settings alongside your code.
+  </Card>
+</CardGroup>

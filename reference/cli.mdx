@@ -5,20 +5,25 @@ description: "Commands, flags, and examples for the Amika CLI."
 
 Use this page as the command index for the `amika` CLI.
 
-## `amika sandbox`
+## `amika rig`
 
-Manage Docker-backed persistent sandboxes with bind mounts and named volumes.
+Manage Docker-backed persistent rigs with bind mounts and named volumes.
 
-### Global sandbox flags
+<Note>
+`amika sandbox` remains available as a compatibility alias. Use `amika rig` in
+new commands and scripts.
+</Note>
 
-These flags apply to all `sandbox` subcommands (`create`, `list`, `connect`, `stop`, `start`, `delete`, `ssh`, `code`, `agent-send`):
+### Global rig flags
+
+These flags apply to all `rig` subcommands (`create`, `list`, `connect`, `stop`, `start`, `delete`, `ssh`, `code`, `agent-send`):
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--local` | `false` | Only operate on local sandboxes |
-| `--remote` | `false` | Only operate on remote sandboxes |
+| `--local` | `false` | Only operate on local rigs |
+| `--remote` | `false` | Only operate on remote rigs |
 
-When neither flag is set, commands default to remote mode. Use `--local` to operate on local sandboxes only.
+When neither flag is set, commands default to remote mode. Use `--local` to operate on local rigs only.
 
 `--local` and `--remote` are mutually exclusive.
 
@@ -26,62 +31,62 @@ When neither flag is set, commands default to remote mode. Use `--local` to oper
 
 ```bash
 # Minimal — auto-generates a name, uses the coder preset image
-amika sandbox create --yes
+amika rig create --yes
 
-# Named sandbox with mounts
-amika sandbox create --name dev-sandbox \
+# Named rig with mounts
+amika rig create --name dev-rig \
   --mount ./src:/workspace/src:ro \
   --mount ./out:/workspace/out
 
 # Mount the current git repo (clean clone by default)
-amika sandbox create --name dev-sandbox --git
+amika rig create --name dev-rig --git
 
 # Mount git repo with untracked/uncommitted files included
-amika sandbox create --name dev-sandbox --git --no-clean
+amika rig create --name dev-rig --git --no-clean
 
 # Mount git repo containing a specific path
-amika sandbox create --name dev-sandbox --git ./src
+amika rig create --name dev-rig --git ./src
 
 # Use the coder-dind preset image
-amika sandbox create --name dind-box --preset coder-dind
+amika rig create --name dind-box --preset coder-dind
 
 # Use a custom Docker image
-amika sandbox create --name custom-box --image myimage:latest
+amika rig create --name custom-box --image myimage:latest
 
 # Attach an existing tracked volume
-amika sandbox create --name dev-sandbox-2 \
-  --volume amika-rwcopy-dev-sandbox-workspace-out-123:/workspace/out:rw
+amika rig create --name dev-rig-2 \
+  --volume amika-rwcopy-dev-rig-workspace-out-123:/workspace/out:rw
 
 # Set environment variables
-amika sandbox create --name dev-sandbox --env MY_KEY=my_value
+amika rig create --name dev-rig --env MY_KEY=my_value
 
 # Create and immediately connect
-amika sandbox create --name dev-sandbox --connect
+amika rig create --name dev-rig --connect
 
 # Run a setup script on container start
-amika sandbox create --name dev-sandbox --setup-script ./install-deps.sh
+amika rig create --name dev-rig --setup-script ./install-deps.sh
 
 # Publish a container port to the host
-amika sandbox create --name dev-sandbox --port 8080:8080
+amika rig create --name dev-rig --port 8080:8080
 
 # Publish a port bound to all interfaces
-amika sandbox create --name dev-sandbox --port 3000:3000 --port-host-ip 0.0.0.0
+amika rig create --name dev-rig --port 3000:3000 --port-host-ip 0.0.0.0
 
 # Clone a specific git branch
-amika sandbox create --name dev-sandbox --git --branch develop
+amika rig create --name dev-rig --git --branch develop
 
 # Create a new branch from your current branch
-amika sandbox create --git --new-branch feature-x
+amika rig create --git --new-branch feature-x
 
 # Create a new branch starting from a specific existing branch
-amika sandbox create --git --branch main --new-branch bugfix-1
+amika rig create --git --branch main --new-branch bugfix-1
 
-# Inject remote secrets (remote sandboxes only)
-amika sandbox create --name dev-sandbox --git --remote \
+# Inject remote secrets (remote rigs only)
+amika rig create --name dev-rig --git --remote \
   --secret env:ANTHROPIC_API_KEY=my-claude-key
 
 # Pin which agent credential gets injected at create time
-amika sandbox create --name dev-sandbox --git --remote \
+amika rig create --name dev-rig --git --remote \
   --agent-credential-type claude=api-key \
   --no-agent-credential codex
 ```
@@ -90,24 +95,24 @@ amika sandbox create --name dev-sandbox --git --remote \
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--name <name>` | auto-generated | Name for the sandbox. If omitted, a random `{color}-{city}` name is generated |
+| `--name <name>` | auto-generated | Name for the rig. If omitted, a random `{color}-{city}` name is generated |
 | `--provider <name>` | `docker` | Sandbox provider (only `docker` is currently supported) |
 | `--image <image>` | `amika/coder:latest` | Docker image to use (mutually exclusive with `--preset`) |
 | `--preset <name>` | | Use a preset environment, e.g. `coder` or `coder-dind` (mutually exclusive with `--image`) |
 | `--mount <spec>` | | Mount a host path (`source:target[:mode]`, mode defaults to `rwcopy`). Repeatable |
 | `--volume <spec>` | | Mount an existing named volume (`name:target[:mode]`, mode defaults to `rw`). Repeatable |
 | `--git [path-or-URL]` | | Mount a git repo (accepts a local path or a git URL over HTTPS or SSH) to `/home/amika/workspace/{repo}`. If omitted and the cwd is inside a git repo, that repo is used automatically |
-| `--no-git` | `false` | Skip git repo auto-detection; create a repo-less sandbox with no repo mounted |
+| `--no-git` | `false` | Skip git repo auto-detection; create a repo-less rig with no repo mounted |
 | `--no-clean` | `false` | With `--git`, include untracked/uncommitted files instead of a clean clone |
 | `--env <KEY=VALUE>` | | Set environment variable. Repeatable |
 | `--port <spec>` | | Publish a container port (`hostPort:containerPort[/protocol]`). Repeatable |
 | `--port-host-ip <ip>` | `127.0.0.1` | Host IP address to bind published ports to. Use `0.0.0.0` for all interfaces |
 | `--yes` | `false` | Skip mount confirmation prompt |
-| `--connect` | `false` | Connect to the sandbox shell immediately after creation |
+| `--connect` | `false` | Connect to the rig shell immediately after creation |
 | `--setup-script <path>` | | Mount a local script to `/usr/local/etc/amikad/setup/setup.sh` |
 | `--branch <name>` | | Check out this branch, or create it if it doesn't exist. Used with `--git` |
 | `--new-branch <name>` | | Create a new branch (errors if it already exists). Starts from `--branch` if set, otherwise from the base branch. Used with `--git` |
-| `--size <size>` | `m` | Sandbox resource size: `xs` or `m`. Remote sandboxes only |
+| `--size <size>` | `m` | Rig resource size: `xs` or `m`. Remote rigs only |
 | `--no-setup` | `false` | Skip the setup script (ignore both `--setup-script` and `.amika/config.toml` setup) |
 | `--secret <spec>` | | Inject a remote secret (`env:FOO=SECRET_NAME` or `env:SECRET_NAME`). Repeatable. Requires `--remote` |
 | `--agent-credential <KIND=NAME>` | | Pin an agent credential by stored name (e.g. `claude=personal-oauth`). Repeatable per kind |
@@ -143,8 +148,8 @@ The base branch is your current checked-out branch when `--git` is a local path,
 Aliases: `ls`
 
 ```bash
-amika sandbox list
-amika sandbox ls
+amika rig list
+amika rig ls
 ```
 
 Output columns: `NAME`, `STATE`, `LOCATION`, `PROVIDER`, `IMAGE`, `BRANCH`, `PORTS`, `CREATED`.
@@ -153,15 +158,15 @@ Output columns: `NAME`, `STATE`, `LOCATION`, `PROVIDER`, `IMAGE`, `BRANCH`, `POR
 
 ```bash
 # Connect with default shell (zsh)
-amika sandbox connect dev-sandbox
+amika rig connect dev-rig
 
 # Connect with a different shell
-amika sandbox connect dev-sandbox --shell bash
+amika rig connect dev-rig --shell bash
 ```
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--shell <shell>` | `zsh` | Shell to run in the sandbox container |
+| `--shell <shell>` | `zsh` | Shell to run in the rig container |
 
 The shell starts in `/home/amika`.
 
@@ -170,69 +175,69 @@ The shell starts in `/home/amika`.
 Aliases: `rm`, `remove`
 
 ```bash
-amika sandbox delete dev-sandbox
-amika sandbox rm dev-sandbox
-amika sandbox delete sandbox-1 sandbox-2
-amika sandbox delete dev-sandbox --delete-volumes
-amika sandbox delete dev-sandbox --keep-volumes
+amika rig delete dev-rig
+amika rig rm dev-rig
+amika rig delete rig-1 rig-2
+amika rig delete dev-rig --delete-volumes
+amika rig delete dev-rig --keep-volumes
 ```
 
 | Flag | Default | Description |
 | --- | --- | --- |
 | `--force` | `false` | Skip confirmation prompt |
-| `--delete-volumes` | `false` | Delete associated volumes that are no longer referenced by other sandboxes |
+| `--delete-volumes` | `false` | Delete associated volumes that are no longer referenced by other rigs |
 | `--keep-volumes` | `false` | Keep associated volumes without prompting |
 
-When neither flag is set and the sandbox is the sole reference for a volume, you will be prompted to decide.
+When neither flag is set and the rig is the sole reference for a volume, you will be prompted to decide.
 
 ### Stop
 
-Stop one or more running sandboxes without removing them.
+Stop one or more running rigs without removing them.
 
 ```bash
-amika sandbox stop dev-sandbox
-amika sandbox stop sandbox-1 sandbox-2
+amika rig stop dev-rig
+amika rig stop rig-1 rig-2
 ```
 
 ### Start
 
-Start (resume) one or more stopped sandboxes.
+Start (resume) one or more stopped rigs.
 
 ```bash
-amika sandbox start dev-sandbox
-amika sandbox start sandbox-1 sandbox-2
+amika rig start dev-rig
+amika rig start rig-1 rig-2
 ```
 
 ### SSH
 
-SSH into a remote sandbox, or revoke SSH access. Optionally pass a command to execute instead of opening an interactive session.
+SSH into a remote rig, or revoke SSH access. Optionally pass a command to execute instead of opening an interactive session.
 
 ```bash
 # Interactive SSH session
-amika sandbox ssh my-sandbox
+amika rig ssh my-rig
 
-# Run a command on the remote sandbox
-amika sandbox ssh my-sandbox -- ls -la
+# Run a command on the remote rig
+amika rig ssh my-rig -- ls -la
 
 # Force pseudo-terminal allocation (for interactive programs)
-amika sandbox ssh -t my-sandbox -- top
+amika rig ssh -t my-rig -- top
 
 # Revoke SSH access
-amika sandbox ssh my-sandbox --revoke
+amika rig ssh my-rig --revoke
 ```
 
 | Flag | Default | Description |
 | --- | --- | --- |
 | `-t` | `false` | Force pseudo-terminal allocation (useful for interactive remote programs) |
-| `--revoke` | `false` | Revoke SSH access for the sandbox |
+| `--revoke` | `false` | Revoke SSH access for the rig |
 
 ### Code
 
-Open a remote sandbox in an editor via SSH.
+Open a remote rig in an editor via SSH.
 
 ```bash
-amika sandbox code my-sandbox
-amika sandbox code my-sandbox --editor=cursor
+amika rig code my-rig
+amika rig code my-rig --editor=cursor
 ```
 
 | Flag | Default | Description |
@@ -241,20 +246,20 @@ amika sandbox code my-sandbox --editor=cursor
 
 ### Agent Send
 
-Send a prompt to an AI agent CLI running inside a sandbox container. The message can be provided as a positional argument or piped via stdin. By default the command waits for the agent to finish and streams the response.
+Send a prompt to an AI agent CLI running inside a rig container. The message can be provided as a positional argument or piped via stdin. By default the command waits for the agent to finish and streams the response.
 
 ```bash
-# Send a message to Claude in a sandbox
-amika sandbox agent-send my-sandbox "Add unit tests for the auth module"
+# Send a message to Claude in a rig
+amika rig agent-send my-rig "Add unit tests for the auth module"
 
 # Pipe a message via stdin
-echo "Fix the failing tests" | amika sandbox agent-send my-sandbox
+echo "Fix the failing tests" | amika rig agent-send my-rig
 
 # Send without waiting for a response
-amika sandbox agent-send my-sandbox "Refactor the API layer" --no-wait
+amika rig agent-send my-rig "Refactor the API layer" --no-wait
 
 # Use a different agent CLI
-amika sandbox agent-send my-sandbox "Review this code" --agent codex
+amika rig agent-send my-rig "Review this code" --agent codex
 ```
 
 | Flag | Default | Description |
@@ -262,19 +267,19 @@ amika sandbox agent-send my-sandbox "Review this code" --agent codex
 | `--no-wait` | `false` | Send the instruction and return immediately without waiting |
 | `--workdir <path>` | `$AMIKA_AGENT_CWD` | Working directory inside the container |
 | `--agent <name>` | `claude` | Agent CLI to use |
-| `--session-id <id>` | | Resume an existing agent session. Remote sandboxes only |
-| `--new-session` | `false` | Start a new agent session instead of resuming. Remote sandboxes only |
+| `--session-id <id>` | | Resume an existing agent session. Remote rigs only |
+| `--new-session` | `false` | Start a new agent session instead of resuming. Remote rigs only |
 
 ## `amika snapshot`
 
-Manage snapshots captured from running sandboxes. Snapshots are a hosted-cloud
+Manage snapshots captured from running rigs. Snapshots are a hosted-cloud
 concept — every subcommand talks to the API — so they are not available in local
 open-source mode. See [Create a snapshot](/guides/create-a-snapshot) for the
 end-to-end flow.
 
 ### Create
 
-Capture a snapshot from a running sandbox. Interactive by default: it prompts for
+Capture a snapshot from a running rig. Interactive by default: it prompts for
 the capture mode and name, and for `scrub_and_delete` it previews the injected
 secrets that will be removed and asks for confirmation. Pass `--no-interactive`
 for a non-prompting run, which then requires `--mode` and `--name`.
@@ -290,7 +295,7 @@ amika snapshot create --sandbox base-box \
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--sandbox <name-or-id>` | **(required)** | Source sandbox to snapshot |
+| `--sandbox <name-or-id>` | **(required)** | Source rig to snapshot |
 | `--name <name>` | | Name for the snapshot (prompted if omitted in interactive mode) |
 | `--mode <mode>` | | Capture mode: `scrub_and_delete` or `full` (required with `--no-interactive`) |
 | `--description <text>` | | Optional description shown in the snapshot list |
@@ -300,8 +305,8 @@ Capture modes:
 
 | Mode | Behavior |
 | --- | --- |
-| `scrub_and_delete` (default) | Remove Amika-injected secrets, capture the snapshot, then delete the source sandbox |
-| `full` | Capture everything as-is (keeps secrets and the source sandbox; unsafe for shared images) |
+| `scrub_and_delete` (default) | Remove Amika-injected secrets, capture the snapshot, then delete the source rig |
+| `full` | Capture everything as-is (keeps secrets and the source rig; unsafe for shared images) |
 
 Capture runs in the background; check progress with `amika snapshot list`.
 
@@ -322,7 +327,7 @@ Output columns: `NAME`, `STATE`, `PROVIDER`, `SOURCE`, `CREATED` (plus `SIZE`,
 | Flag | Default | Description |
 | --- | --- | --- |
 | `-l`, `--long` | `false` | Show additional columns |
-| `--sandbox <name-or-id>` | | Only show snapshots captured from this sandbox |
+| `--sandbox <name-or-id>` | | Only show snapshots captured from this rig |
 | `--repo <name-or-id>` | | Only show snapshots for this repository |
 
 ### Delete
@@ -341,7 +346,7 @@ amika snapshot delete example-repo-base --force
 
 ## `amika volume`
 
-Manage tracked Docker volumes used by sandboxes.
+Manage tracked Docker volumes used by rigs.
 
 ### List
 
@@ -366,11 +371,11 @@ amika volume delete my-volume --force
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--force` | `false` | Delete volume even if still referenced by sandboxes |
+| `--force` | `false` | Delete volume even if still referenced by rigs |
 
 ## `amika service`
 
-Manage services declared in sandbox configurations.
+Manage services declared in rig configurations.
 
 ### List
 
@@ -379,14 +384,14 @@ Aliases: `ls`
 ```bash
 amika service list
 amika service ls
-amika service list --sandbox-name dev-sandbox
+amika service list --sandbox-name dev-rig
 ```
 
 Output columns: `SERVICE`, `SANDBOX`, `PORTS`, `URL`.
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--sandbox-name <name>` | (none) | Filter services to a specific sandbox |
+| `--sandbox-name <name>` | (none) | Filter services to a specific rig |
 
 See [Services](/reference/services) for how to declare services in `.amika/config.toml`.
 
@@ -495,7 +500,7 @@ When multiple sources are used, positional arguments override `--from-file` valu
 
 ### `amika secret claude`
 
-Manage Claude Code credentials for sandbox authentication. Credentials pushed here can be injected into sandboxes at creation time.
+Manage Claude Code credentials for rig authentication. Credentials pushed here can be injected into rigs at creation time.
 
 #### `amika secret claude push`
 
@@ -555,7 +560,7 @@ amika secret claude rm <id>
 
 ### `amika secret codex`
 
-Manage Codex credentials for sandbox authentication. Same shape as `amika secret claude` — pushed credentials can be injected into sandboxes at creation time.
+Manage Codex credentials for rig authentication. Same shape as `amika secret claude` — pushed credentials can be injected into rigs at creation time.
 
 #### `amika secret codex push`
 
@@ -656,7 +661,7 @@ amika materialize --script ./gen.sh --destdir /tmp/dest -- arg1 arg2
 | --- | --- |
 | `AMIKA_STATE_DIRECTORY` | Override the default state directory (`~/.local/state/amika`) |
 | `AMIKA_PRESET_IMAGE_PREFIX` | Override the Docker image name prefix for presets |
-| `AMIKA_API_URL` | Override the remote API base URL (default: `https://app.amika.dev`). Used by sandbox commands when operating on remote sandboxes |
+| `AMIKA_API_URL` | Override the remote API base URL (default: `https://app.amika.dev`). Used by rig commands when operating on remote rigs |
 | `AMIKA_WORKOS_CLIENT_ID` | Override the default WorkOS client ID for `amika auth login`. If you change `AMIKA_API_URL`, you likely need to update this too |
 | `AMIKA_API_KEY` | Static bearer token for API authentication. When set, takes precedence over the WorkOS session from `amika auth login` |
 | `AMIKA_RUN_EXPENSIVE_TESTS` | Enable expensive integration tests |

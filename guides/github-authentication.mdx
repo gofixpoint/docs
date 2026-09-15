@@ -1,20 +1,20 @@
 ---
 title: "GitHub authentication"
-description: "How Amika authenticates to GitHub: the GitHub App, personal access tokens, and the runtime credential a sandbox uses for git."
+description: "How Amika authenticates to GitHub: the GitHub App, personal access tokens, and the runtime credential a rig uses for git."
 ---
 
 Amika touches GitHub in two distinct ways, and it helps to keep them separate:
 
 - **Repository discovery** — letting Amika see and select which repositories you
-  can create sandboxes from. This is the GitHub App.
-- **Runtime git credential** — the credential a sandbox uses to clone, push, and
+  can create rigs from. This is the GitHub App.
+- **Runtime git credential** — the credential a rig uses to clone, push, and
   open pull requests. This is either a shared personal access token (PAT) or a
   per-user GitHub App token.
 
 ## Connect the GitHub App
 
 The GitHub App controls which repositories Amika can see and select for
-sandboxes. Connect it on
+rigs. Connect it on
 [app.amika.dev/settings/github](https://app.amika.dev/settings/github), in the
 **GitHub App** panel, in two steps:
 
@@ -32,12 +32,12 @@ you can revisit github.com to add or remove repositories at any time.
 ## Set the git author
 
 On the same page, **Git Author** sets the name and email used for git commits
-made inside sandboxes. Amika pre-fills this from your profile and saves it
+made inside rigs. Amika pre-fills this from your profile and saves it
 automatically, so most users never need to change it.
 
 ## Runtime git credential: PAT vs. GitHub App token
 
-When a sandbox runs git commands, it needs a credential. Amika supports two
+When a rig runs git commands, it needs a credential. Amika supports two
 modes.
 
 ### Personal access token (PAT)
@@ -59,23 +59,23 @@ Required permission:
 
 Recommended permissions:
 
-- **Pull requests** → Read and Write — create and update PRs from the sandbox.
-- **Issues** → Read and Write — read and create issues from the sandbox.
+- **Pull requests** → Read and Write — create and update PRs from the rig.
+- **Issues** → Read and Write — read and create issues from the rig.
 - **Actions** → Read — monitor GitHub Actions so agents can auto-fix CI.
 
-The token is stored once and reused by every sandbox in the org until it is
+The token is stored once and reused by every rig in the org until it is
 replaced or deleted.
 
 ### GitHub App token
 
-Instead of a shared static token, a sandbox can authenticate as the creating
+Instead of a shared static token, a rig can authenticate as the creating
 user's GitHub App connection. In this mode:
 
 - There is no shared secret to manage — it uses the per-user GitHub App
   connection you set up above.
 - Tokens are minted at runtime through a git credential helper, so no long-lived
-  credential is ever written to disk inside the sandbox.
-- The creating user must have the GitHub App connected. Without it, sandbox
+  credential is ever written to disk inside the rig.
+- The creating user must have the GitHub App connected. Without it, rig
   creation fails with a message asking you to connect GitHub in settings first.
 
 ## Which mode should you use?
@@ -89,19 +89,19 @@ user's GitHub App connection. In this mode:
 
 Use a **PAT** for the simplest shared setup, or when you want one credential to
 administer centrally. Prefer the **GitHub App token** when you want per-user
-attribution and no shared long-lived secret. Which mode a given sandbox uses is
+attribution and no shared long-lived secret. Which mode a given rig uses is
 determined by your platform configuration; both require the corresponding
 credential to be present.
 
 <Note>
 Regardless of runtime mode, the GitHub App still governs which repositories are
-selectable in the UI. Connect and install it before creating sandboxes.
+selectable in the UI. Connect and install it before creating rigs.
 </Note>
 
 ## Next steps
 
 <CardGroup>
-  <Card title="Create a sandbox" href="/guides/create-a-sandbox" icon="cube" />
+  <Card title="Create a rig" href="/guides/create-a-rig" icon="cube" />
   <Card title="Inject credentials" href="/guides/inject-credentials" icon="key" />
   <Card title="Authentication reference" href="/reference/auth" icon="lock" />
 </CardGroup>

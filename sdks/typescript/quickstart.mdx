@@ -1,6 +1,6 @@
 ---
 title: "TypeScript quickstart"
-description: "Install @amika/sdk and create your first sandbox from TypeScript."
+description: "Install @amika/sdk and create your first rig from TypeScript."
 ---
 
 The TypeScript SDK wraps the hosted Amika API. This page gets you from
@@ -41,15 +41,15 @@ to be fetched or refreshed, use a `tokenSource` instead — see
 [Token sources](/sdks/typescript/token-sources).
 </Note>
 
-## Create a sandbox and run an agent
+## Create a rig and run an agent
 
 ```ts
-// 1. Create a sandbox and wait for it to be ready
-const sb = await amika.createSandbox({
+// 1. Create a rig and wait for it to be ready
+const sb = await amika.createRig({
   name: "dev-box",
   preset: "coder",
 });
-await amika.waitForSandbox(sb.name);
+await amika.waitForRig(sb.name);
 
 // 2. Send a prompt to the agent (blocks until it finishes)
 const res = await amika.agentSend(sb.name, {
@@ -58,7 +58,7 @@ const res = await amika.agentSend(sb.name, {
 console.log(res.result);
 
 // 3. Tear down
-await amika.deleteSandbox(sb.name);
+await amika.deleteRig(sb.name);
 ```
 
 ## Timeouts and polling
@@ -66,8 +66,8 @@ await amika.deleteSandbox(sb.name);
 - Default HTTP timeout: **30 seconds**.
 - `agentSend` HTTP timeout: **10 minutes** — it blocks until the agent
   finishes.
-- `waitForSandbox` / `waitForSandboxStart` / `waitForSandboxStop` poll every
-  **3 seconds** with no client-side timeout. They throw if the sandbox
+- `waitForRig` / `waitForRigStart` / `waitForRigStop` poll every
+  **3 seconds** with no client-side timeout. They throw if the rig
   enters the `failed` state.
 
 ## Next steps

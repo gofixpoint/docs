@@ -31,25 +31,27 @@ source the token yourself.
 All methods are `async`. Paths shown are relative to the `/api/v0beta1`
 prefix.
 
-### Sandboxes
+### Rigs
 
 | Method | HTTP |
 | --- | --- |
-| `listSandboxes(): Promise<RemoteSandbox[]>` | `GET /sandboxes` |
-| `createSandbox(req: CreateSandboxRequest): Promise<RemoteSandbox>` | `POST /sandboxes` |
-| `getSandbox(name): Promise<RemoteSandbox>` | `GET /sandboxes/{name}` |
-| `waitForSandbox(name): Promise<RemoteSandbox>` | polls `getSandbox` every 3s |
-| `startSandbox(name): Promise<void>` | `POST /sandboxes/{name}/start` |
-| `waitForSandboxStart(name): Promise<RemoteSandbox>` | polls every 3s |
-| `stopSandbox(name): Promise<void>` | `POST /sandboxes/{name}/stop` |
-| `waitForSandboxStop(name): Promise<RemoteSandbox>` | polls every 3s |
-| `deleteSandbox(name): Promise<void>` | `DELETE /sandboxes/{name}` |
+| `listRigs(): Promise<RemoteRig[]>` | `GET /rigs` |
+| `createRig(req: CreateRigRequest): Promise<RemoteRig>` | `POST /rigs` |
+| `getRig(name): Promise<RemoteRig>` | `GET /rigs/{name}` |
+| `waitForRig(name): Promise<RemoteRig>` | polls `getRig` every 3s |
+| `startRig(name): Promise<void>` | `POST /rigs/{name}/start` |
+| `waitForRigStart(name): Promise<RemoteRig>` | polls every 3s |
+| `stopRig(name): Promise<void>` | `POST /rigs/{name}/stop` |
+| `waitForRigStop(name): Promise<RemoteRig>` | polls every 3s |
+| `deleteRig(name): Promise<void>` | `DELETE /rigs/{name}` |
 
-`createSandbox` returns immediately with state `initializing`. Use
-`waitForSandbox` to block until it's ready.
+`createRig` returns immediately with state `initializing`. Use
+`waitForRig` to block until it's ready. The older `createSandbox`,
+`listSandboxes`, and related lifecycle methods remain available for
+compatibility.
 
 The wait helpers poll every 3 seconds with no client-side timeout. They
-throw an `AmikaError` if the sandbox enters the `failed` state.
+throw an `AmikaError` if the rig enters the `failed` state.
 
 ### SSH
 

@@ -14,7 +14,7 @@ class AmikaError extends Error {}
 ```
 
 Catch `AmikaError` to handle anything the SDK throws, including the failed
-sandbox state surfaced by the wait helpers.
+rig state surfaced by the wait helpers.
 
 ## `AmikaHTTPError`
 
@@ -36,7 +36,7 @@ class AmikaHTTPError extends AmikaError {
 
 ```ts
 try {
-  await amika.getSandbox("does-not-exist");
+  await amika.getRig("does-not-exist");
 } catch (err) {
   if (err instanceof AmikaHTTPError) {
     console.error(err.statusCode);      // e.g. 404

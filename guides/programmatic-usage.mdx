@@ -1,12 +1,12 @@
 ---
 title: "Programmatic usage"
-description: "Script the Amika CLI to spin up a sandbox, drive an agent non-interactively, and ship the result."
+description: "Script the Amika CLI to spin up a rig, drive an agent non-interactively, and ship the result."
 ---
 
 The Amika CLI is shell-friendly, so you can wire it into bash scripts, CI jobs,
 and code-gen pipelines. This guide walks through a complete automated flow:
-push a credential, create a remote sandbox cloned from a git repo, drive Claude
-Code non-interactively to make a change and open a PR, then tear the sandbox
+push a credential, create a remote rig cloned from a git repo, drive Claude
+Code non-interactively to make a change and open a PR, then tear the rig
 down.
 
 ## Prerequisites
@@ -20,7 +20,7 @@ down.
   against.
 
 <Info>
-The pattern below uses `amika sandbox ssh` with heredocs to control the agent.
+The pattern below uses `amika rig ssh` with heredocs to control the agent.
 Pair it with `--agent-credential-type` so the right credential is injected
 without an interactive picker. See
 [Inject credentials](/guides/inject-credentials).
@@ -42,25 +42,25 @@ non-interactive.
 
 </Step>
 
-<Step title="Create a remote sandbox cloned from the repo">
+<Step title="Create a remote rig cloned from the repo">
 
 ```bash
-amika sandbox create --git \
+amika rig create --git \
   --agent-credential-type claude=api-key \
   --name testing-claude-api
 ```
 
-`--git` mounts the current repo into the sandbox.
+`--git` mounts the current repo into the rig.
 `--agent-credential-type claude=api-key` tells Amika to inject your stored
 API-key credential, which avoids the OAuth picker.
 
 </Step>
 
-<Step title="Configure agent permissions inside the sandbox">
+<Step title="Configure agent permissions inside the rig">
 
-Use a heredoc with `amika sandbox ssh` to write a Claude
+Use a heredoc with `amika rig ssh` to write a Claude
 `settings.local.json`. The `$AMIKA_AGENT_CWD` env var resolves to the cloned
-repo root inside the sandbox.
+repo root inside the rig.
 
 ```bash
 export CLAUDE_SETTINGS='
@@ -73,7 +73,7 @@ export CLAUDE_SETTINGS='
     }
 }'
 
-amika sandbox ssh testing-claude-api << EOF
+amika rig ssh testing-claude-api << EOF
 mkdir -p \$AMIKA_AGENT_CWD/.claude
 echo 'settings.local.json' > \$AMIKA_AGENT_CWD/.claude/.gitignore
 echo '$CLAUDE_SETTINGS' > \$AMIKA_AGENT_CWD/.claude/settings.local.json
@@ -82,7 +82,7 @@ EOF
 
 The unquoted `<< EOF` lets the host shell expand `$CLAUDE_SETTINGS` before
 ssh transmits the body. Guest-side variables like `$AMIKA_AGENT_CWD` are
-escaped with `\$` so they survive to the sandbox shell and resolve there.
+escaped with `\$` so they survive to the rig shell and resolve there.
 
 These permissions let the agent run `git` and `gh` commands. Adjust the
 allowlist to match what your script needs.
@@ -108,7 +108,7 @@ export CLAUDE_PROMPT="Change the heading text to also include, 'Dylan was here!'
 Do not stop, do not ask me for clarification or questions.
 "
 
-amika sandbox ssh -t testing-claude-api << EOF
+amika rig ssh -t testing-claude-api << EOF
 cd \$AMIKA_AGENT_CWD && claude \
   --dangerously-skip-permissions \
   --session-id '$CLAUDE_UUID' \
@@ -129,7 +129,7 @@ A few details that matter for scripting:
 <Step title="Resume the same session to commit and open a PR">
 
 ```bash
-amika sandbox ssh -t testing-claude-api << EOF
+amika rig ssh -t testing-claude-api << EOF
 cd \$AMIKA_AGENT_CWD && claude \
   --dangerously-skip-permissions \
   --resume '$CLAUDE_UUID' \
@@ -142,10 +142,10 @@ reliable than asking the agent to do both at once.
 
 </Step>
 
-<Step title="Tear down the sandbox">
+<Step title="Tear down the rig">
 
 ```bash
-amika sandbox rm --force testing-claude-api
+amika rig rm --force testing-claude-api
 ```
 
 `--force` skips the confirmation prompt, which is what you want in a script.
@@ -170,8 +170,8 @@ amika secret claude push \
   --type api_key \
   --from-file /path/to/your/CLAUDE_API_KEY
 
-errcho "Creating sandbox..."
-amika sandbox create --git \
+errcho "Creating rig..."
+amika rig create --git \
   --agent-credential-type claude=api-key \
   --name testing-claude-api
 
@@ -185,8 +185,8 @@ export CLAUDE_SETTINGS='
     }
 }'
 
-errcho "Configuring Claude settings in sandbox..."
-amika sandbox ssh testing-claude-api << EOF
+errcho "Configuring Claude settings in rig..."
+amika rig ssh testing-claude-api << EOF
 mkdir -p \$AMIKA_AGENT_CWD/.claude
 echo "settings.local.json" > \$AMIKA_AGENT_CWD/.claude/.gitignore
 echo '$CLAUDE_SETTINGS' > \$AMIKA_AGENT_CWD/.claude/settings.local.json
@@ -199,22 +199,22 @@ Do not stop, do not ask me for clarification or questions.
 "
 
 errcho "Running Claude to make code changes..."
-amika sandbox ssh -t testing-claude-api << EOF
+amika rig ssh -t testing-claude-api << EOF
 cd \$AMIKA_AGENT_CWD && claude --dangerously-skip-permissions --session-id '$CLAUDE_UUID' -p '$CLAUDE_PROMPT' < /dev/null
 EOF
 
 errcho "Resuming Claude to create git branch and PR..."
-amika sandbox ssh -t testing-claude-api << EOF
+amika rig ssh -t testing-claude-api << EOF
 cd \$AMIKA_AGENT_CWD && claude --dangerously-skip-permissions --resume '$CLAUDE_UUID' -p 'Make a git branch and commit the changes. Then make a Github PR' < /dev/null
 EOF
 
-errcho "Removing sandbox..."
-amika sandbox rm --force testing-claude-api
+errcho "Removing rig..."
+amika rig rm --force testing-claude-api
 ```
 
 <Tip>
 For long agent runs, drop `set -e` around the agent invocations or wrap them
-so a single failed run does not leak a sandbox. `amika sandbox rm --force`
+so a single failed run does not leak a rig. `amika rig rm --force`
 should always run, even on failure.
 </Tip>
 
@@ -222,9 +222,9 @@ should always run, even on failure.
 
 <CardGroup cols={2}>
   <Card title="Inject credentials" icon="key-round" href="/guides/inject-credentials">
-    Push and pin Claude or Codex credentials for sandboxes.
+    Push and pin Claude or Codex credentials for rigs.
   </Card>
   <Card title="CLI reference" icon="square-terminal" href="/reference/cli">
-    Full flag listings for sandbox, secret, and ssh commands.
+    Full flag listings for rig, secret, and ssh commands.
   </Card>
 </CardGroup>

@@ -1,12 +1,12 @@
 ---
 title: "How configuration works"
-description: "How a repository configures its sandboxes and agents, and how Amika resolves settings across sources."
+description: "How a repository configures its rigs and agents, and how Amika resolves settings across sources."
 ---
 
-A sandbox needs to know what image to boot, what to install, what services to
+A rig needs to know what image to boot, what to install, what services to
 expose, and which secrets to inject. Amika reads that from **repository
 configuration** — a `.amika/config.toml` file committed at the root of your repo.
-When a sandbox is created from the repo, Amika reads the file and applies the
+When a rig is created from the repo, Amika reads the file and applies the
 settings automatically, so every collaborator gets the same environment without
 passing extra flags.
 
@@ -16,15 +16,15 @@ passing extra flags.
     config.toml
 ```
 
-This guide explains how configuration reaches a sandbox: where it can come from,
+This guide explains how configuration reaches a rig: where it can come from,
 how Amika resolves conflicts, and how it behaves for multi-repo and repo-less
-sandboxes. For the full field-by-field spec, see
+rigs. For the full field-by-field spec, see
 [config.toml reference](/guides/config-toml).
 
 ## What a repo config controls
 
-`.amika/config.toml` is a template for the sandboxes created from a repository.
-Each section maps to one dimension of the sandbox:
+`.amika/config.toml` is a template for the rigs created from a repository.
+Each section maps to one dimension of the rig:
 
 - **`[lifecycle]`** — setup and start scripts that provision the environment.
 - **`[env]`** — environment variables and secret references.
@@ -35,7 +35,7 @@ Each section maps to one dimension of the sandbox:
 
 Because the file lives in the repo, it is versioned with your code and easy for
 a coding agent to read and edit. That makes it the **recommended** place to
-declare sandbox settings.
+declare rig settings.
 
 ## How configuration is applied
 
@@ -44,15 +44,15 @@ setting independently, taking the first non-empty value in this order:
 
 | Priority | Source | Where it comes from |
 | --- | --- | --- |
-| 1 (highest) | **API request / CLI flags** | Values passed at sandbox creation time |
+| 1 (highest) | **API request / CLI flags** | Values passed at rig creation time |
 | 2 | **Database** | Values saved through the web UI |
 | 3 | **`.amika/config.toml`** | Committed in the repository |
 | 4 (lowest) | **Built-in default** | Fallback when nothing else is set |
 
 Resolution is per-dimension: a preset from a CLI flag, env vars from the TOML,
-and a size from a UI setting can all apply to the same sandbox at once. A value
+and a size from a UI setting can all apply to the same rig at once. A value
 saved through the web UI becomes the "Database" layer and overrides the
-corresponding `.amika/config.toml` value for all future sandboxes; the UI shows
+corresponding `.amika/config.toml` value for all future rigs; the UI shows
 a notice when a value originates from the TOML file.
 
 <Tip>
@@ -64,13 +64,13 @@ the UI for one-off overrides.
 
 ### Setting a value across surfaces
 
-Setting the sandbox preset is a good example — you can declare it once in the
-repo, override it per sandbox from the CLI, or set a repository default in the
+Setting the rig preset is a good example — you can declare it once in the
+repo, override it per rig from the CLI, or set a repository default in the
 UI. All three feed the resolution table above.
 
 <Tabs defaultTabIndex={0}>
   <Tab title=".amika/config.toml">
-    Commit the default with your code. It applies to every sandbox created from
+    Commit the default with your code. It applies to every rig created from
     the repo.
 
     ```toml
@@ -79,10 +79,10 @@ UI. All three feed the resolution table above.
     ```
   </Tab>
   <Tab title="CLI">
-    Override the preset for a single sandbox at create time.
+    Override the preset for a single rig at create time.
 
     ```bash
-    amika sandbox create --git --preset coder-dind
+    amika rig create --git --preset coder-dind
     ```
   </Tab>
   <Tab title="Web UI">
@@ -92,18 +92,18 @@ UI. All three feed the resolution table above.
   </Tab>
 </Tabs>
 
-## Multi-repo sandboxes
+## Multi-repo rigs
 
-A sandbox can clone more than one repository. List the extra repos under
+A rig can clone more than one repository. List the extra repos under
 [`[filesystem].repos`](/guides/config-toml#filesystem) in the primary repo's
 config. Each is cloned into `~/workspace/<repo-name>` alongside the primary.
 
 <Warning>
 Only the **primary repo's** `.amika/config.toml` is applied. The primary repo is
-the one the sandbox is created from — the repo that carries the `[filesystem]`
+the one the rig is created from — the repo that carries the `[filesystem]`
 list. Any `.amika/config.toml` in an additional repo is **ignored**: its
 `[env]`, `[services]`, `[lifecycle]`, and other sections have no effect. Declare
-everything the sandbox needs in the primary repo's config.
+everything the rig needs in the primary repo's config.
 </Warning>
 
 ```toml
@@ -115,9 +115,9 @@ repos = [
 ]
 ```
 
-## Repo-less sandboxes
+## Repo-less rigs
 
-A repository is optional. A sandbox can boot with **no repo** — and therefore no
+A repository is optional. A rig can boot with **no repo** — and therefore no
 `.amika/config.toml`. This is useful for scratch environments, or when you clone
 repos yourself after connecting.
 
@@ -126,16 +126,16 @@ layer or the built-in default. Pass the preset, size, env vars, and credentials
 you need at create time.
 
 ```bash
-# Create a repo-less sandbox and configure it inline
-amika sandbox create --name scratch --no-git --preset coder --size m
+# Create a repo-less rig and configure it inline
+amika rig create --name scratch --no-git --preset coder --size m
 ```
 
-See [Create a sandbox](/guides/create-a-sandbox) for how the CLI picks (or
+See [Create a rig](/guides/create-a-rig) for how the CLI picks (or
 skips) a repo.
 
 ## Related docs
 
 - [config.toml reference](/guides/config-toml) — full field-by-field spec
-- [Create a sandbox](/guides/create-a-sandbox) — repo detection and `--no-git`
+- [Create a rig](/guides/create-a-rig) — repo detection and `--no-git`
 - [Repository configuration](/reference/repository-configuration) — reference-tab summary
 - [Manage secrets](/guides/manage-secrets) — pushing secrets referenced from `[env]`

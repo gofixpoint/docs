@@ -1,0 +1,136 @@
+---
+title: "Rig lifecycle"
+description: "List, start, stop, and delete rigs."
+---
+
+A rig progresses through a small set of states. This guide covers each
+transition.
+
+## State values
+
+| State | Meaning |
+| --- | --- |
+| `initializing` | Provisioning; not yet reachable |
+| `active`, `running`, `started` | Reachable; the SDK treats all three as "ready" |
+| `stopped` | Paused. Can be resumed with `start` |
+| `failed` | Provisioning or runtime failure. The wait helpers throw on this |
+
+<Note>
+The server may introduce new `state` values over time. The SDK wait helpers
+treat anything not in the lists above (except `failed`) as "still working",
+so unknown values won't break your code.
+</Note>
+
+## List rigs
+
+<CodeGroup>
+
+```bash CLI
+amika rig list
+```
+
+```ts TypeScript
+const all = await amika.listRigs();
+for (const sb of all) {
+  console.log(sb.name, sb.state, sb.createdAt);
+}
+```
+
+</CodeGroup>
+
+## Stop a running rig
+
+<CodeGroup>
+
+```bash CLI
+amika rig stop dev-box
+```
+
+```ts TypeScript
+await amika.stopRig("dev-box");
+await amika.waitForRigStop("dev-box");
+```
+
+</CodeGroup>
+
+`waitForRigStop` polls every 3 seconds until the rig enters
+`stopped`. No client-side timeout — it throws if the rig transitions to
+`failed`.
+
+## Start a stopped rig
+
+<CodeGroup>
+
+```bash CLI
+amika rig start dev-box
+```
+
+```ts TypeScript
+await amika.startRig("dev-box");
+await amika.waitForRigStart("dev-box");
+```
+
+</CodeGroup>
+
+`waitForRigStart` polls every 3 seconds until the rig is in one of
+`active` / `running` / `started`.
+
+## Delete a rig
+
+<CodeGroup>
+
+```bash CLI
+# Prompts for confirmation
+amika rig delete dev-box
+
+# Skip the prompt
+amika rig delete dev-box --force
+
+# Multiple at once
+amika rig delete dev-box-1 dev-box-2 --force
+
+# Also clean up volumes the rig owned
+amika rig delete dev-box --force --delete-volumes
+```
+
+```ts TypeScript
+await amika.deleteRig("dev-box");
+```
+
+</CodeGroup>
+
+The CLI's `--delete-volumes` / `--keep-volumes` flags control what happens
+to associated volumes; the SDK call always deletes the rig record and
+the server handles cleanup.
+
+## End-to-end example
+
+```ts
+const name = "dev-box";
+
+// Create
+await amika.createRig({ name, preset: "coder" });
+await amika.waitForRig(name);
+
+// Use it…
+await amika.agentSend(name, { message: "Run the test suite" });
+
+// Stop to pause cost
+await amika.stopRig(name);
+await amika.waitForRigStop(name);
+
+// Later: resume
+await amika.startRig(name);
+await amika.waitForRigStart(name);
+
+// When done
+await amika.deleteRig(name);
+```
+
+## Next steps
+
+<CardGroup>
+  <Card title="Create a rig" href="/guides/create-a-rig" icon="cube" />
+  <Card title="SSH and connect" href="/guides/ssh-and-connect" icon="terminal" />
+  <Card title="Rig configuration reference" href="/reference/rig-configuration" icon="sliders" />
+</CardGroup>

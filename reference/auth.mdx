@@ -99,7 +99,7 @@ key and the browser session.
 
 `amika auth extract` discovers locally stored API credentials from coding
 agent tools and prints them as shell environment assignments. Use it to copy
-agent credentials into Amika's web UI or to seed sandboxes.
+agent credentials into Amika's web UI or to seed rigs.
 
 ```bash
 # Print detected assignments
@@ -160,7 +160,7 @@ with separators normalized to hyphens. OAuth tokens with an `expiresAt` or
 | Variable | Default | Description |
 | --- | --- | --- |
 | `AMIKA_API_KEY` | | Amika API key used to authenticate CLI requests. Overrides any stored API key or browser session when set |
-| `AMIKA_API_URL` | `https://app.amika.dev` | Override the remote API base URL. Used by sandbox commands when operating on remote sandboxes |
+| `AMIKA_API_URL` | `https://app.amika.dev` | Override the remote API base URL. Used by rig commands when operating on remote rigs |
 | `AMIKA_WORKOS_CLIENT_ID` | | Override the default WorkOS client ID. If you change `AMIKA_API_URL`, you likely need to update this too |
 
 ## Related docs

@@ -6,7 +6,7 @@ description: "Request and response interfaces for the TypeScript SDK."
 All interfaces use camelCase field names. On the wire the API uses
 snake_case JSON; the SDK maps between the two for you.
 
-## Sandboxes
+## Rigs
 
 ```ts
 interface AgentCredentialRef {
@@ -16,7 +16,7 @@ interface AgentCredentialRef {
   none?: boolean;
 }
 
-interface CreateSandboxRequest {
+interface CreateRigRequest {
   name?: string;
   provider?: string;
   repoUrl?: string;
@@ -41,12 +41,12 @@ interface ResolvedAgentCredential {
   reason?: string;
 }
 
-interface RemoteSandboxCreator {
+interface RemoteRigCreator {
   name: string | null;
   email: string | null;
 }
 
-interface RemoteSandbox {
+interface RemoteRig {
   id: string;
   name: string;
   provider: string;
@@ -56,7 +56,7 @@ interface RemoteSandbox {
   branch: string;
   errorMessage: string;
   resolvedAgentCredentials?: ResolvedAgentCredential[];
-  createdBy?: RemoteSandboxCreator | null;
+  createdBy?: RemoteRigCreator | null;
 }
 ```
 
@@ -64,7 +64,7 @@ interface RemoteSandbox {
   [Inject credentials](/guides/inject-credentials).
 - `resolvedAgentCredentials` reports what actually got injected, per kind.
 - `state` is a string, not a fixed enum — see
-  [Sandbox lifecycle](/guides/sandbox-lifecycle).
+  [Rig lifecycle](/guides/rig-lifecycle).
 
 ## SSH
 

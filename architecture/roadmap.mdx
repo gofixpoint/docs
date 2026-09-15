@@ -3,27 +3,27 @@ title: "Architecture roadmap"
 description: "Current capabilities and planned system evolution."
 ---
 
-Amika is open-sourcing the parts of its codebase that let developers control individual sandboxed agents — the messaging and filesystem layer between the agent and the sandbox it lives on.
+Amika is open-sourcing the parts of its codebase that let developers control individual sandboxed agents — the messaging and filesystem layer between the agent and the rig it lives on.
 
-You can spin up a sandbox, put any agent on it, and then use the open-source components to:
+You can spin up a rig, put any agent on it, and then use the open-source components to:
 
 1. Message the agent over SSE or WebSockets.
-2. Manage the files synced to and from the sandbox.
+2. Manage the files synced to and from the rig.
 
 Beyond that, we're working on:
 
 1. A network proxy for agent security and request/response authorization.
 2. A secrets vault so a sandboxed agent can use APIs without directly seeing secrets.
 
-The open source runs on any sandbox provider, or you can pair it with the hosted product, which handles the tricky parts of scaling and provisioning sandboxes and provides extra features for managing fleets of agents, their filesystems, and security.
+The open source runs on any sandbox provider, or you can pair it with the hosted product, which handles the tricky parts of scaling and provisioning rigs and provides extra features for managing fleets of agents, their filesystems, and security.
 
 ## Architecture diagrams
 
 Amika OSS diagrams: [https://link.excalidraw.com/l/7iUc0S5ODSX/8Eeboz1Tg38](https://link.excalidraw.com/l/7iUc0S5ODSX/8Eeboz1Tg38)
 
-![single sandbox with direct sandbox control](/images/single-sbox-arch.svg)
+![single rig with direct rig control](/images/single-sbox-arch.svg)
 
-![multiple sandboxes with control plane](/images/multi-sbox-arch.svg)
+![multiple rigs with control plane](/images/multi-sbox-arch.svg)
 
 ## Invariants
 
@@ -37,19 +37,19 @@ Two properties stay fixed as the system evolves:
 ### Open source
 
 - **`amika`** — client-side CLI to interact with sandboxed agents.
-  - In **direct mode**, it talks to `amikad` on a sandbox directly.
+  - In **direct mode**, it talks to `amikad` on a rig directly.
   - In **scalable mode**, it talks to the closed-source Amika Control Plane.
-- **`amikad`** — daemon that runs on a sandbox and:
-  - Provisions and controls the sandbox lifecycle.
-  - Messages agents on the sandbox.
-  - Copies files in and out of the sandbox.
+- **`amikad`** — daemon that runs on a rig and:
+  - Provisions and controls the rig lifecycle.
+  - Messages agents on the rig.
+  - Copies files in and out of the rig.
   - Proxies network requests for agent security and authorization.
   - Keeps secrets in a vault, away from the agents.
-- **`amikactl`** — CLI that lives on the sandbox and lets the agent talk to `amikad` to self-control its sandbox (access secrets, pull remote files, spawn new sandboxes).
+- **`amikactl`** — CLI that lives on the rig and lets the agent talk to `amikad` to self-control its rig (access secrets, pull remote files, spawn new rigs).
 
 ### Closed source
 
-- **Amika Control Plane** — API to provision hundreds to thousands of sandboxes, manage agents across them, enable multiplayer and team-shared sandboxes, index and store agent sessions, centralize configuration of agent skills/tools/MCP servers, and host a centralized file repo that can be mounted onto sandboxes.
+- **Amika Control Plane** — API to provision hundreds to thousands of rigs, manage agents across them, enable multiplayer and team-shared rigs, index and store agent sessions, centralize configuration of agent skills/tools/MCP servers, and host a centralized file repo that can be mounted onto rigs.
 - **Amika Web UI** — the web interface to the Control Plane and sandboxed cloud agents.
 
 ## Daemon capabilities
@@ -60,23 +60,23 @@ The `amikad` daemon is evolving toward four capabilities.
 
 *Open source.*
 
-HTTP APIs to message any agent on a sandbox. Supports Claude Code, Codex, OpenCode, Pi, and custom agents via the [Agent Communication Protocol](https://agentcommunicationprotocol.dev/introduction/welcome).
+HTTP APIs to message any agent on a rig. Supports Claude Code, Codex, OpenCode, Pi, and custom agents via the [Agent Communication Protocol](https://agentcommunicationprotocol.dev/introduction/welcome).
 
 - **Current:** request/response messaging, SSE streaming back to the client, session management.
 - **Planned:** hooks for piping agent chat sessions to your own datastore or to the Amika Control Plane.
 
 ### Sandbox Filesystem Layer
 
-*Open source: sync from host to sandbox, and copy data out of a sandbox to a destination. Closed source (for now): the Filesystem Volume backend and live sync tech.*
+*Open source: sync from host to rig, and copy data out of a rig to a destination. Closed source (for now): the Filesystem Volume backend and live sync tech.*
 
-Mount persistent file volumes onto sandboxes and version and control the files. Mount parts of a Filesystem Volume to a sandbox; when the sandbox terminates, the files persist.
+Mount persistent file volumes onto rigs and version and control the files. Mount parts of a Filesystem Volume to a rig; when the rig terminates, the files persist.
 
 - **Current:**
   - Mount modes: `ro` (read-only), `rw` (read-write, syncs back), `rwcopy` (read-write over a snapshot; writes land in a separate tree, preserving originals).
-  - Batch file materialization — spin up a sandbox, inject files, run scripts to pull or mutate data, output the resulting filesystem to a persistent volume or another sandbox. Useful for pulling data out of enterprise systems-of-record, transforming it to be "agent-ready," and handing it to a sandboxed agent.
+  - Batch file materialization — spin up a rig, inject files, run scripts to pull or mutate data, output the resulting filesystem to a persistent volume or another rig. Useful for pulling data out of enterprise systems-of-record, transforming it to be "agent-ready," and handing it to a sandboxed agent.
   - S3-compatible storage sync that avoids the POSIX gaps typical of FUSE filesystems (for instance, preserving symlinks so `git clone` works).
-- **In progress:** bidirectional syncing — materialization processes that update a Filesystem Volume stream their changes down into running sandboxes, and vice versa. Live sync engine and git-like transparent versioning with agent-authored commit messages.
-- **Planned:** network-mountable filesystem for remote sandbox providers, per-agent mount policies with isolated data views, lazy-loading strategies for faster sandbox startup.
+- **In progress:** bidirectional syncing — materialization processes that update a Filesystem Volume stream their changes down into running rigs, and vice versa. Live sync engine and git-like transparent versioning with agent-authored commit messages.
+- **Planned:** network-mountable filesystem for remote sandbox providers, per-agent mount policies with isolated data views, lazy-loading strategies for faster rig startup.
 
 ### Network Proxy
 
@@ -91,7 +91,7 @@ Goals for agent control:
 
 Goals for service exposure:
 
-1. Control which ports and services are exposed from a sandbox.
+1. Control which ports and services are exposed from a rig.
 2. Control whether services are exposed publicly or behind team auth.
 
 The direction is a filter pipeline: inbound redaction and tokenization → constrained-mount file access → outbound validation and approval before write-back.
@@ -100,7 +100,7 @@ The direction is a filter pipeline: inbound redaction and tokenization → const
 
 *Early design. Open-source status TBD.*
 
-Stores secrets for a sandbox. Two usage modes:
+Stores secrets for a rig. Two usage modes:
 
 1. **Fully isolated** — the agent only sees tokenized versions of secrets; the network-proxy layer swaps tokens for real values on outbound requests. Similar to how credit-card payments avoid exposing card numbers to merchants.
 2. **Agent-accessible** — optionally gated behind hooks that pause for human approval. Safer than putting credentials in environment variables or directly on the filesystem.

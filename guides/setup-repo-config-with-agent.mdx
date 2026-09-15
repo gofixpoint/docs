@@ -1,28 +1,28 @@
 ---
 title: "Set up repo config with an agent"
-description: "Use a coding agent to analyze your repository and generate an Amika sandbox configuration automatically."
+description: "Use a coding agent to analyze your repository and generate an Amika rig configuration automatically."
 ---
 
 You can use a coding agent (Claude Code, Codex, OpenCode, or similar) to analyze your repository and generate a `.amika/config.toml` and setup script tailored to your project.
 
 ## How it works
 
-Create a sandbox loaded with the repo you are setting up.
+Create a rig loaded with the repo you are setting up.
 
 In CLI:
 
 ```bash
 cd /path/to/repo
-amika sandbox create --no-setup
+amika rig create --no-setup
 ```
 
-Or, go to https://app.amika.dev/sandbox and create a sandbox for your repo, then connect to it.
+Or, go to https://app.amika.dev/sandbox and create a rig for your repo, then connect to it.
 
-In the sandbox, navigate to the git repo, and copy the prompt below into your coding agent. The agent will:
+In the rig, navigate to the git repo, and copy the prompt below into your coding agent. The agent will:
 
 1. **Investigate** your repo to discover languages, frameworks, services, ports, and environment variables.
 2. **Ask you** to confirm its findings and answer a few questions about your preferences.
-3. **Generate** a `.amika/config.toml` and `.amika/scripts/setup.sh` ready for sandbox creation.
+3. **Generate** a `.amika/config.toml` and `.amika/scripts/setup.sh` ready for rig creation.
 
 ## The prompt
 
@@ -31,13 +31,13 @@ Copy and paste this prompt into your coding agent:
 ````markdown
 # Set Up Amika Repository Configuration
 
-You are tasked with setting up an Amika sandbox configuration for this repository. Amika is infrastructure for building a software factory — it spins up sandboxed development environments pre-loaded with coding agents and your repository code. Your job is to create a `.amika/config.toml` and a setup script so that when a sandbox is created from this repo, it has all dependencies installed and dev services running.
+You are tasked with setting up an Amika rig configuration for this repository. Amika is infrastructure for building a software factory — it spins up sandboxed development environments pre-loaded with coding agents and your repository code. Your job is to create a `.amika/config.toml` and a setup script so that when a rig is created from this repo, it has all dependencies installed and dev services running.
 
 ## Reference materials
 
 Before you begin, read these resources to understand how Amika configuration works:
 
-1. **Amika docs — sandbox configuration**: https://docs.amika.dev/reference/sandbox-configuration
+1. **Amika docs — rig configuration**: https://docs.amika.dev/reference/rig-configuration
 2. **Amika docs — services**: https://docs.amika.dev/reference/services
 3. **Amika docs — presets**: https://docs.amika.dev/reference/presets
 4. **Example config (simple repo)**: https://github.com/gofixpoint/example-repo/blob/main/.amika/config.toml
@@ -79,12 +79,12 @@ Analyze this repository thoroughly before doing anything else. You need to under
 
 After investigating, present your findings to the user and ask them to confirm or correct. Structure your questions like this:
 
-### Sandbox settings
-Explain the available sandbox presets and sizes, and recommend values:
+### Rig settings
+Explain the available rig presets and sizes, and recommend values:
 
 **Presets:**
 - **`coder`** (default) — Ubuntu 24.04 with Git, curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx. Includes Claude Code, Codex, and OpenCode agent CLIs.
-- **`coder-dind`** — Everything in `coder`, plus Docker-in-Docker (dind) support for running containerized services inside the sandbox.
+- **`coder-dind`** — Everything in `coder`, plus Docker-in-Docker (dind) support for running containerized services inside the rig.
 
 Recommend `coder` unless the project uses Docker Compose, runs containerized services locally, or otherwise requires Docker.
 
@@ -94,11 +94,11 @@ Recommend `coder` unless the project uses Docker Compose, runs containerized ser
 - **`l`** — Large resource allocation. For heavier builds or multiple concurrent services.
 - **`xl`** — Extra-large resource allocation. For the most demanding workloads.
 
-These values are set in the `[sandbox]` section of `.amika/config.toml` and used as defaults when creating a sandbox from this repository. They can be overridden at creation time via CLI flags or the web UI.
+These values are set in the `[sandbox]` section of `.amika/config.toml` and used as defaults when creating a rig from this repository. They can be overridden at creation time via CLI flags or the web UI.
 
 ### Services
 List the services you discovered and the ports they use. Ask the user:
-- Which of these services should be exposed in the sandbox?
+- Which of these services should be exposed in the rig?
 - Are there any services you missed?
 - For each service, confirm the port and whether it should have an HTTP/HTTPS URL scheme.
 
@@ -112,13 +112,13 @@ Based on the preset's pre-installed tools (Git, GitHub CLI (`gh`), curl, zsh, bu
 
 ### Environment variables
 Present the environment variables you found, categorized as:
-- **Required secrets** — values the user must provide via `amika secret push` or the web UI before creating a sandbox
+- **Required secrets** — values the user must provide via `amika secret push` or the web UI before creating a rig
 - **Required config** — values that need to be set but aren't secret (e.g., database host pointing to a shared dev instance)
 - **Optional/feature flags** — values with sensible defaults
 
 Ask the user:
 - Are any required env vars missing from your list?
-- For database/service connection strings, should these point to a shared dev instance, or will they run locally in the sandbox?
+- For database/service connection strings, should these point to a shared dev instance, or will they run locally in the rig?
 - Are there any secrets they want to pre-configure?
 
 ### Dev server startup
@@ -156,18 +156,18 @@ SECRET_VAR = { secret = "secret-name" }
 **Rules:**
 - `preset` selects the base image: `"coder"` (default) or `"coder-dind"` (adds Docker-in-Docker). Use `coder-dind` only if the project requires Docker.
 - `size` sets the resource allocation: `"xs"`, `"m"` (default), `"l"`, or `"xl"`. Use `xs` only for lightweight tasks; reach for `l`/`xl` for heavy builds or many concurrent services.
-- `setup_script` is a path relative to the repo root pointing to an executable script that runs once when a new sandbox is created, before the agent starts.
-- `start_script` (optional) is an executable script that runs each time a stopped sandbox is started again — not on the initial create, where only `setup_script` runs. Put one-time provisioning in `setup_script`; use `start_script` for steps that must repeat whenever a sandbox resumes.
-- Services expose ports from the sandbox. Each service has a name, port, and optional `url_scheme`. Only set `url_scheme` for HTTP/HTTPS services — omit it for raw TCP services like gRPC.
+- `setup_script` is a path relative to the repo root pointing to an executable script that runs once when a new rig is created, before the agent starts.
+- `start_script` (optional) is an executable script that runs each time a stopped rig is started again — not on the initial create, where only `setup_script` runs. Put one-time provisioning in `setup_script`; use `start_script` for steps that must repeat whenever a rig resumes.
+- Services expose ports from the rig. Each service has a name, port, and optional `url_scheme`. Only set `url_scheme` for HTTP/HTTPS services — omit it for raw TCP services like gRPC.
 - Ports 60899–60999 are reserved by Amika — do not use them.
-- Environment variables can be plain strings or secret references. Secrets must be pushed via `amika secret push` or the Amika web UI before sandbox creation. Use `{ secret = "name" }` syntax for secrets.
+- Environment variables can be plain strings or secret references. Secrets must be pushed via `amika secret push` or the Amika web UI before rig creation. Use `{ secret = "name" }` syntax for secrets.
 
 ### `.amika/scripts/setup.sh`
 
-This script runs inside the sandbox before the agent starts. It must:
+This script runs inside the rig before the agent starts. It must:
 1. Be executable (`chmod +x`)
 2. Use `$AMIKA_AGENT_CWD` to reference the repo root (do NOT hardcode paths)
-3. Exit 0 on success (non-zero aborts sandbox startup)
+3. Exit 0 on success (non-zero aborts rig startup)
 4. Be deterministic and idempotent
 
 **Structure the setup script in phases:**
@@ -196,7 +196,7 @@ set -euo pipefail
 # If services have startup dependencies, add brief sleeps between them.
 ```
 
-**Where to start services:** the setup script runs once, on create; the start script runs each time a stopped sandbox is restarted, but not on the initial create. Start services in the setup script so they come up on a fresh sandbox. If the project will be stopped and resumed, repeat that service startup (Phase 4) in the start script so the services come back. Keep one-time install/build steps (Phases 1–3) in the setup script only.
+**Where to start services:** the setup script runs once, on create; the start script runs each time a stopped rig is restarted, but not on the initial create. Start services in the setup script so they come up on a fresh rig. If the project will be stopped and resumed, repeat that service startup (Phase 4) in the start script so the services come back. Keep one-time install/build steps (Phases 1–3) in the setup script only.
 
 **Best practices for setup scripts:**
 - Always check if a tool is installed before installing it (`command -v <tool> &>/dev/null`).
@@ -211,7 +211,7 @@ set -euo pipefail
 
 ### `.amika/scripts/start.sh`
 
-Only generate this if you set `start_script` in `config.toml`. It runs each time a stopped sandbox is resumed — not on the initial create — so it must bring services back up after a restart. It has the same requirements as the setup script: executable (`chmod +x`), use `$AMIKA_AGENT_CWD` for the repo root, exit 0 on success.
+Only generate this if you set `start_script` in `config.toml`. It runs each time a stopped rig is resumed — not on the initial create — so it must bring services back up after a restart. It has the same requirements as the setup script: executable (`chmod +x`), use `$AMIKA_AGENT_CWD` for the repo root, exit 0 on success.
 
 Because `setup_script` runs on create and `start_script` runs on resume, **service startup must happen in both**. Factor the service-startup logic (Phase 4) into a shared script that each one sources, rather than duplicating it:
 
@@ -237,14 +237,14 @@ After creating the files, verify:
 6. Secret references use the `{ secret = "name" }` syntax
 7. No ports fall in the reserved range 60899–60999
 
-Tell the user what secrets they need to push before creating a sandbox:
+Tell the user what secrets they need to push before creating a rig:
 ```bash
 amika secret push <SECRET_NAME>=<value>
 ```
 
-And how to create a sandbox with this config (run from inside the repo; the repo is auto-detected from the current directory):
+And how to create a rig with this config (run from inside the repo; the repo is auto-detected from the current directory):
 ```bash
-amika sandbox create
+amika rig create
 ```
 
 ---
@@ -257,32 +257,32 @@ This section summarizes the key configuration details in case you cannot fetch t
 
 The file lives at `.amika/config.toml` in the repository root.
 
-**`[sandbox]`** — Default sandbox settings for the repository.
+**`[sandbox]`** — Default rig settings for the repository.
 - `preset` (string, default `"coder"`): The base image to use. Allowed values: `"coder"`, `"coder-dind"`.
 - `size` (string, default `"m"`): Resource allocation. Allowed values: `"xs"` (extra-small), `"m"` (medium), `"l"` (large), `"xl"` (extra-large).
 
-These values are used as defaults when creating a sandbox from this repository. They can be overridden at creation time via CLI flags or the web UI.
+These values are used as defaults when creating a rig from this repository. They can be overridden at creation time via CLI flags or the web UI.
 
-**`[lifecycle]`** — Sandbox lifecycle hooks.
+**`[lifecycle]`** — Rig lifecycle hooks.
 - `setup_script` (string): Path to a setup script relative to the repo root. The script runs once before the agent starts. It must be executable and exit 0 on success.
-- `start_script` (string, optional): Path to an executable script that runs each time a stopped sandbox is restarted — not on the initial create, where only `setup_script` runs. Use it to bring services back up when a sandbox resumes.
+- `start_script` (string, optional): Path to an executable script that runs each time a stopped rig is restarted — not on the initial create, where only `setup_script` runs. Use it to bring services back up when a rig resumes.
 
 **`[filesystem]`** — Additional repos to clone alongside the primary repo.
-- `repos` (list of strings): GitHub repo URLs to clone into the sandbox at `~/workspace/<repo-name>`. The primary repo is inferred automatically and need not be listed. Only set this if the project spans multiple repositories.
+- `repos` (list of strings): GitHub repo URLs to clone into the rig at `~/workspace/<repo-name>`. The primary repo is inferred automatically and need not be listed. Only set this if the project spans multiple repositories.
 
 **`[services.<name>]`** — Named services with port mappings.
 - `port` (integer or string): Single port binding. Integer defaults to TCP. String allows protocol: `"4838/tcp"` or `"4982/udp"`.
 - `ports` (list): Multiple port bindings. Mutually exclusive with `port`.
 - `url_scheme` (string or list): URL generation. Accepts `"http"` or `"https"`. For multi-port services, use a list of `{ port = N, scheme = "https" }` tables. Only ports listed in `url_scheme` get generated URLs.
 
-**`[env]`** — Environment variables injected into the sandbox.
+**`[env]`** — Environment variables injected into the rig.
 - Plain values: `DATABASE_HOST = "localhost"`
-- Secret references: `API_KEY = { secret = "my-api-key" }` — the secret must be pushed to the remote store before sandbox creation.
+- Secret references: `API_KEY = { secret = "my-api-key" }` — the secret must be pushed to the remote store before rig creation.
 - Service references: `WEB_URL = { service = "web", field = "url" }` — injects another service's generated `url`, its `host`, or published `port`. `field` is `"url"`, `"host"`, or `"port"`; `"url"` and `"host"` require that service to have a `url_scheme`.
 
 ### Presets
 
-Presets are pre-built Docker images for sandboxes. Set via the `[sandbox]` section in config.toml or overridden at creation time with `--preset`.
+Presets are pre-built Docker images for rigs. Set via the `[sandbox]` section in config.toml or overridden at creation time with `--preset`.
 
 | Preset | Image | Description | Pre-installed tools |
 |--------|-------|-------------|---------------------|
@@ -291,30 +291,30 @@ Presets are pre-built Docker images for sandboxes. Set via the `[sandbox]` secti
 
 ### Setup script environment
 
-- `$AMIKA_AGENT_CWD` — the path to the cloned repository inside the sandbox (typically `/home/amika/workspace/<repo-name>`)
+- `$AMIKA_AGENT_CWD` — the path to the cloned repository inside the rig (typically `/home/amika/workspace/<repo-name>`)
 - Credentials for coding agents are auto-mounted from the host
 - The script runs as the `amika` user with `sudo` access
-- If the script exits non-zero, the sandbox does not start
+- If the script exits non-zero, the rig does not start
 
 ### Reserved ports
 
 Ports 60899–60999 are reserved for Amika internal services. Do not bind to them.
 
-### Sandbox creation
+### Rig creation
 
 ```bash
-# Clone current repo into a sandbox (auto-detected from cwd; uses preset and size from config.toml).
-# To target a different repo, pass a path or git URL: amika sandbox create --git <path-or-url>
-amika sandbox create
+# Clone current repo into a rig (auto-detected from cwd; uses preset and size from config.toml).
+# To target a different repo, pass a path or git URL: amika rig create --git <path-or-url>
+amika rig create
 
 # Override preset at creation time
-amika sandbox create --preset coder-dind
+amika rig create --preset coder-dind
 
-# Include uncommitted/untracked files (local sandboxes only)
-amika sandbox create --no-clean
+# Include uncommitted/untracked files (local rigs only)
+amika rig create --no-clean
 
 # Clone a specific branch
-amika sandbox create --branch my-branch
+amika rig create --branch my-branch
 
 # List running services
 amika service list
@@ -341,10 +341,10 @@ amika secret claude push --type api_key --value sk-ant-xxx
 
 Once the agent has created your `.amika/config.toml` and setup script, you need to:
 
-1. **Commit the `.amika/` files** to the repository. `amika sandbox create` clones a clean copy of the committed tree by default, so uncommitted config and scripts are not picked up:
+1. **Commit the `.amika/` files** to the repository. `amika rig create` clones a clean copy of the committed tree by default, so uncommitted config and scripts are not picked up:
 
 ```bash
-git add .amika && git commit -m "Add Amika sandbox configuration"
+git add .amika && git commit -m "Add Amika rig configuration"
 ```
 
 2. **Push any secrets** referenced in your config:
@@ -353,10 +353,10 @@ git add .amika && git commit -m "Add Amika sandbox configuration"
 amika secret push MY_SECRET=the-value
 ```
 
-3. **Create a sandbox** to test the configuration (run from inside the repo; the repo is auto-detected):
+3. **Create a rig** to test the configuration (run from inside the repo; the repo is auto-detected):
 
 ```bash
-amika sandbox create
+amika rig create
 ```
 
 4. **Check that services started** correctly:
@@ -367,7 +367,7 @@ amika service list
 
 ## Related docs
 
-- [Sandbox configuration](/reference/sandbox-configuration)
+- [Rig configuration](/reference/rig-configuration)
 - [Services](/reference/services)
 - [Presets](/reference/presets)
 - [Manage secrets](/guides/manage-secrets)

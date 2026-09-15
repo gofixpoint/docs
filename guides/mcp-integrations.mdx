@@ -3,9 +3,9 @@ title: "MCP integrations"
 description: "Give sandboxed agents pre-authenticated access to external tools via MCP servers."
 ---
 
-MCP (Model Context Protocol) integrations let a sandboxed coding agent call out to external services — error trackers, project management tools, internal systems — without running an interactive OAuth flow inside the sandbox.
+MCP (Model Context Protocol) integrations let a sandboxed coding agent call out to external services — error trackers, project management tools, internal systems — without running an interactive OAuth flow inside the rig.
 
-You connect your account to a provider once on the host. Amika stores the OAuth token in the secrets vault, attaches it to each sandbox created from repositories that use the integration, and writes the MCP server configuration into the sandbox's `~/.claude/.config.json` so Claude Code picks it up on startup.
+You connect your account to a provider once on the host. Amika stores the OAuth token in the secrets vault, attaches it to each rig created from repositories that use the integration, and writes the MCP server configuration into the rig's `~/.claude/.config.json` so Claude Code picks it up on startup.
 
 ## Supported providers
 
@@ -29,7 +29,7 @@ To disconnect, click **Disconnect** on the same page. This removes your token fr
 
 ## Enable integrations on a repository
 
-Integrations attach to repositories, so sandboxes inherit the right tools automatically.
+Integrations attach to repositories, so rigs inherit the right tools automatically.
 
 1. Open the repository's settings in the web UI.
 2. Under **MCP integrations**, add any connected providers you want agents in this repo to use.
@@ -38,16 +38,16 @@ Integrations attach to repositories, so sandboxes inherit the right tools automa
 Configuration is org-visible — any teammate can see which integrations a repo uses — but each teammate's token is personal.
 
 <Note>
-If a repo has an integration enabled but you haven't connected your account for that provider, sandbox creation skips the integration silently. Your sandbox is created successfully; the missing provider just won't be available to the agent.
+If a repo has an integration enabled but you haven't connected your account for that provider, rig creation skips the integration silently. Your rig is created successfully; the missing provider just won't be available to the agent.
 </Note>
 
-## Override at sandbox creation
+## Override at rig creation
 
-The **Create sandbox** dialog pre-checks every integration attached to the repo. Uncheck any you don't want for that sandbox, and Amika skips them at provisioning time. The final list of integrations is recorded on the sandbox so you can audit which tools the agent had access to.
+The **Create rig** dialog pre-checks every integration attached to the repo. Uncheck any you don't want for that rig, and Amika skips them at provisioning time. The final list of integrations is recorded on the rig so you can audit which tools the agent had access to.
 
 ## What the agent sees
 
-During sandbox initialization, Amika writes the MCP servers into `~/.claude/.config.json` under the project's entry:
+During rig initialization, Amika writes the MCP servers into `~/.claude/.config.json` under the project's entry:
 
 ```json
 {
@@ -67,12 +67,12 @@ During sandbox initialization, Amika writes the MCP servers into `~/.claude/.con
 }
 ```
 
-This is the same location `claude mcp add` writes to, so Claude Code trusts the servers implicitly — no in-sandbox approval prompt.
+This is the same location `claude mcp add` writes to, so Claude Code trusts the servers implicitly — no in-rig approval prompt.
 
 Injection runs after the setup script finishes, so a setup script that installs Claude Code or rewrites `.config.json` won't clobber the MCP entries.
 
 ## Limitations
 
-- **Token refresh is manual.** If a provider's access token expires while a sandbox is running, MCP requests start returning 401. Reconnect the provider on `/integrations` and recreate the sandbox.
+- **Token refresh is manual.** If a provider's access token expires while a rig is running, MCP requests start returning 401. Reconnect the provider on `/integrations` and recreate the rig.
 - **One token per user per provider.** If a provider supports multiple organizations (e.g. multiple Sentry orgs), you authorize one at a time. Switching orgs requires disconnecting and reconnecting.
 - **No `.amika/config.toml` support yet.** Integrations are currently repo-only (database). They will eventually be readable from config.toml with DB values taking precedence.

@@ -3,7 +3,7 @@ title: "config.toml"
 description: "Every .amika/config.toml key at a glance."
 ---
 
-`.amika/config.toml` lives at the root of a Git repository and declares sandbox
+`.amika/config.toml` lives at the root of a Git repository and declares rig
 defaults for that repository. This page is a compact lookup of every key.
 
 <Info>
@@ -27,11 +27,11 @@ Setup and start scripts. See [details](/guides/config-toml#lifecycle).
 | Key | Type | Default | Summary |
 | --- | --- | --- | --- |
 | `setup_script` | string (path) | no-op | Executable run once before the container command starts. Overridable with `--setup-script`. |
-| `start_script` | string (path) | no-op | Executable run each time a stopped sandbox is restarted (hosted only). |
+| `start_script` | string (path) | no-op | Executable run each time a stopped rig is restarted (hosted only). |
 
 ## `[env]`
 
-Environment variables set inside the sandbox. See
+Environment variables set inside the rig. See
 [details](/guides/config-toml#env) and
 [env vars vs. secrets](/guides/env-vars-and-secrets).
 
@@ -58,7 +58,7 @@ Ports 60899–60999 are reserved. Service definitions are DB-wins-all.
 
 ## `[sandbox]`
 
-Default sandbox settings. See [details](/guides/config-toml#sandbox).
+Default rig settings. See [details](/guides/config-toml#sandbox).
 
 | Key | Type | Default | Values |
 | --- | --- | --- | --- |
@@ -71,7 +71,7 @@ Default sandbox settings. See [details](/guides/config-toml#sandbox).
 Additional repos to clone alongside the primary repo. See
 [details](/guides/config-toml#filesystem). Only the primary repo's
 `.amika/config.toml` is applied — see
-[multi-repo sandboxes](/guides/configuration#multi-repo-sandboxes).
+[multi-repo rigs](/guides/configuration#multi-repo-rigs).
 
 ### `repos`
 

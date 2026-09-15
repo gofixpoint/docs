@@ -3,11 +3,11 @@ title: "Architecture overview"
 description: "Core Amika concepts and system layout."
 ---
 
-Amika is an open-source CLI and HTTP API for running coding agents in sandboxes.
+Amika is an open-source CLI and HTTP API for running coding agents in rigs.
 
 ## Core concepts
 
-- **Docker-backed sandboxes**: Isolated, persistent containers for agent execution.
+- **Docker-backed rigs**: Isolated, persistent containers for agent execution.
 - **Mount modes**: `ro`, `rw`, and `rwcopy` define how agents can access data.
 - **Credential discovery**: Amika discovers local coding-agent credentials and mounts snapshots into containers.
 - **Preset images**: Bundled images (`coder`, `coder-dind`) with common tooling.
@@ -18,10 +18,10 @@ Amika is an open-source CLI and HTTP API for running coding agents in sandboxes.
 
 | Command | Purpose |
 | --- | --- |
-| `amika sandbox create/list/connect/delete` | Manage persistent sandboxes |
+| `amika rig create/list/connect/delete` | Manage persistent rigs |
 | `amika volume list/delete` | Manage tracked volumes created by `rwcopy` mounts |
 | `amika auth extract` | Discover and print credentials |
-| `amika service list` | List services declared in sandbox configs |
+| `amika service list` | List services declared in rig configs |
 | `amika materialize` | Run command/script and copy output files |
 | `amika-server` | Expose API over HTTP |
 
@@ -41,8 +41,8 @@ pkg/amika            # Shared service API
 
 | Tool | Required by |
 | --- | --- |
-| Git | when making sandboxes from your repos in hosted or local mode |
-| Docker | `materialize`, `sandbox`, `volume` (only required in local mode) |
+| Git | when making rigs from your repos in hosted or local mode |
+| Docker | `materialize`, `rig`, `volume` (only required in local mode) |
 | `rsync` | `materialize` output copy |
 
 ## State storage
