@@ -96,7 +96,7 @@ amika rig create --name dev-rig --git --remote \
 | Flag | Default | Description |
 | --- | --- | --- |
 | `--name <name>` | auto-generated | Name for the rig. If omitted, a random `{color}-{city}` name is generated |
-| `--provider <name>` | `docker` | Compute provider (only `docker` is currently supported) |
+| `--provider <name>` | `docker` | Sandbox provider (only `docker` is currently supported) |
 | `--image <image>` | `amika/coder:latest` | Docker image to use (mutually exclusive with `--preset`) |
 | `--preset <name>` | | Use a preset environment, e.g. `coder` or `coder-dind` (mutually exclusive with `--image`) |
 | `--mount <spec>` | | Mount a host path (`source:target[:mode]`, mode defaults to `rwcopy`). Repeatable |

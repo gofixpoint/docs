@@ -220,7 +220,7 @@ amika checks init githooks
 For annotations, the agent hook runs `amikalyze` on each file write the
 agent attempts (Claude Code, Codex, OpenCode), blocking the write if it
 hits a frozen symbol and surfacing prompts inline. `amikalyze` is fast
-enough to gate every write — unlike isolated checks, which run after
+enough to gate every write — unlike sandboxed checks, which run after
 the agent's turn ends.
 
 The pre-commit hook is the safety net for any edit — human or agent —

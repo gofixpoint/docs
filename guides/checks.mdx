@@ -1,6 +1,6 @@
 ---
 title: "Checks"
-description: "Run isolated programs that analyze or modify your repo on every PR, locally, or in CI."
+description: "Run sandboxed programs that analyze or modify your repo on every PR, locally, or in CI."
 ---
 
 import ResearchPreview from "/snippets/research-preview.mdx";
@@ -35,7 +35,7 @@ A check can be triggered from three places:
 The agent hook is one mechanism with two timing modes. Fast in-process
 checks (like the bundled `amikalyze` parser used by
 [code annotations](/guides/code-annotations)) gate each individual write.
-Isolated checks defined in `.amika/checks/` run after the agent
+Sandboxed checks defined in `.amika/checks/` run after the agent
 completes a batch of edits, since spinning up a rig per write would
 be too slow.
 
@@ -214,7 +214,7 @@ amika checks init agenthooks
 `init githooks` installs a pre-commit hook that runs every check in
 `.amika/checks/` before `git commit` finalizes. `init agenthooks`
 registers a hook with your local agent (Claude Code, Codex, OpenCode) so
-isolated checks run after each batch of agent edits, and so fast
+sandboxed checks run after each batch of agent edits, and so fast
 in-process checks like `amikalyze` can gate individual writes. Both
 modes reuse the same per-check rig execution as the PR check.
 

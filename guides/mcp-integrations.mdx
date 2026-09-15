@@ -1,9 +1,9 @@
 ---
 title: "MCP integrations"
-description: "Give isolated agents pre-authenticated access to external tools via MCP servers."
+description: "Give sandboxed agents pre-authenticated access to external tools via MCP servers."
 ---
 
-MCP (Model Context Protocol) integrations let an isolated coding agent call out to external services — error trackers, project management tools, internal systems — without running an interactive OAuth flow inside the rig.
+MCP (Model Context Protocol) integrations let a sandboxed coding agent call out to external services — error trackers, project management tools, internal systems — without running an interactive OAuth flow inside the rig.
 
 You connect your account to a provider once on the host. Amika stores the OAuth token in the secrets vault, attaches it to each rig created from repositories that use the integration, and writes the MCP server configuration into the rig's `~/.claude/.config.json` so Claude Code picks it up on startup.
 
