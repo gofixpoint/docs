@@ -8,7 +8,7 @@ import ResearchPreview from "/snippets/research-preview.mdx";
 <ResearchPreview />
 
 A check is an executable program that runs against your repository inside an
-Amika sandbox. Checks can inspect the code, run tests or static analysis,
+Amika rig. Checks can inspect the code, run tests or static analysis,
 and optionally commit fixes back to the branch. Each check is just a file —
 a shell script, a Node program, a Python tool — that you drop into
 `.amika/checks/` at the root of your repo.
@@ -18,11 +18,11 @@ CI YAML. If you can write a script, you can write a check.
 
 ## How checks run
 
-When a check is triggered, Amika spins up a sandbox loaded with your repo
+When a check is triggered, Amika spins up a rig loaded with your repo
 at the relevant branch, runs the check file, and collects its results.
 
-Each executable file inside `.amika/checks/` runs in its own sandbox. If
-you have three check files, you get three parallel sandboxes per trigger.
+Each executable file inside `.amika/checks/` runs in its own rig. If
+you have three check files, you get three parallel rigs per trigger.
 
 A check can be triggered from three places:
 
@@ -30,19 +30,19 @@ A check can be triggered from three places:
 | --- | --- |
 | **GitHub PR** | On every push to a pull request branch |
 | **Pre-commit hook** | Before `git commit` on your local machine |
-| **Agent hook** | When a coding agent edits your code, locally or in a sandbox |
+| **Agent hook** | When a coding agent edits your code, locally or in a rig |
 
 The agent hook is one mechanism with two timing modes. Fast in-process
 checks (like the bundled `amikalyze` parser used by
 [code annotations](/guides/code-annotations)) gate each individual write.
 Sandboxed checks defined in `.amika/checks/` run after the agent
-completes a batch of edits, since spinning up a sandbox per write would
+completes a batch of edits, since spinning up a rig per write would
 be too slow.
 
 <Note>
 Two CLIs come up in this guide. `amika` runs on your host machine and
-manages sandboxes, hooks, and config. `amikactl` runs **inside** the
-sandbox and lets a running check talk to the runner — to report progress,
+manages rigs, hooks, and config. `amikactl` runs **inside** the
+rig and lets a running check talk to the runner — to report progress,
 log output, or attach artifacts. Anything you run from your terminal is
 `amika`; anything inside a check script is `amikactl`.
 </Note>
@@ -104,8 +104,8 @@ captured as the check log.
 
 ## Make a check that commits fixes
 
-A check can modify files in the sandbox's working copy. By default those
-changes stay in the sandbox and are discarded when the check finishes. To
+A check can modify files in the rig's working copy. By default those
+changes stay in the rig and are discarded when the check finishes. To
 push them back to the branch, declare the check's commit behavior in
 `.amika/checks/config.toml`:
 
@@ -120,7 +120,7 @@ commit_mode = "auto"
 
 | Value | Behavior |
 | --- | --- |
-| `"none"` (default) | Changes stay in the sandbox and are discarded |
+| `"none"` (default) | Changes stay in the rig and are discarded |
 | `"auto"` | Changes are committed to the PR branch and pushed |
 | `"staging"` | Changes go to a per-PR, per-check staging branch you can merge back into the PR branch after review |
 
@@ -187,7 +187,7 @@ loop_limit = 1
 | --- | --- | --- |
 | `display_name` | string | Name shown in the PR check UI |
 | `description` | string | Subtitle shown alongside the check |
-| `size` | `"xs"`, `"s"`, `"m"`, `"l"` | Sandbox size for this check |
+| `size` | `"xs"`, `"s"`, `"m"`, `"l"` | Rig size for this check |
 | `commit_mode` | `"none"`, `"auto"`, `"staging"` | What to do with file changes |
 | `loop_limit` | integer | Max re-triggers per PR before the runner stops |
 
@@ -216,7 +216,7 @@ amika checks init agenthooks
 registers a hook with your local agent (Claude Code, Codex, OpenCode) so
 sandboxed checks run after each batch of agent edits, and so fast
 in-process checks like `amikalyze` can gate individual writes. Both
-modes reuse the same per-check sandbox execution as the PR check.
+modes reuse the same per-check rig execution as the PR check.
 
 ## Security
 
@@ -230,20 +230,20 @@ runner refuses these by default.
 </Warning>
 
 If you need to run checks against contributions from outside your org, run
-them on an Amika sandbox after review.
+them on an Amika rig after review.
 
 ## End-to-end example
 
 Two checks that go beyond read-only analysis:
 
 - **`validate`** — runs lint with auto-fix, then hands unfixable errors to
-  the sandbox agent. Does the same for failing tests. Auto-commits any fixes.
+  the rig agent. Does the same for failing tests. Auto-commits any fixes.
 - **`consolidate`** — reads the PR diff and asks the agent to replace code
   that duplicates existing utilities. Sends changes to a staging branch for
   review.
 
 Both checks use `amikactl msg` to message the agent running on the check's
-sandbox — the in-sandbox equivalent of `amika sandbox agent-send`.
+rig — the in-rig equivalent of `amika rig agent-send`.
 
 ```
 my-repo/
@@ -354,7 +354,7 @@ await checks.step("analyze", async () => {
 
 </CodeGroup>
 
-When you push a PR, both sandboxes spin up in parallel. `validate` fixes
+When you push a PR, both rigs spin up in parallel. `validate` fixes
 what it can and commits the result directly to the PR branch; if it loops
 more than twice without clearing all errors, the runner halts it.
 `consolidate` sends any refactors to a staging branch — you accept or

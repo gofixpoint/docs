@@ -1,5 +1,5 @@
 ---
-title: "Sandbox environment presets"
+title: "Rig environment presets"
 description: "Choose and manage Amika preset images."
 ---
 
@@ -19,7 +19,7 @@ Presets are Docker images with tools preinstalled for coding agent workflows.
 - Image: `amika/coder-dind:latest`
 - Base: Ubuntu 24.04
 - Tools: Everything in `coder`, plus Docker-in-Docker (dind) support for
-  running containerized services inside the sandbox
+  running containerized services inside the rig
 - Agent CLIs: Claude Code, Codex, OpenCode
 
 Use `coder-dind` when the project runs containerized services locally
@@ -29,11 +29,11 @@ Use `coder-dind` when the project runs containerized services locally
 
 ```bash
 # Explicit preset
-amika sandbox create --preset coder
-amika sandbox create --preset coder-dind
+amika rig create --preset coder
+amika rig create --preset coder-dind
 
 # Default behavior (coder)
-amika sandbox create
+amika rig create
 
 # Use preset in materialize
 amika materialize --preset coder-dind --cmd "docker ps" --destdir /tmp/out
@@ -57,13 +57,13 @@ The next command that uses `coder` rebuilds the image.
 
 Both presets run `/usr/local/etc/amikad/setup/setup.sh` before the main command.
 
-Use `--setup-script` to inject your setup logic when creating a sandbox:
+Use `--setup-script` to inject your setup logic when creating a rig:
 
 ```bash
-amika sandbox create --setup-script ./install-deps.sh
+amika rig create --setup-script ./install-deps.sh
 ```
 
-See [Sandbox configuration](/reference/sandbox-configuration) for details.
+See [Rig configuration](/reference/rig-configuration) for details.
 
 ## Container directory layout
 
@@ -82,7 +82,7 @@ The user-supplied setup hook remains at `/usr/local/etc/amikad/setup/setup.sh`.
 
 ## Reserved ports
 
-Preset images reserve container ports **60899–60999** for Amika internal services (e.g. OpenCode web on 60998, amikad daemon on 60999). See [Sandbox configuration](/reference/sandbox-configuration#reserved-ports) for the full allocation table.
+Preset images reserve container ports **60899–60999** for Amika internal services (e.g. OpenCode web on 60998, amikad daemon on 60999). See [Rig configuration](/reference/rig-configuration#reserved-ports) for the full allocation table.
 
 ## Custom image prefix
 
@@ -96,11 +96,11 @@ This changes `amika/coder:latest` to `myregistry/amika-coder:latest`.
 
 ## Agent credential auto-mounting
 
-When you create a sandbox or run materialize, Amika auto-discovers and mounts supported credential files into the container.
+When you create a rig or run materialize, Amika auto-discovers and mounts supported credential files into the container.
 
-This gives agents credentials inside the sandbox without modifying host source files. See [Sandbox configuration](/reference/sandbox-configuration#agent-credential-auto-mounting) for the full list of supported files.
+This gives agents credentials inside the rig without modifying host source files. See [Rig configuration](/reference/rig-configuration#agent-credential-auto-mounting) for the full list of supported files.
 
 ## Related docs
 
-- [Sandbox configuration](/reference/sandbox-configuration)
+- [Rig configuration](/reference/rig-configuration)
 - [CLI reference](/reference/cli)

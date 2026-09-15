@@ -1,21 +1,21 @@
 ---
 title: "SSH and connect"
-description: "Open a shell on a sandbox over SSH, or open it in your editor."
+description: "Open a shell on a rig over SSH, or open it in your editor."
 ---
 
-Once a sandbox is running, you have a few ways to get inside it:
+Once a rig is running, you have a few ways to get inside it:
 
-- **SSH** (works on hosted sandboxes) — for interactive shells, one-off
+- **SSH** (works on hosted rigs) — for interactive shells, one-off
   commands, or for handing the destination to your own SSH client.
-- **`sandbox connect`** (CLI-only, local sandboxes) — drops you into the
+- **`rig connect`** (CLI-only, local rigs) — drops you into the
   Docker container's shell directly.
-- **`sandbox code`** (CLI-only) — opens the sandbox in Cursor over SSH.
+- **`rig code`** (CLI-only) — opens the rig in Cursor over SSH.
 
 ## Prerequisites
 
 <Note>
-A sandbox in the `active` / `running` / `started` state. See
-[Create a sandbox](/guides/create-a-sandbox).
+A rig in the `active` / `running` / `started` state. See
+[Create a rig](/guides/create-a-rig).
 </Note>
 
 ## Open an interactive SSH session
@@ -23,7 +23,7 @@ A sandbox in the `active` / `running` / `started` state. See
 <CodeGroup>
 
 ```bash CLI
-amika sandbox ssh dev-box
+amika rig ssh dev-box
 ```
 
 ```ts TypeScript
@@ -33,7 +33,7 @@ const ssh = await amika.getSSH("dev-box");
 console.log(ssh.sshDestination); // e.g. "user@host:2222"
 console.log(ssh.token);          // bearer for the proxy
 console.log(ssh.expiresAt);      // ISO timestamp
-console.log(ssh.repoName);       // repo subdir inside the sandbox
+console.log(ssh.repoName);       // repo subdir inside the rig
 ```
 
 </CodeGroup>
@@ -45,30 +45,30 @@ to allocate a TTY when the remote command needs one.
 
 ```bash
 # Non-interactive command
-amika sandbox ssh dev-box -- ls -la
+amika rig ssh dev-box -- ls -la
 
 # Interactive program (force TTY)
-amika sandbox ssh -t dev-box -- top
+amika rig ssh -t dev-box -- top
 ```
 
 ## Local-Docker shell (CLI only)
 
-`amika sandbox connect` opens the Docker container's shell directly. It only
-applies to local sandboxes (`--local`).
+`amika rig connect` opens the Docker container's shell directly. It only
+applies to local rigs (`--local`).
 
 ```bash
-amika sandbox connect dev-box                # default zsh
-amika sandbox connect dev-box --shell bash
+amika rig connect dev-box                # default zsh
+amika rig connect dev-box --shell bash
 ```
 
 ## Open in an editor (CLI only)
 
-`amika sandbox code` opens the sandbox in Cursor, VS Code, Claude Desktop, or
-Codex over SSH. See [Open a sandbox in your editor](/guides/open-in-editor) for
+`amika rig code` opens the rig in Cursor, VS Code, Claude Desktop, or
+Codex over SSH. See [Open a rig in your editor](/guides/open-in-editor) for
 the full command and instructions for other Remote-SSH editors.
 
 ```bash
-amika sandbox code dev-box
+amika rig code dev-box
 ```
 
 ## Revoke an SSH token
@@ -79,7 +79,7 @@ it on demand.
 <CodeGroup>
 
 ```bash CLI
-amika sandbox ssh dev-box --revoke
+amika rig ssh dev-box --revoke
 ```
 
 ```ts TypeScript
@@ -92,6 +92,6 @@ await amika.revokeSSH("dev-box", ssh.token);
 
 <CardGroup>
   <Card title="Programmatic walkthrough" href="/guides/programmatic-usage" icon="code-branch" />
-  <Card title="Sandbox lifecycle" href="/guides/sandbox-lifecycle" icon="rotate" />
+  <Card title="Rig lifecycle" href="/guides/rig-lifecycle" icon="rotate" />
   <Card title="CLI reference" href="/reference/cli" icon="square-terminal" />
 </CardGroup>

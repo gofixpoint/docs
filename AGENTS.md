@@ -5,7 +5,7 @@ docs.amika.dev.
 
 ## What this documents
 
-Amika is a platform for managed coding-agent sandboxes. Developers
+Amika is a platform for managed coding-agent VM Rigs. Developers
 interact with it through three interfaces, all in scope for these docs:
 
 - HTTP API and SDKs
@@ -13,9 +13,9 @@ interact with it through three interfaces, all in scope for these docs:
 - The web UI at app.amika.dev
 
 All three default to the hosted platform. The CLI is open source and also
-supports running sandboxes locally off-platform (`--local`); treat that as
-an opt-in OSS mode, not a separate product. Design content for the
-hosted-platform user first.
+supports running rigs locally off-platform (`--local`); treat that as an
+opt-in OSS mode, not a separate product. Design content for the hosted-platform
+user first.
 
 ## Source repos
 
@@ -40,8 +40,8 @@ documenting them. Don't invent.
 
 `docs.json` defines four tabs:
 
-- **Guides** — getting started and how-tos. Groups: Get started, Sandboxes,
-  Repository configuration, Agents and sessions, Connecting to sandboxes, Code
+- **Guides** — getting started and how-tos. Groups: Get started, VM Rigs,
+  Repository configuration, Agents and sessions, Connecting to rigs, Code
   validation, Credentials, Advanced.
 - **SDKs** — the TypeScript SDK reference.
 - **CLI and API Reference** — flag and config tables, endpoint lists,

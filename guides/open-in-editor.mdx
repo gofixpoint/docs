@@ -1,9 +1,9 @@
 ---
-title: "Open a sandbox in your editor"
-description: "Open a running sandbox in Cursor, VS Code, Claude Desktop, or Codex over SSH."
+title: "Open a rig in your editor"
+description: "Open a running rig in Cursor, VS Code, Claude Desktop, or Codex over SSH."
 ---
 
-`amika sandbox code` opens a remote sandbox in Cursor, VS Code, Claude Desktop,
+`amika rig code` opens a remote rig in Cursor, VS Code, Claude Desktop,
 or Codex over SSH. Cursor is the default.
 
 ## Prerequisites
@@ -14,22 +14,22 @@ or Codex over SSH. Cursor is the default.
   **Remote - SSH** extension installed.
 </Note>
 
-## Open the sandbox
+## Open the rig
 
 ```bash
-amika sandbox code dev-box
+amika rig code dev-box
 
 # Cursor is the default
-amika sandbox code dev-box --editor cursor
-amika sandbox code dev-box --editor vscode
-amika sandbox code dev-box --editor claude
-amika sandbox code dev-box --editor codex
+amika rig code dev-box --editor cursor
+amika rig code dev-box --editor vscode
+amika rig code dev-box --editor claude
+amika rig code dev-box --editor codex
 ```
 
 Use `cursor` or `vscode` to open the repository in that editor. Use `claude` to
-register the sandbox as a Claude Desktop SSH environment, then select
-`Amika: <sandbox-name>` from its environment dropdown. Use `codex` to add the
-sandbox as a Codex remote connection, then enable the host in **Settings >
+register the rig as a Claude Desktop SSH environment, then select
+`Amika: <rig-name>` from its environment dropdown. Use `codex` to add the
+rig as a Codex remote connection, then enable the host in **Settings >
 Connections**.
 
 For Cursor and VS Code, the command opens the repository directory. If the file
@@ -40,11 +40,11 @@ explorer is not visible, press `Cmd+Shift+E`.
 Any editor that reads your `~/.ssh/config` and supports remote SSH can use the
 Amika-managed host alias.
 
-1. Run `amika sandbox code dev-box` once to write the sandbox alias to
+1. Run `amika rig code dev-box` once to write the rig alias to
    `~/.ssh/amika.conf` and include it from your SSH config.
 2. Open your editor's remote-SSH host picker and select
-   `<sandbox-name>.<sandbox-id>.<environment>.amika`.
-3. Open the repository directory in the sandbox, typically under
+   `<rig-name>.<rig-id>.<environment>.amika`.
+3. Open the repository directory in the rig, typically under
    `/home/amika/workspace`.
 
 ## Use a browser
@@ -54,18 +54,18 @@ To work with an agent without a local editor, use the OpenCode web console. See
 
 ## What it does
 
-Under the hood, `amika sandbox code`:
+Under the hood, `amika rig code`:
 
-1. Creates a direct SSH session and pins the sandbox's Ed25519 host key.
+1. Creates a direct SSH session and pins the rig's Ed25519 host key.
 2. Builds an alias in the format
-   `<sandbox-name>.<sandbox-id>.<environment>.amika`.
+   `<rig-name>.<rig-id>.<environment>.amika`.
 3. Ensures `~/.ssh/config` includes the Amika-managed `~/.ssh/amika.conf`.
-4. Adds a concrete host entry so editors can discover the sandbox. An
+4. Adds a concrete host entry so editors can discover the rig. An
    environment-scoped wildcard entry supplies the shared connection settings:
 
 ```ssh-config
 # dev-box
-Host dev-box.<sandbox-id>.app-amika-dev.amika
+Host dev-box.<rig-id>.app-amika-dev.amika
 
 Host *.app-amika-dev.amika
   User amika
@@ -82,7 +82,7 @@ Host *.app-amika-dev.amika
 
 The concrete entry intentionally has no connection options. OpenSSH gets those
 from the wildcard entry for the current Amika environment. This lets one config
-support sandboxes from multiple control planes without sending an alias through
+support rigs from multiple control planes without sending an alias through
 the wrong proxy.
 
 ## Troubleshooting
@@ -99,5 +99,5 @@ the wrong proxy.
 <CardGroup>
   <Card title="SSH and connect" href="/guides/ssh-and-connect" icon="terminal" />
   <Card title="OpenCode" href="/guides/opencode" icon="globe" />
-  <Card title="Sandbox lifecycle" href="/guides/sandbox-lifecycle" icon="rotate" />
+  <Card title="Rig lifecycle" href="/guides/rig-lifecycle" icon="rotate" />
 </CardGroup>

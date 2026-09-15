@@ -1,16 +1,16 @@
 ---
-title: "Sandbox configuration"
-description: "Configure sandboxes with CLI flags, credential mounting, and runtime settings."
+title: "Rig configuration"
+description: "Configure rigs with CLI flags, credential mounting, and runtime settings."
 ---
 
-Sandbox configuration controls the runtime environment of individual sandboxes. Many settings can be defined in a [repository configuration](/reference/repository-configuration) and applied automatically, but you can also override or extend them with CLI flags and platform settings.
+Rig configuration controls the runtime environment of individual rigs. Many settings can be defined in a [repository configuration](/reference/repository-configuration) and applied automatically, but you can also override or extend them with CLI flags and platform settings.
 
 ## Setup scripts
 
 Use `--setup-script` to mount a script at `/usr/local/etc/amikad/setup/setup.sh`. Amika runs this script before the container command starts.
 
 ```bash
-amika sandbox create --name dev-box --setup-script ./install-deps.sh
+amika rig create --name dev-box --setup-script ./install-deps.sh
 ```
 
 ### Script requirements
@@ -18,7 +18,7 @@ amika sandbox create --name dev-box --setup-script ./install-deps.sh
 - Make the script executable with `chmod +x`.
 - Setup scripts run with the working directory set to the agent's working directory (`$AMIKA_AGENT_CWD`).
 - Exit with status code `0` on success.
-- Keep setup deterministic so sandbox startup stays predictable.
+- Keep setup deterministic so rig startup stays predictable.
 
 ```bash
 #!/bin/bash
@@ -40,54 +40,54 @@ If the setup script exits non-zero, the container command does not run.
 </Warning>
 
 <Tip>
-You can also define setup scripts in [`.amika/config.toml`](/reference/repository-configuration#lifecycle-setup-and-start-scripts) so they apply automatically when creating sandboxes from a repository. The `--setup-script` flag always takes priority.
+You can also define setup scripts in [`.amika/config.toml`](/reference/repository-configuration#lifecycle-setup-and-start-scripts) so they apply automatically when creating rigs from a repository. The `--setup-script` flag always takes priority.
 </Tip>
 
 ## Git repository cloning
 
-`--git` clones a git repository into the sandbox at `/home/amika/workspace/<repo-name>`.
+`--git` clones a git repository into the rig at `/home/amika/workspace/<repo-name>`.
 
 ```bash
 # Clone the current repo (clean clone)
-amika sandbox create --git
+amika rig create --git
 
 # Include untracked/uncommitted files
-amika sandbox create --git --no-clean
+amika rig create --git --no-clean
 
 # Clone the repo containing a specific path
-amika sandbox create --git ./src
+amika rig create --git ./src
 
 # Clone a specific branch
-amika sandbox create --git --branch feature/new-api
+amika rig create --git --branch feature/new-api
 ```
 
 When `--git` is used, Amika also looks for a [`.amika/config.toml`](/reference/repository-configuration) file at the root of the repository and applies it automatically.
 
 <Note>
-- The volume name is derived from the sandbox name and repo name, e.g. `amika-git-teal-tokyo-Hello-World-<timestamp>`.
-- Deleting the sandbox does not automatically delete the git volume; use `amika volume delete` when you no longer need it.
+- The volume name is derived from the rig name and repo name, e.g. `amika-git-teal-tokyo-Hello-World-<timestamp>`.
+- Deleting the rig does not automatically delete the git volume; use `amika volume delete` when you no longer need it.
 </Note>
 
 ## Overriding repository configuration
 
-When a sandbox is created from a repository, settings from `.amika/config.toml` are applied as defaults. You can override any of these at creation time:
+When a rig is created from a repository, settings from `.amika/config.toml` are applied as defaults. You can override any of these at creation time:
 
 ```bash
 # Override the setup script
-amika sandbox create --git --setup-script ./my-other-script.sh
+amika rig create --git --setup-script ./my-other-script.sh
 
 # Override the preset
-amika sandbox create --git --preset coder-dind
+amika rig create --git --preset coder-dind
 
 # Add extra port bindings beyond what's in config.toml
-amika sandbox create --git --port 5432:5432
+amika rig create --git --port 5432:5432
 ```
 
 On the hosted platform, settings saved via the web UI take priority over `.amika/config.toml` values. See [configuration resolution](/reference/repository-configuration#configuration-resolution) for the full precedence order.
 
 ## Agent credential auto-mounting
 
-Amika auto-discovers credential files on your host and mounts them into the sandbox. This gives agents access to credentials without modifying host files.
+Amika auto-discovers credential files on your host and mounts them into the rig. This gives agents access to credentials without modifying host files.
 
 ### Supported files
 
@@ -108,24 +108,24 @@ Only files that exist on your host are mounted.
 
 Inside containers, these files appear under `/home/amika/` with matching relative paths.
 
-## Sandbox lifecycle
+## Rig lifecycle
 
-Hosted sandboxes have two idle-timeout knobs that control when they stop and when they're deleted:
+Hosted rigs have two idle-timeout knobs that control when they stop and when they're deleted:
 
 | Setting | Default | Range | Behavior |
 | --- | --- | --- | --- |
-| Auto-stop interval | 30 minutes | 0–10080 (7 days) | Time of idleness before the sandbox is stopped. `0` disables auto-stop. |
-| Auto-delete interval | Keep on stop | 0–10080 (7 days) | Time after stopping before the sandbox is deleted. The default keeps stopped sandboxes indefinitely. |
+| Auto-stop interval | 30 minutes | 0–10080 (7 days) | Time of idleness before the rig is stopped. `0` disables auto-stop. |
+| Auto-delete interval | Keep on stop | 0–10080 (7 days) | Time after stopping before the rig is deleted. The default keeps stopped rigs indefinitely. |
 
-Both intervals are expressed in minutes and apply to the hosted platform (remote sandboxes). Stopped sandboxes can be resumed with `amika sandbox start <name>`.
+Both intervals are expressed in minutes and apply to the hosted platform (remote rigs). Stopped rigs can be resumed with `amika rig start <name>`.
 
 <Note>
-Auto-stop and auto-delete intervals are currently settable only when creating a sandbox through the web UI or by passing `auto_stop_interval` / `auto_delete_interval` to `POST /api/sandboxes`. There's no CLI flag and no `.amika/config.toml` field for these yet.
+Auto-stop and auto-delete intervals are currently settable only when creating a rig through the web UI or by passing `auto_stop_interval` / `auto_delete_interval` to `POST /api/v0beta1/rigs`. There's no CLI flag and no `.amika/config.toml` field for these yet.
 </Note>
 
 ## Reserved ports
 
-Amika reserves container ports **60899–60999** (101 ports) for internal services that run inside sandboxes. User workloads and setup scripts should avoid binding to ports in this range.
+Amika reserves container ports **60899–60999** (101 ports) for internal services that run inside rigs. User workloads and setup scripts should avoid binding to ports in this range.
 
 | Port | Service | Status |
 | --- | --- | --- |

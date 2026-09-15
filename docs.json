@@ -27,7 +27,6 @@
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg"
-
   },
   "navigation": {
     "tabs": [
@@ -44,10 +43,11 @@
             ]
           },
           {
-            "group": "Sandboxes",
+            "group": "VM Rigs",
             "pages": [
-              "guides/create-a-sandbox",
-              "guides/sandbox-lifecycle",
+              "guides/what-is-a-rig",
+              "guides/create-a-rig",
+              "guides/rig-lifecycle",
               "guides/create-a-snapshot"
             ]
           },
@@ -69,11 +69,10 @@
               "guides/env-vars-and-secrets",
               "guides/manage-secrets",
               "guides/inject-credentials"
-
             ]
           },
           {
-            "group": "Connecting to sandboxes",
+            "group": "Connecting to rigs",
             "pages": [
               "guides/remote-control",
               "guides/ssh-and-connect",
@@ -108,7 +107,7 @@
               "reference/auth",
               "reference/secrets",
               "reference/presets",
-              "reference/sandbox-configuration",
+              "reference/rig-configuration",
               "reference/storage"
             ]
           },
@@ -188,6 +187,18 @@
     {
       "source": "/guides/ide-access",
       "destination": "/guides/open-in-editor"
+    },
+    {
+      "source": "/guides/create-a-sandbox",
+      "destination": "/guides/create-a-rig"
+    },
+    {
+      "source": "/guides/sandbox-lifecycle",
+      "destination": "/guides/rig-lifecycle"
+    },
+    {
+      "source": "/reference/sandbox-configuration",
+      "destination": "/reference/rig-configuration"
     }
   ],
   "navbar": {
@@ -205,15 +216,15 @@
   },
   "contextual": {
     "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
   },
   "footer": {
     "socials": {

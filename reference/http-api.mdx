@@ -21,18 +21,18 @@ By default, the server listens on `:8080`.
 | Method | Path | Description |
 | --- | --- | --- |
 | `GET` | `/v1/health` | Health check |
-| `GET` | `/v1/sandboxes` | List all tracked sandboxes |
-| `POST` | `/v1/sandboxes` | Create a new sandbox |
-| `DELETE` | `/v1/sandboxes/{name}` | Delete a sandbox by name |
+| `GET` | `/v1/rigs` | List all tracked rigs |
+| `POST` | `/v1/rigs` | Create a new rig |
+| `DELETE` | `/v1/rigs/{name}` | Delete a rig by name |
 | `GET` | `/v1/volumes` | List all tracked volumes |
 | `DELETE` | `/v1/volumes/{name}` | Delete a volume by name |
 | `POST` | `/v1/auth/extract` | Extract local coding-agent credentials |
 | `POST` | `/v1/materialize` | Run a script/command in an ephemeral container and copy output |
-| `GET` | `/v1/services` | List services across sandboxes |
+| `GET` | `/v1/services` | List services across rigs |
 
 ## Port publishing
 
-The `Ports` field on `POST /v1/sandboxes` accepts an array of port binding objects. It is the HTTP API equivalent of the `--port` and `--port-host-ip` CLI flags.
+The `Ports` field on `POST /v1/rigs` accepts an array of port binding objects. It is the HTTP API equivalent of the `--port` and `--port-host-ip` CLI flags.
 
 ```json
 {
@@ -59,13 +59,13 @@ Duplicate bindings (same `HostIP:HostPort/Protocol`) are rejected with a 400 err
 
 ## Services
 
-`GET /v1/services` returns services declared across sandboxes. Sandbox responses from `GET /v1/sandboxes` and `POST /v1/sandboxes` also include a `Services` field when services are configured.
+`GET /v1/services` returns services declared across rigs. Rig responses from `GET /v1/rigs` and `POST /v1/rigs` also include a `Services` field when services are configured.
 
 ### Query parameters
 
 | Parameter | Required | Description |
 | --- | --- | --- |
-| `sandbox_name` | no | Filter to services for a specific sandbox |
+| `sandbox_name` | no | Filter to services for a specific rig |
 
 ### Response
 
@@ -95,10 +95,10 @@ See [Services](/reference/services) for how to declare services in `.amika/confi
 
 The HTTP API accepts some fields that are not available as CLI flags:
 
-- **`SetupScriptText`** (on `POST /v1/sandboxes`): Inline setup script content as a string. Amika writes it to a temporary file and mounts it as `/usr/local/etc/amikad/setup/setup.sh`. Mutually exclusive with `SetupScript` (file path).
-- **`GitRepo`** (on `POST /v1/sandboxes`): URL of a git repository to clone into the sandbox. The repo is cloned on the host, copied into a Docker volume, and mounted at `/home/amika/workspace/<repo-name>`. Supported schemes: `https://`, `http://`, `ssh://`, `file:///` (absolute paths only), and SCP-style (`git@host:path`). See [Sandbox configuration](/reference/sandbox-configuration) for details.
+- **`SetupScriptText`** (on `POST /v1/rigs`): Inline setup script content as a string. Amika writes it to a temporary file and mounts it as `/usr/local/etc/amikad/setup/setup.sh`. Mutually exclusive with `SetupScript` (file path).
+- **`GitRepo`** (on `POST /v1/rigs`): URL of a git repository to clone into the rig. The repo is cloned on the host, copied into a Docker volume, and mounted at `/home/amika/workspace/<repo-name>`. Supported schemes: `https://`, `http://`, `ssh://`, `file:///` (absolute paths only), and SCP-style (`git@host:path`). See [Rig configuration](/reference/rig-configuration) for details.
 
 ## Related docs
 
 - [CLI reference](/reference/cli)
-- [Sandbox configuration](/reference/sandbox-configuration)
+- [Rig configuration](/reference/rig-configuration)
