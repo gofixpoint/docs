@@ -3,18 +3,51 @@ title: "Codex app"
 description: "Connect the Codex mobile or desktop app to an Amika rig."
 ---
 
-Connect to a rig from Codex in two ways:
+Connect to a rig VM from Codex in two ways:
 
-- **Mobile app:** pair with the rig's remote-control daemon.
 - **Desktop app:** add the rig as an SSH host and open its remote project.
+- **Mobile app:** pair with the rig's remote-control daemon.
 
 The rig must remain active while you use either connection. See
 [Create a rig](/guides/create-a-rig).
 
+## Connect the desktop app
+
+You need the Codex desktop app, the
+[authenticated Amika CLI](/quickstart#step-2-set-up-the-cli), and an SSH
+identity. Create an identity with `amika secret ssh-keygen` if you do not
+already have one.
+
+<Steps>
+  <Step title="Add the rig as an SSH host">
+    Run this on the computer where you use the Codex desktop app. Replace
+    `dev-box` with your rig name.
+
+    ```bash
+    amika rig code dev-box --editor codex
+    ```
+
+    The command adds a concrete host to your SSH configuration, enables Codex
+    remote connections, and opens the Codex app. It prints the SSH host name
+    and remote project folder to use in the next step.
+  </Step>
+
+  <Step title="Enable the SSH host in Codex">
+    In the Codex desktop app, open **Settings > Connections**. Add or enable
+    the SSH host printed by the CLI, then choose the printed remote project
+    folder.
+  </Step>
+</Steps>
+
+The desktop app starts and manages the remote Codex app-server over SSH. You do
+not need to start `codex remote-control` or generate a pairing code for this
+connection.
+
 ## Connect the mobile app
 
 You need Codex remote control access for your ChatGPT account and workspace.
-Sign in to the mobile app with the same account and workspace.
+Sign in to the Codex mobile app with the same account and workspace you use on
+Amika rigs.
 
 <Steps>
   <Step title="Open a shell in the rig">
@@ -22,26 +55,6 @@ Sign in to the mobile app with the same account and workspace.
 
     ```bash
     amika rig ssh dev-box
-    ```
-  </Step>
-
-  <Step title="Check the Codex installation">
-    New rigs include the managed standalone Codex install required by remote
-    control.
-
-    ```bash
-    readlink -f "$(command -v codex)"
-    ```
-
-    The path should be under
-    `~/.codex/packages/standalone/current/bin/codex`.
-
-    If the path points to an npm installation, replace it with the managed
-    standalone install, then start a new login shell:
-
-    ```bash
-    curl -fsSL https://chatgpt.com/codex/install.sh | sh
-    exec zsh -l
     ```
   </Step>
 
@@ -90,34 +103,3 @@ codex remote-control stop
 ```
 
 Stopping or deleting the rig also makes it unavailable.
-
-## Connect the desktop app
-
-You need the Codex desktop app, the authenticated Amika CLI, and an SSH
-identity. Create an identity with `amika secret ssh-keygen` if you do not
-already have one.
-
-<Steps>
-  <Step title="Add the rig as an SSH host">
-    Run this on the computer where you use the Codex desktop app. Replace
-    `dev-box` with your rig name.
-
-    ```bash
-    amika rig code dev-box --editor codex
-    ```
-
-    The command adds a concrete host to your SSH configuration, enables Codex
-    remote connections, and opens the Codex app. It prints the SSH host name
-    and remote project folder to use in the next step.
-  </Step>
-
-  <Step title="Enable the SSH host in Codex">
-    In the Codex desktop app, open **Settings > Connections**. Add or enable
-    the SSH host printed by the CLI, then choose the printed remote project
-    folder.
-  </Step>
-</Steps>
-
-The desktop app starts and manages the remote Codex app-server over SSH. You do
-not need to start `codex remote-control` or generate a pairing code for this
-connection.
