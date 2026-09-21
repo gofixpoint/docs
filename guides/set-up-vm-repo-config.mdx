@@ -1,0 +1,66 @@
+---
+title: "Set up VM and repo config"
+description: "Set up the repo config that defines the VM Rig environment for that repo."
+---
+
+## Intro
+
+These are steps for an agent to follow to set up an Amika config for a repo,
+which configures the VM environment for every Rig VM booted from this repo.
+
+You can find the Amika CLI skill in https://github.com/gofixpoint/amika/tree/main/.agents/skills/amika-cli
+
+And on a VM Rig, it is in `/home/amika/.agents/skills/amika-cli`.
+
+You can also search https://docs.amika.dev/ if you need more information.
+
+## Authentication
+
+First, ensure that the user is logged in:
+
+```bash
+amika auth status
+```
+
+If they are not, run:
+
+```bash
+amika auth login
+```
+
+And ask them to follow the browser instructions. You should show them the verification code.
+
+## SSH access
+
+Make sure the user has an SSH key registered with Amika:
+
+```bash
+amika secret ssh-key list
+```
+
+If they don't, then create one:
+
+```bash
+amika secret ssh-keygen
+```
+
+## Going to repo and preparing rig
+
+First, ask the user the path of the repo on their computer they want to set up.
+either a GitHub repo URL or a local filepath.
+
+If it's a local path:
+
+```bash
+cd /path/to/repo
+# the repo name must have only alphanumeric characters, hyphens, and dots
+amika rig create ${name_of_repo}-setup --no-setup
+```
+
+Now, you can access the rig VM via SSH, or copy files with SCP:
+
+```bash
+amika rig ssh ${name_of_repo)-setup ...
+
+amika scp local-file-path/foo.txt ${name_of_repo}-setup:path/on/rig/foo.txt
+```
