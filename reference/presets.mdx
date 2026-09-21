@@ -1,106 +1,99 @@
 ---
 title: "Rig environment presets"
-description: "Choose and manage Amika preset images."
+description: "Choose a prebuilt Amika environment for a rig."
 ---
 
-Presets are Docker images with tools preinstalled for coding agent workflows.
+A preset selects the prebuilt environment that boots a rig. The hosted platform
+resolves it to the appropriate provider image or snapshot.
 
 ## Available presets
 
 ### `coder` (default)
 
-- Image: `amika/coder:latest`
+Use `coder` for most repositories.
+
 - Base: Ubuntu 24.04
-- Tools: Git, curl, zsh, build essentials, Python, Node.js 22, `pnpm`, TypeScript, `tsx`
-- Agent CLIs: Claude Code, Codex, OpenCode
+- Tools: Git, GitHub CLI, curl, zsh, build essentials, Python, Node.js 24,
+  `npm`, `pnpm`, TypeScript, and `tsx`
+- Agent CLIs: Claude Code, Codex, OpenCode, and Pi
+- Amika tools: `amika`, `amikalog`, and `amikad`
 
-### `coder-dind`
+### `coder-plus-docker`
 
-- Image: `amika/coder-dind:latest`
-- Base: Ubuntu 24.04
-- Tools: Everything in `coder`, plus Docker-in-Docker (dind) support for
-  running containerized services inside the rig
-- Agent CLIs: Claude Code, Codex, OpenCode
+Use `coder-plus-docker` when a repository needs Docker inside the rig, such as
+for Docker Compose or containerized development services.
 
-Use `coder-dind` when the project runs containerized services locally
-(Docker Compose, etc.). Otherwise prefer `coder`.
+It includes everything in `coder`, plus Docker Engine and Buildx. It does not
+support the `xs` size tier.
 
-## Use a preset
+## Select a preset
+
+Pass `--preset` to override a repository default for one rig:
 
 ```bash
-# Explicit preset
 amika rig create --preset coder
-amika rig create --preset coder-dind
-
-# Default behavior (coder)
-amika rig create
-
-# Use preset in materialize
-amika materialize --preset coder-dind --cmd "docker ps" --destdir /tmp/out
+amika rig create --preset coder-plus-docker
 ```
 
-`--preset` and `--image` are mutually exclusive.
+Set a default for every hosted rig created from a repository:
 
-## Auto-build behavior
+```toml
+[sandbox]
+preset = "coder-plus-docker"
+size = "m"
+```
 
-Preset images build automatically the first time you use them.
+If no request or repository setting selects a preset, Amika uses `coder`.
 
-If you want to force a rebuild:
+## Inspect installed versions
+
+Preset versions change as Amika publishes new environments. Check the running
+rig instead of depending on a fixed patch version:
 
 ```bash
-docker rmi amika/coder:latest
+for tool in git gh node npm pnpm python3 claude codex opencode pi docker; do
+  if command -v "$tool" >/dev/null 2>&1; then
+    printf '%s: ' "$tool"
+    "$tool" --version 2>/dev/null | head -n 1 || true
+  fi
+done
 ```
-
-The next command that uses `coder` rebuilds the image.
 
 ## Setup scripts
 
-Both presets run `/usr/local/etc/amikad/setup/setup.sh` before the main command.
+Both presets support repository setup and start scripts. The hosted platform
+reads each configured script from the repository and installs it as a lifecycle
+hook. The source file's executable bit in Git is not required.
 
-Use `--setup-script` to inject your setup logic when creating a rig:
+See [Rig configuration](/reference/rig-configuration#lifecycle-scripts) and the
+[`[lifecycle]` reference](/guides/config-toml#lifecycle).
+
+## Agent credentials
+
+Hosted rigs receive selected Claude and Codex credentials from Amika's remote
+credential store. Push credentials before creating the rig:
 
 ```bash
-amika rig create --setup-script ./install-deps.sh
+amika secret claude push --type oauth
+amika secret codex push --type oauth
 ```
 
-See [Rig configuration](/reference/rig-configuration) for details.
-
-## Container directory layout
-
-Preset images provision parallel `amikad` and `amika` directories inside the container:
-
-- `/usr/lib/amikad` and `/usr/lib/amika`
-- `/usr/local/etc/amikad` and `/usr/local/etc/amika`
-- `/var/lib/amikad` and `/var/lib/amika`
-- `/var/log/amikad` and `/var/log/amika`
-- `/run/amikad` and `/run/amika`
-- `/tmp/amikad` and `/tmp/amika`
-
-Use `amikad` paths for Amika-managed daemon and system files. Use `amika` paths for user-managed Amika content.
-
-The user-supplied setup hook remains at `/usr/local/etc/amikad/setup/setup.sh`.
+Use `[agent_credentials]` or the `--agent-credential` flags to select a stored
+credential. See [Inject credentials](/guides/inject-credentials).
 
 ## Reserved ports
 
-Preset images reserve container ports **60899–60999** for Amika internal services (e.g. OpenCode web on 60998, amikad daemon on 60999). See [Rig configuration](/reference/rig-configuration#reserved-ports) for the full allocation table.
+Preset environments reserve ports 60899 through 60999 for Amika services. See
+[Reserved ports](/reference/rig-configuration#reserved-ports).
 
-## Custom image prefix
+## Open-source server images
 
-Use `AMIKA_PRESET_IMAGE_PREFIX` to change naming for generated preset images.
-
-```bash
-export AMIKA_PRESET_IMAGE_PREFIX=myregistry/amika
-```
-
-This changes `amika/coder:latest` to `myregistry/amika-coder:latest`.
-
-## Agent credential auto-mounting
-
-When you create a rig or run materialize, Amika auto-discovers and mounts supported credential files into the container.
-
-This gives agents credentials inside the rig without modifying host source files. See [Rig configuration](/reference/rig-configuration#agent-credential-auto-mounting) for the full list of supported files.
+The open-source `amika-server` uses generated Docker images named
+`amika/coder:latest` and `amika/coder-plus-docker:latest`. This local server
+implementation is separate from the hosted `amika rig` workflow.
 
 ## Related docs
 
 - [Rig configuration](/reference/rig-configuration)
+- [config.toml reference](/guides/config-toml)
 - [CLI reference](/reference/cli)

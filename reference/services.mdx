@@ -41,8 +41,8 @@ port = "9090/tcp"
 
 Each port value is either:
 
-- **Integer** — interpreted as `containerPort/tcp` (TCP is the default protocol).
-- **String** `"containerPort/protocol"` — sets the protocol explicitly, e.g. `"4982/udp"`.
+- **Integer**: interpreted as `containerPort/tcp` (TCP is the default protocol).
+- **String** `"containerPort/protocol"`: sets the protocol explicitly, such as `"4982/udp"`.
 
 ```toml
 # These are equivalent
@@ -57,12 +57,12 @@ port = "4838/tcp"
 **Single-port services** accept a string or a list:
 
 ```toml
-# String form — scheme applies to the declared port
+# String form: scheme applies to the declared port
 [services.api]
 port = 4838
 url_scheme = "http"
 
-# List form — equivalent to the above
+# List form: equivalent to the above
 [services.api]
 port = 4838
 url_scheme = [{ port = 4838, scheme = "http" }]
@@ -75,7 +75,7 @@ url_scheme = [{ port = 4838, scheme = "http" }]
 ports = [4211, "9872/tcp", "4982/udp"]
 url_scheme = [
   { port = 4211, scheme = "http" },
-  { port = "9872/tcp", scheme = "https" },
+  { port = 9872, scheme = "https" },
 ]
 # 4982/udp gets no URL
 ```
@@ -89,7 +89,6 @@ Amika validates service definitions when parsing `.amika/config.toml`:
 - **Port range:** port numbers must be 1–65535.
 - **Protocol:** must be `tcp` or `udp`.
 - **Mutual exclusivity:** specifying both `port` and `ports` on the same service is an error.
-- **Uniqueness:** no duplicate `(containerPort, protocol)` pair across all services in the file.
 - **url_scheme entries** must reference a port declared in the same service. Duplicate port entries within `url_scheme` are rejected.
 
 <Warning>
@@ -100,67 +99,52 @@ If validation fails, Amika logs a warning and treats the file as having no servi
 
 ## Port resolution
 
-When you run `amika rig create --git` and the repository contains service declarations, Amika resolves host ports for each service port:
+When you run `amika rig create` and the repository contains service
+declarations, the hosted provider publishes each declared port. Amika records
+the provider's published port and generates a public URL for TCP ports that
+declare a `url_scheme`.
 
-1. **Direct mirror** — try binding `hostPort = containerPort`. If the port is available on the host, use it.
-2. **Random fallback** — if the direct mirror is taken, bind to port 0 and let the OS assign an available port.
-
-The host IP defaults to `127.0.0.1` (same as `--port-host-ip`).
-
-For ports with a `url_scheme`, Amika generates a URL at resolution time:
-
-```
-<scheme>://localhost:<hostPort>
-```
-
-Resolved ports and URLs are visible in `amika rig list` and API responses.
+Resolved ports and URLs are visible through `amika service list`, rig details,
+and API responses.
 
 <Note>
 URL generation only applies to TCP ports. UDP ports with a `url_scheme` do not produce runtime URLs.
 </Note>
 
-## Merging with --port flags
-
-When `--port` flags are passed alongside `--git`, the two sets of port bindings are combined:
-
-```bash
-# --port publishes 5432; service config publishes its own ports
-amika rig create --git --port 5432:5432
-```
-
-If a container port/protocol pair appears in both `--port` flags and a service declaration, Amika returns an error — there is no silent override.
-
 ## Listing services
 
-Use `amika service list` to see services across all rigs:
+Use `amika service list` to inspect published bindings and URLs:
 
 ```bash
 amika service list
-amika service list --sandbox-name teal-tokyo
+amika service list --rig-name teal-tokyo
 ```
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--sandbox-name <name>` | (none) | Filter services to a specific rig |
+| `--rig-name <name>` | (none) | Filter services to a specific rig |
 
 Output columns: `SERVICE`, `SANDBOX`, `PORTS`, `URL`.
 
 ```
-SERVICE    SANDBOX   PORTS                            URL
-api        teal-tokyo    127.0.0.1:4838->4838/tcp         http://localhost:4838
-metrics    teal-tokyo    127.0.0.1:9090->9090/tcp         -
-frontend   blue-paris    127.0.0.1:3000->3000/tcp         https://localhost:3000
+SERVICE    SANDBOX      PORTS       URL
+api        teal-tokyo   4838/tcp    https://api.example.com
+metrics    teal-tokyo   9090/tcp    -
 ```
+
+`amika service list` reports configuration and published endpoints. It does not
+connect to the process or check service health. Test the local port or health
+endpoint inside the rig.
 
 ## Services on the hosted platform
 
 On the hosted Amika platform, service definitions can also be managed through the web UI or the platform API.
 
-**Resolution precedence** — when creating a rig for a repository, the platform resolves service definitions in this order:
+**Resolution precedence:** when creating a rig for a repository, the platform resolves service definitions in this order:
 
-1. **Database** — if any service definitions have been saved via the UI or API, use those exclusively.
-2. **Repository config** — if no database definitions exist, parse `[services.*]` sections from `.amika/config.toml`.
-3. **Default** — if neither source defines services, proceed with no service definitions.
+1. **Database:** if any service definitions have been saved via the UI or API, use those exclusively.
+2. **Repository config:** if no database definitions exist, parse `[services.*]` sections from `.amika/config.toml`.
+3. **Default:** if neither source defines services, proceed with no service definitions.
 
 <Tip>
 **DB-wins-all:** when you save _any_ service definition via the UI, it overrides _all_ TOML-defined services for that repository. The UI pre-populates from TOML when you first edit, but from that point forward the database is the sole source.
@@ -168,5 +152,5 @@ On the hosted Amika platform, service definitions can also be managed through th
 
 ## Related docs
 
-- [Rig configuration](/reference/rig-configuration) — lifecycle scripts, git cloning, reserved ports
-- [CLI reference](/reference/cli) — full command and flag index
+- [Rig configuration](/reference/rig-configuration): lifecycle scripts, Git cloning, reserved ports
+- [CLI reference](/reference/cli): full command and flag index

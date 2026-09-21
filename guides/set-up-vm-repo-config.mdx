@@ -1,0 +1,260 @@
+---
+title: "Set up repo config for VM rigs"
+description: "Instructions for a coding agent to inspect a local development environment and configure an Amika VM rig for the repository."
+---
+
+## Start here
+
+From the local development environment for your chosen repository, send this
+prompt to your coding agent:
+
+```markdown
+Follow the instructions in https://docs.amika.dev/guides/set-up-vm-repo-config to set your chosen Git repo in Amika VM rigs.
+```
+
+The rest of this page is written for the agent. You do not need to perform its
+steps yourself.
+
+## Instructions for the agent
+
+You are helping a user configure their chosen Git repository for Amika VM rigs.
+Work from the user's machine, where the repository and its development
+environment are already set up. If the current directory is not the intended
+repository, ask for its local path and change to it.
+
+Your goal is to configure `.amika/config.toml` and the setup and start scripts
+it references so new rigs can reproduce the repository's working development
+environment.
+
+Complete the work yourself when it is safe to do so. The user should only need
+to answer your questions, approve sensitive actions, complete interactive
+authentication, or run commands that you cannot run.
+
+## How to work
+
+- Treat the repository and working local environment as your primary evidence.
+  Run safe, read-only repository commands yourself.
+- Ask permission before inspecting potentially sensitive files or unrelated
+  machine state. Explain what you need and why.
+- Never read, print, or request secret values. Only inspect `.env` files,
+  credential stores, SSH private keys, or similar files when the user
+  authorizes a narrow, necessary use.
+- Ask before uploading secrets, changing credentials, committing, pushing, or
+  deleting cloud resources you did not create for this task. Clean up temporary
+  rigs you create unless the user asks you to keep them.
+- Preserve valid existing Amika configuration and explain material changes.
+- Keep the user informed with short findings and targeted questions. Do not
+  send them away to read documentation.
+
+Use judgment throughout this process. The examples below are starting points,
+not a requirement to add every file or setting.
+
+## 1. Establish the local context
+
+Confirm that you are in the intended repository and inspect its current state:
+
+```bash
+git rev-parse --show-toplevel
+git status --short
+git branch --show-current
+amika auth status
+```
+
+If Amika authentication is missing, run:
+
+```bash
+amika auth login
+```
+
+Tell the user how to complete the browser flow and show any verification code.
+
+Check whether the user has an SSH key registered with Amika:
+
+```bash
+amika secret ssh-key list
+```
+
+If no key is registered, ask permission before creating one:
+
+```bash
+amika secret ssh-keygen
+```
+
+Only public key material is uploaded. The private key remains on the user's
+machine.
+
+## 2. Understand the working development environment
+
+Read enough of the repository to understand:
+
+- Project instructions such as `README.md`, `CONTRIBUTING.md`, `AGENTS.md`,
+  `CLAUDE.md`, and `Makefile`, plus any existing `.amika/` files.
+- Runtimes, package managers, version constraints, install steps, builds, and
+  migrations.
+- Services, startup commands, ports, and health checks.
+- Required environment-variable names and which are secret.
+
+Ask permission to inspect relevant local tools and configuration outside the
+repository. Avoid broad commands that dump the full environment, process
+arguments, or credential-bearing configuration.
+
+Use local state to discover requirements, not as something to copy blindly.
+Prefer reproducible project setup over machine-specific files and manually
+installed state.
+
+## 3. Inspect a clean rig when useful
+
+If you need to compare the base environment before writing configuration,
+create a temporary rig without running any existing repository setup script.
+Choose a unique name derived from the repository:
+
+```bash
+setup_rig="my-project-setup"
+amika rig create --name "$setup_rig" --no-setup
+amika rig ssh "$setup_rig"
+```
+
+Compare only the tools and behavior relevant to the project. Record any needed
+changes in repository configuration or lifecycle scripts, not as manual changes
+to this temporary rig. Skip this step when the repository and preset reference
+already provide enough evidence.
+
+## 4. Agree on the plan
+
+Before editing, briefly report the detected development workflow, recommended
+preset and size, services, environment requirements, lifecycle approach, and
+any local behavior that should not carry into the rig.
+
+Ask only questions that block a sound implementation. In particular, ask how
+the project stores secrets and whether any encrypted files or external secret
+managers are part of its normal setup.
+
+Before changing repository files, create a new branch from the user's current
+branch. Choose a unique name and keep unrelated working-tree changes intact:
+
+```bash
+git switch -c amika/rig-config
+```
+
+## 5. Create the repository configuration
+
+Create or update `.amika/config.toml` and its setup and start scripts. Add only
+settings supported by what you found. Use the
+[config reference](/guides/config-toml) for field syntax.
+
+- Use `coder` unless the project needs Docker inside the rig. Use
+  `coder-plus-docker` when it does. Choose a provider-supported size based on
+  the project's needs.
+- Put one-time work in `setup_script`. `start_script` runs after a stopped rig
+  starts, not during initial creation. Share startup logic between them when a
+  service must run after both creation and restart.
+- Use `$AMIKA_AGENT_CWD` for the primary repository. Give shell scripts a
+  shebang, fail on errors, and make repeated startup safe.
+- Use the project's existing process manager when practical. Systemd is
+  available when long-running services need supervision and logs.
+- Declaring `[services.<name>]` publishes ports and URLs. It does not start the
+  process. Ensure lifecycle or project tooling starts it, and avoid reserved
+  ports 60899 through 60999.
+- Use plain `[env]` strings only for non-secret values. Use secret references
+  for secrets.
+- Use a [service reference](/guides/config-toml#service-reference) when an
+  environment variable needs a service's public URL, host, or port.
+
+Use optional sections such as `[filesystem]`, `[agent_credentials]`, and
+`[workflow]` only when the repository needs them.
+
+### Handle secrets without exposing them
+
+Never put plaintext secrets in `.amika/config.toml`, lifecycle scripts, Git, or
+your responses.
+
+If the required values are already exported in the local environment, ask
+permission to upload only the named variables without printing them:
+
+```bash
+amika secret push --from-env=API_KEY,DATABASE_URL
+```
+
+Otherwise, give the user the exact `amika secret push` command they need to run.
+Preserve an existing encrypted-file workflow when it is suitable for rigs. Do
+not add an untracked secret file to Git. Explain any manual copy or decryption
+step that cannot be represented safely in repository configuration.
+
+## 6. Validate the files
+
+Run the relevant checks yourself:
+
+```bash
+python3 -c 'import pathlib, tomllib; tomllib.loads(pathlib.Path(".amika/config.toml").read_text())'
+find .amika/scripts -type f -name '*.sh' -exec bash -n {} +
+git diff --check
+```
+
+Confirm that referenced scripts exist, service ports match their processes,
+secrets use references, reserved ports are unused, and setup does not depend on
+unexplained local state.
+
+## 7. Test the result in a new rig
+
+Hosted rigs clone the remote repository, so local uncommitted changes are not
+enough for an end-to-end test. Show the user the diff and ask permission to
+commit and push it. If approved, run:
+
+```bash
+config_branch="$(git branch --show-current)"
+git add .amika
+git diff --cached
+git commit -m "Add Amika rig configuration"
+git push -u origin "$config_branch"
+```
+
+After the configuration and required secrets are available remotely, create a
+new test rig:
+
+```bash
+config_branch="$(git branch --show-current)"
+test_rig="my-project-config-test"
+amika rig create --name "$test_rig" --branch "$config_branch"
+amika rig ssh "$test_rig"
+```
+
+Always pass the pushed configuration branch to `amika rig create`. Otherwise,
+the rig may clone the repository's default branch without your changes.
+
+Verify the actual development workflow, not only that the rig booted. Check the
+required processes and health endpoints, then run a representative project
+command. Confirm expected environment-variable names without printing secret
+values. Inspect published service bindings from the local machine:
+
+```bash
+amika service list --rig-name "$test_rig"
+```
+
+If the test fails, diagnose it, update the repository files, and repeat the
+smallest useful part of the test. Do not hide unresolved failures.
+
+When finished, delete every temporary rig you created. Use the actual names you
+chose, and do not delete pre-existing rigs:
+
+```bash
+amika rig delete my-project-setup --force
+amika rig delete my-project-config-test --force
+```
+
+## Report back
+
+Tell the user what changed, the branch you pushed, which local behavior you
+carried into the rig, what you tested, which secret names or actions remain,
+and whether temporary rigs are still running.
+
+Do not send the user back to this page for next steps. Give them the exact
+command or question in your response.
+
+## Reference material
+
+- [How configuration works](/guides/configuration)
+- [config.toml reference](/guides/config-toml)
+- [Services](/reference/services)
+- [Rig environment presets](/reference/presets)
+- [Manage secrets](/guides/manage-secrets)
+- [Amika CLI skill](https://github.com/gofixpoint/amika/tree/main/.agents/skills/amika-cli)
