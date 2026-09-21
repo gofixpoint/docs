@@ -82,6 +82,26 @@ url_scheme = [
 
 When `url_scheme` is omitted, no URLs are generated for the service.
 
+## Start service processes
+
+A service declaration publishes ports and records URLs. It does not start the
+process. Start services through the repository's lifecycle scripts or process
+manager.
+
+Systemd is available for long-running processes that need supervision and
+logs. Keep the unit file in the repository, then install and enable it from the
+setup script:
+
+```bash
+sudo install -m 0644 "$AMIKA_AGENT_CWD/.amika/systemd/api.service" \
+  /etc/systemd/system/api.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now api.service
+```
+
+Make setup scripts idempotent so rerunning them leaves the service in the same
+state.
+
 ## Validation rules
 
 Amika validates service definitions when parsing `.amika/config.toml`:
