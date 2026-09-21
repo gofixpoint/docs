@@ -88,6 +88,12 @@
             ]
           },
           {
+            "group": "Guides for agents",
+            "pages": [
+              "guides/setup-rig-for-a-repo"
+            ]
+          },
+          {
             "group": "Advanced",
             "pages": [
               "guides/setup-repo-config-with-agent",
