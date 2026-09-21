@@ -32,6 +32,7 @@ Each section maps to one dimension of the rig:
 - **`[sandbox]`** — the default preset, size, and boot snapshot.
 - **`[filesystem]`** — additional repos to clone alongside the primary one.
 - **`[agent_credentials]`** — which stored credential each agent uses by default.
+- **`[workflow]`**: a hosted multi-step agent workflow.
 
 Because the file lives in the repo, it is versioned with your code and easy for
 a coding agent to read and edit. That makes it the **recommended** place to
@@ -75,14 +76,14 @@ UI. All three feed the resolution table above.
 
     ```toml
     [sandbox]
-    preset = "coder-dind"
+    preset = "coder-plus-docker"
     ```
   </Tab>
   <Tab title="CLI">
     Override the preset for a single rig at create time.
 
     ```bash
-    amika rig create --git --preset coder-dind
+    amika rig create --preset coder-plus-docker
     ```
   </Tab>
   <Tab title="Web UI">

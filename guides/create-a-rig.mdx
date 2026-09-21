@@ -43,14 +43,14 @@ const sb = await amika.createRig({
 
 </CodeGroup>
 
-To clone a repo into the rig, pass `--git` (CLI) or `repoUrl` (SDK). The
-CLI's `--git` accepts a local path or a git URL; the SDK accepts a URL.
+To clone a repo into the rig, run the CLI from inside that repository or pass
+`--git <path-or-URL>`. The SDK accepts a URL through `repoUrl`.
 
 <CodeGroup>
 
 ```bash CLI
 # Clone the repo in the current directory
-amika rig create --name dev-box --preset coder --git
+amika rig create --name dev-box --preset coder
 
 # Or clone a remote URL
 amika rig create --name dev-box --preset coder \

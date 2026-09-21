@@ -1,365 +1,303 @@
 ---
 title: "Set up repo config with an agent"
-description: "Use a coding agent to analyze your repository and generate an Amika rig configuration automatically."
+description: "Give a coding agent a prompt to analyze your repository and generate its Amika rig configuration."
 ---
 
-You can use a coding agent (Claude Code, Codex, OpenCode, or similar) to analyze your repository and generate a `.amika/config.toml` and setup script tailored to your project.
+Use a coding agent such as Claude Code, Codex, OpenCode, or Pi to analyze a
+repository and create its `.amika/config.toml` and lifecycle scripts.
 
-## How it works
+This workflow targets hosted rigs. It uses CLI commands that an agent can run.
 
-Create a rig loaded with the repo you are setting up.
+## Prepare a setup rig
 
-In CLI:
+From the repository you want to configure, confirm that the CLI is authenticated:
 
 ```bash
 cd /path/to/repo
-amika rig create --no-setup
+amika auth status
 ```
 
-Or, go to https://app.amika.dev/sandbox and create a rig for your repo, then connect to it.
+If necessary, authenticate before continuing:
 
-In the rig, navigate to the git repo, and copy the prompt below into your coding agent. The agent will:
+```bash
+amika auth login
+```
 
-1. **Investigate** your repo to discover languages, frameworks, services, ports, and environment variables.
-2. **Ask you** to confirm its findings and answer a few questions about your preferences.
-3. **Generate** a `.amika/config.toml` and `.amika/scripts/setup.sh` ready for rig creation.
+Create a rig without running the repository's existing setup script, then
+connect to it:
 
-## The prompt
+```bash
+amika rig create --no-setup --connect
+```
 
-Copy and paste this prompt into your coding agent:
+In the rig, open your coding agent from the repository directory and give it
+the prompt below.
+
+## Agent prompt
+
+Copy and paste this prompt into the coding agent:
 
 ````markdown
-# Set Up Amika Repository Configuration
+# Set up Amika repository configuration
 
-You are tasked with setting up an Amika rig configuration for this repository. Amika is infrastructure for building a software factory — it spins up sandboxed development environments pre-loaded with coding agents and your repository code. Your job is to create a `.amika/config.toml` and a setup script so that when a rig is created from this repo, it has all dependencies installed and dev services running.
+Create an Amika configuration for this repository. The result must provision a
+hosted rig with the project's dependencies, environment, and development
+services.
 
-## Reference materials
+Create only the configuration the repository needs. Do not invent services,
+ports, environment variables, commands, or credentials.
 
-Before you begin, read these resources to understand how Amika configuration works:
+## Reference material
 
-1. **Amika docs — rig configuration**: https://docs.amika.dev/reference/rig-configuration
-2. **Amika docs — services**: https://docs.amika.dev/reference/services
-3. **Amika docs — presets**: https://docs.amika.dev/reference/presets
-4. **Example config (simple repo)**: https://github.com/gofixpoint/example-repo/blob/main/.amika/config.toml
-5. **Example config (Go project)**: https://github.com/gofixpoint/amika/blob/main/.amika/config.toml
+Read these sources before editing:
 
-If you are unable to fetch these URLs, the key facts are summarized below in the "Amika Configuration Reference" section.
+1. [How configuration works](https://docs.amika.dev/guides/configuration)
+2. [config.toml reference](https://docs.amika.dev/guides/config-toml)
+3. [Services](https://docs.amika.dev/reference/services)
+4. [Rig environment presets](https://docs.amika.dev/reference/presets)
+5. [Example config](https://github.com/gofixpoint/amika/blob/main/.amika/config.toml)
 
-## Step 1: Investigate the repository
+The task-specific rules are also summarized below. If the docs and this prompt
+disagree, call out the conflict and prefer the current Amika docs.
 
-Analyze this repository thoroughly before doing anything else. You need to understand:
+## 1. Investigate the repository
 
-### Languages and runtimes
-- What programming languages are used? (Check file extensions, config files, lock files)
-- What versions are required? (Check `.nvmrc`, `go.mod`, `pyproject.toml`, `Gemfile`, `rust-toolchain.toml`, etc.)
-- What package managers are used? (npm, pnpm, yarn, pip, cargo, go modules, etc.)
+Inspect the repository before changing files.
 
-### Dev servers and services
-- What services does this project run in development? (web servers, API servers, databases, queues, etc.)
-- What ports do they listen on? (Check `package.json` scripts, Dockerfiles, docker-compose files, config files, source code for port defaults, CLI flag defaults)
-- How are services started? (e.g., `pnpm dev`, `go run ./cmd/server`, `cargo run`, `python manage.py runserver`)
-- Is there an existing Procfile, docker-compose.yml, or similar orchestration config?
+### Languages and tools
 
-### Environment variables and secrets
-- What environment variables does the project use? (Check `.env.example`, `.env.sample`, source code for `os.Getenv`, `process.env`, etc.)
-- Which are required vs optional?
-- Which contain secrets (API keys, database passwords, encryption keys)?
-- What are sensible defaults for development?
+- Identify each language, runtime, and package manager.
+- Read version files such as `.nvmrc`, `go.mod`, `pyproject.toml`,
+  `rust-toolchain.toml`, and `Gemfile`.
+- Read lock files and package-manager configuration.
+- Check `README.md`, `CONTRIBUTING.md`, `AGENTS.md`, `CLAUDE.md`, `Makefile`,
+  and equivalent development instructions.
 
-### Build steps
-- Are there compilation steps? (Go build, Rust build, TypeScript compilation, etc.)
-- Are there code generation steps? (protobuf, GraphQL codegen, etc.)
-- What install commands are needed? (`pnpm install`, `pip install`, `go mod download`, etc.)
+### Existing Amika configuration
 
-### Existing configuration
-- Is there already a `.amika/` directory? If so, read it and ask the user whether they want to update it or start fresh.
-- Look at `CLAUDE.md`, `README.md`, `CONTRIBUTING.md`, `Makefile`, or similar files for development setup instructions.
+- Read the existing `.amika/` directory, if present.
+- Preserve valid settings unless the user asks to replace them.
+- Explain any existing setting you plan to remove or change.
 
-## Step 2: Ask the user to confirm your findings
+### Installed rig tools
 
-After investigating, present your findings to the user and ask them to confirm or correct. Structure your questions like this:
+Inspect the current rig instead of assuming exact tool versions:
 
-### Rig settings
-Explain the available rig presets and sizes, and recommend values:
+```bash
+for tool in git gh node npm pnpm python3 claude codex opencode pi docker; do
+  if command -v "$tool" >/dev/null 2>&1; then
+    printf '%s: ' "$tool"
+    "$tool" --version 2>/dev/null | head -n 1 || true
+  else
+    printf '%s: not installed\n' "$tool"
+  fi
+done
+```
 
-**Presets:**
-- **`coder`** (default) — Ubuntu 24.04 with Git, curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx. Includes Claude Code, Codex, and OpenCode agent CLIs.
-- **`coder-dind`** — Everything in `coder`, plus Docker-in-Docker (dind) support for running containerized services inside the rig.
-
-Recommend `coder` unless the project uses Docker Compose, runs containerized services locally, or otherwise requires Docker.
-
-**Sizes:**
-- **`xs`** — Extra-small resource allocation. Suitable for lightweight tasks like documentation or simple scripts.
-- **`m`** (default) — Medium resource allocation. Suitable for most projects.
-- **`l`** — Large resource allocation. For heavier builds or multiple concurrent services.
-- **`xl`** — Extra-large resource allocation. For the most demanding workloads.
-
-These values are set in the `[sandbox]` section of `.amika/config.toml` and used as defaults when creating a rig from this repository. They can be overridden at creation time via CLI flags or the web UI.
+The `coder` preset includes the standard development toolchain and the Claude
+Code, Codex, OpenCode, and Pi agent CLIs. The `coder-plus-docker` preset adds
+Docker. Recommend `coder` unless the project needs Docker inside the rig.
 
 ### Services
-List the services you discovered and the ports they use. Ask the user:
-- Which of these services should be exposed in the rig?
-- Are there any services you missed?
-- For each service, confirm the port and whether it should have an HTTP/HTTPS URL scheme.
 
-### Missing runtimes
-Based on the preset's pre-installed tools (Git, GitHub CLI (`gh`), curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx), identify what's missing that the setup script will need to install. For example:
-- Go (not included in any preset)
-- Rust (not included in any preset)
-- Java/JVM (not included in any preset)
-- Specific Node.js versions if the project requires something other than 22
-- Any other system dependencies
+- Find each development server, API, database, worker, or queue.
+- Find its start command, port, protocol, and health endpoint.
+- Check package scripts, source defaults, Docker files, Compose files, and
+  existing process-manager configuration.
+- Distinguish processes that must start automatically from commands that a
+  developer runs manually.
 
-### Environment variables
-Present the environment variables you found, categorized as:
-- **Required secrets** — values the user must provide via `amika secret push` or the web UI before creating a rig
-- **Required config** — values that need to be set but aren't secret (e.g., database host pointing to a shared dev instance)
-- **Optional/feature flags** — values with sensible defaults
+### Environment and secrets
 
-Ask the user:
-- Are any required env vars missing from your list?
-- For database/service connection strings, should these point to a shared dev instance, or will they run locally in the rig?
-- Are there any secrets they want to pre-configure?
+- Find environment-variable reads and example env files.
+- Separate required secrets, required non-secret configuration, and optional
+  settings.
+- Never put a secret value in `.amika/config.toml` or commit one to Git.
+- Use an `[env]` secret reference for every secret.
 
-### Dev server startup
-Explain your plan for how the setup script will start services. Ask:
-- Should all discovered services start automatically, or just some?
-- Are there any dependencies between services (e.g., the API server must start before the frontend)?
-- Are there database migrations that need to run?
+## 2. Confirm the plan
 
-## Step 3: Create the configuration
+Before editing, show the user:
 
-After the user confirms, create the following files:
+1. The detected runtimes and missing tools.
+2. The recommended preset and size.
+3. Each service, its port, URL scheme, start command, and health check.
+4. Each required environment variable and whether it is secret.
+5. The install, build, migration, and service-start commands you plan to use.
 
-### `.amika/config.toml`
+Ask only the questions needed to resolve uncertainty. Do not ask the user for
+secret values. Tell them which `amika secret push` commands they must run.
 
-This is the main configuration file. The sections you'll typically generate:
+## 3. Create the configuration
+
+Create `.amika/config.toml` and the required scripts under `.amika/scripts/`.
+
+A typical hosted configuration looks like this:
 
 ```toml
 [sandbox]
-preset = "coder"       # "coder" or "coder-dind"
-size = "m"             # "xs", "m", "l", or "xl"
+preset = "coder"
+size = "m"
 
 [lifecycle]
 setup_script = ".amika/scripts/setup.sh"
-start_script = ".amika/scripts/start.sh"  # optional, runs on each restart
+start_script = ".amika/scripts/start.sh"
 
-[services.<name>]
-port = <port_number>
-url_scheme = "https"  # or "http", or omit for non-HTTP services like gRPC
+[services.web]
+port = 3000
+url_scheme = "http"
 
 [env]
-PLAIN_VAR = "value"
-SECRET_VAR = { secret = "secret-name" }
+NODE_ENV = "development"
+API_KEY = { secret = "project-api-key" }
 ```
 
-**Rules:**
-- `preset` selects the base image: `"coder"` (default) or `"coder-dind"` (adds Docker-in-Docker). Use `coder-dind` only if the project requires Docker.
-- `size` sets the resource allocation: `"xs"`, `"m"` (default), `"l"`, or `"xl"`. Use `xs` only for lightweight tasks; reach for `l`/`xl` for heavy builds or many concurrent services.
-- `setup_script` is a path relative to the repo root pointing to an executable script that runs once when a new rig is created, before the agent starts.
-- `start_script` (optional) is an executable script that runs each time a stopped rig is started again — not on the initial create, where only `setup_script` runs. Put one-time provisioning in `setup_script`; use `start_script` for steps that must repeat whenever a rig resumes.
-- Services expose ports from the rig. Each service has a name, port, and optional `url_scheme`. Only set `url_scheme` for HTTP/HTTPS services — omit it for raw TCP services like gRPC.
-- Ports 60899–60999 are reserved by Amika — do not use them.
-- Environment variables can be plain strings or secret references. Secrets must be pushed via `amika secret push` or the Amika web UI before rig creation. Use `{ secret = "name" }` syntax for secrets.
+Add only the sections the repository needs.
 
-### `.amika/scripts/setup.sh`
+### Sandbox settings
 
-This script runs inside the rig before the agent starts. It must:
-1. Be executable (`chmod +x`)
-2. Use `$AMIKA_AGENT_CWD` to reference the repo root (do NOT hardcode paths)
-3. Exit 0 on success (non-zero aborts rig startup)
-4. Be deterministic and idempotent
+- Valid presets are `coder` and `coder-plus-docker`.
+- Use `coder-plus-docker` only when the project needs Docker inside the rig.
+- The friendly size aliases are `xs`, `m`, `l`, and `xl`. The API also accepts
+  versioned sizes such as `a0.m` and `a1.medium` when the selected provider
+  offers them.
+- `coder-plus-docker` does not support the `xs` tier.
+- Recommend `m` unless the repository clearly needs a different size.
+- An optional `snapshot` value is a repository snapshot's friendly label.
 
-**Structure the setup script in phases:**
+### Lifecycle scripts
+
+- `setup_script` runs during initial rig creation.
+- `start_script` runs when a stopped rig starts again. It does not run during
+  initial creation.
+- Amika reads repository lifecycle scripts as file contents. Their executable
+  bit in Git is not required.
+- Give every script a shebang and `set -euo pipefail`.
+- Use `$AMIKA_AGENT_CWD` for the primary repository path.
+- Make setup deterministic and safe to run again.
+- Exit nonzero when setup fails. The rig remains accessible, but Amika records
+  the setup failure.
+
+Keep one-time installation and build work in `setup.sh`. If services must run
+after both creation and restart, put their startup logic in a shared script and
+invoke it with `bash` from both lifecycle scripts.
+
+Example `setup.sh`:
 
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
 
-# --- Phase 1: Install missing system dependencies ---
-# Check what's already installed before installing anything.
-# The preset already includes: Git, GitHub CLI (gh), curl, zsh,
-# build essentials, Python, Node.js 22, pnpm, TypeScript, tsx.
-# Only install what's missing (e.g., Go, Rust, specific tools).
-# Run independent installs in parallel with & and wait.
+cd "$AMIKA_AGENT_CWD"
 
-# --- Phase 2: Install project dependencies ---
-# e.g., pnpm install, pip install -r requirements.txt, go mod download
+# Install missing system tools.
+# Install project dependencies.
+# Run required builds, code generation, and migrations.
 
-# --- Phase 3: Build/compile if necessary ---
-# e.g., go build, cargo build, tsc
-
-# --- Phase 4: Start services in the background ---
-# Use nohup and & to background services.
-# Write PID files to /tmp/amika-<service>.pid for cleanup.
-# Write logs to /var/log/amika/<service>.log (mkdir -p first).
-# If services have startup dependencies, add brief sleeps between them.
+bash "$AMIKA_AGENT_CWD/.amika/scripts/start-services.sh"
 ```
 
-**Where to start services:** the setup script runs once, on create; the start script runs each time a stopped rig is restarted, but not on the initial create. Start services in the setup script so they come up on a fresh rig. If the project will be stopped and resumed, repeat that service startup (Phase 4) in the start script so the services come back. Keep one-time install/build steps (Phases 1–3) in the setup script only.
-
-**Best practices for setup scripts:**
-- Always check if a tool is installed before installing it (`command -v <tool> &>/dev/null`).
-- Use architecture detection to handle both amd64 and arm64.
-- Run independent installs in parallel using `&` and `wait`.
-- For version checks, compare against the minimum required version rather than requiring an exact match.
-- Use `curl -fsSL` for downloads (fail silently on HTTP errors, show errors on other failures).
-- Install binaries to `/usr/local/bin/` using `sudo`.
-- Use `nohup <command> > /var/log/amika/<name>.log 2>&1 &` to start background services.
-- Add `mkdir -p /var/log/amika` before starting services.
-- Print clear status messages so the user can see progress.
-
-### `.amika/scripts/start.sh`
-
-Only generate this if you set `start_script` in `config.toml`. It runs each time a stopped rig is resumed — not on the initial create — so it must bring services back up after a restart. It has the same requirements as the setup script: executable (`chmod +x`), use `$AMIKA_AGENT_CWD` for the repo root, exit 0 on success.
-
-Because `setup_script` runs on create and `start_script` runs on resume, **service startup must happen in both**. Factor the service-startup logic (Phase 4) into a shared script that each one sources, rather than duplicating it:
+Example `start.sh`:
 
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Bring services back up after a resume. This sources the same helper
-# the setup script uses for Phase 4 so the two stay in sync.
-"$AMIKA_AGENT_CWD/.amika/scripts/start-services.sh"
+bash "$AMIKA_AGENT_CWD/.amika/scripts/start-services.sh"
 ```
 
-Then have `setup.sh` Phase 4 call the same `start-services.sh`. Keep one-time install/build steps (Phases 1–3) in `setup.sh` only.
+For long-running services:
 
-## Step 4: Verify the configuration
+- Start them in the background with `nohup`.
+- Write user-managed logs under `/var/log/amika/`.
+- Use PID files under `/tmp/amika/` if the project needs them.
+- Check whether a process is already running before starting another copy.
+- Use a bounded readiness check against the service port or health endpoint.
+  Do not rely on a fixed sleep.
 
-After creating the files, verify:
-1. The setup script is executable (`chmod +x .amika/scripts/setup.sh`)
-2. If `start_script` is set in config.toml, that script exists and is executable, and any shared service-startup helper it references exists and is executable
-3. The config.toml is valid TOML (no syntax errors)
-4. All ports in config.toml match what the scripts start
-5. All environment variables referenced by the services are defined in the `[env]` section
-6. Secret references use the `{ secret = "name" }` syntax
-7. No ports fall in the reserved range 60899–60999
+### Services and environment
 
-Tell the user what secrets they need to push before creating a rig:
-```bash
-amika secret push <SECRET_NAME>=<value>
-```
+- Use `[services.<name>]` for named service definitions.
+- Use `port` for one binding or `ports` for multiple bindings.
+- Integer ports use TCP. A string can specify a protocol, such as
+  `"4982/udp"`.
+- Add `url_scheme = "http"` or `"https"` only for services that speak that
+  protocol.
+- Do not use ports 60899 through 60999. Amika reserves them.
+- Environment-variable names must match `^[A-Z_][A-Z0-9_]*$`.
+- A secret reference uses `{ secret = "secret-name" }`.
+- A service reference uses
+  `{ service = "service-name", field = "url" | "host" | "port" }`.
 
-And how to create a rig with this config (run from inside the repo; the repo is auto-detected from the current directory):
-```bash
-amika rig create
-```
+Optional hosted sections include:
 
----
+- `[filesystem]` with `repos` for additional repositories.
+- `[agent_credentials]` for default Claude or Codex credentials.
+- `[workflow]` for a repository-defined multi-step agent workflow.
 
-## Amika Configuration Reference
+Read the config reference before adding any optional section.
 
-This section summarizes the key configuration details in case you cannot fetch the documentation URLs above.
+## 4. Verify the result
 
-### config.toml structure
+Before reporting completion:
 
-The file lives at `.amika/config.toml` in the repository root.
+1. Parse the TOML:
 
-**`[sandbox]`** — Default rig settings for the repository.
-- `preset` (string, default `"coder"`): The base image to use. Allowed values: `"coder"`, `"coder-dind"`.
-- `size` (string, default `"m"`): Resource allocation. Allowed values: `"xs"` (extra-small), `"m"` (medium), `"l"` (large), `"xl"` (extra-large).
+   ```bash
+   python3 -c 'import pathlib, tomllib; tomllib.loads(pathlib.Path(".amika/config.toml").read_text())'
+   ```
 
-These values are used as defaults when creating a rig from this repository. They can be overridden at creation time via CLI flags or the web UI.
+2. Run `bash -n` on every shell script.
+3. Confirm that every referenced file exists.
+4. Confirm that service ports match the commands that start them.
+5. Confirm that every secret uses a secret reference.
+6. Confirm that no service uses a reserved port.
+7. Run `git diff --check`.
 
-**`[lifecycle]`** — Rig lifecycle hooks.
-- `setup_script` (string): Path to a setup script relative to the repo root. The script runs once before the agent starts. It must be executable and exit 0 on success.
-- `start_script` (string, optional): Path to an executable script that runs each time a stopped rig is restarted — not on the initial create, where only `setup_script` runs. Use it to bring services back up when a rig resumes.
-
-**`[filesystem]`** — Additional repos to clone alongside the primary repo.
-- `repos` (list of strings): GitHub repo URLs to clone into the rig at `~/workspace/<repo-name>`. The primary repo is inferred automatically and need not be listed. Only set this if the project spans multiple repositories.
-
-**`[services.<name>]`** — Named services with port mappings.
-- `port` (integer or string): Single port binding. Integer defaults to TCP. String allows protocol: `"4838/tcp"` or `"4982/udp"`.
-- `ports` (list): Multiple port bindings. Mutually exclusive with `port`.
-- `url_scheme` (string or list): URL generation. Accepts `"http"` or `"https"`. For multi-port services, use a list of `{ port = N, scheme = "https" }` tables. Only ports listed in `url_scheme` get generated URLs.
-
-**`[env]`** — Environment variables injected into the rig.
-- Plain values: `DATABASE_HOST = "localhost"`
-- Secret references: `API_KEY = { secret = "my-api-key" }` — the secret must be pushed to the remote store before rig creation.
-- Service references: `WEB_URL = { service = "web", field = "url" }` — injects another service's generated `url`, its `host`, or published `port`. `field` is `"url"`, `"host"`, or `"port"`; `"url"` and `"host"` require that service to have a `url_scheme`.
-
-### Presets
-
-Presets are pre-built Docker images for rigs. Set via the `[sandbox]` section in config.toml or overridden at creation time with `--preset`.
-
-| Preset | Image | Description | Pre-installed tools |
-|--------|-------|-------------|---------------------|
-| `coder` (default) | `amika/coder:latest` | Standard dev environment with Claude Code, Codex, and OpenCode agent CLIs | Ubuntu 24.04, Git, GitHub CLI (`gh`), curl, zsh, build essentials, Python, Node.js 22, pnpm, TypeScript, tsx |
-| `coder-dind` | `amika/coder-dind:latest` | Same as `coder`, plus Docker-in-Docker support for running containerized services | Same as coder + Docker |
-
-### Setup script environment
-
-- `$AMIKA_AGENT_CWD` — the path to the cloned repository inside the rig (typically `/home/amika/workspace/<repo-name>`)
-- Credentials for coding agents are auto-mounted from the host
-- The script runs as the `amika` user with `sudo` access
-- If the script exits non-zero, the rig does not start
-
-### Reserved ports
-
-Ports 60899–60999 are reserved for Amika internal services. Do not bind to them.
-
-### Rig creation
+List the required secrets without requesting their values. Give the user a
+command for each one:
 
 ```bash
-# Clone current repo into a rig (auto-detected from cwd; uses preset and size from config.toml).
-# To target a different repo, pass a path or git URL: amika rig create --git <path-or-url>
-amika rig create
-
-# Override preset at creation time
-amika rig create --preset coder-dind
-
-# Include uncommitted/untracked files (local rigs only)
-amika rig create --no-clean
-
-# Clone a specific branch
-amika rig create --branch my-branch
-
-# List running services
-amika service list
+amika secret push SECRET_NAME=value
 ```
 
-### Secrets
-
-```bash
-# Push a secret (for use in config.toml { secret = "name" } references).
-# The KEY is the secret name referenced from config.toml.
-amika secret push MY_SECRET=secret-value
-
-# Push multiple at once, or load from a .env file
-amika secret push API_KEY=abc DB_PASSWORD=xyz
-amika secret push --from-file=.env
-
-# Push Claude Code credentials
-amika secret claude push --type oauth
-amika secret claude push --type api_key --value sk-ant-xxx
-```
+Summarize the generated files, the selected preset and size, the services that
+will start, and any assumptions that still need testing.
 ````
 
-## After the agent generates the config
+## Test the generated configuration
 
-Once the agent has created your `.amika/config.toml` and setup script, you need to:
-
-1. **Commit the `.amika/` files** to the repository. `amika rig create` clones a clean copy of the committed tree by default, so uncommitted config and scripts are not picked up:
-
-```bash
-git add .amika && git commit -m "Add Amika rig configuration"
-```
-
-2. **Push any secrets** referenced in your config:
+Review the agent's changes. Then commit and push them because hosted rigs clone
+the repository from its remote:
 
 ```bash
-amika secret push MY_SECRET=the-value
+git add .amika
+git commit -m "Add Amika rig configuration"
+git push
 ```
 
-3. **Create a rig** to test the configuration (run from inside the repo; the repo is auto-detected):
+Push each secret referenced by the config:
 
 ```bash
-amika rig create
+amika secret push SECRET_NAME=value
 ```
 
-4. **Check that services started** correctly:
+Create and connect to a new rig:
+
+```bash
+amika rig create --connect
+```
+
+Inside the rig, verify each process directly with its local port or health
+endpoint. For example:
+
+```bash
+curl -fsS http://127.0.0.1:3000/health
+tail -n 100 /var/log/amika/web.log
+```
+
+Use `amika service list` outside the rig to inspect published service bindings
+and URLs. This command does not check process health.
 
 ```bash
 amika service list
@@ -367,7 +305,8 @@ amika service list
 
 ## Related docs
 
-- [Rig configuration](/reference/rig-configuration)
+- [How configuration works](/guides/configuration)
+- [config.toml reference](/guides/config-toml)
 - [Services](/reference/services)
-- [Presets](/reference/presets)
+- [Rig environment presets](/reference/presets)
 - [Manage secrets](/guides/manage-secrets)

@@ -23,9 +23,9 @@ see the [config.toml reference](/guides/config-toml).
     config.toml
 ```
 
-Amika looks for this file at the root of the repository whenever you use `--git`
-with `amika rig create`, or when creating a rig from a repository on the
-hosted platform.
+Amika looks for this file at the root of the repository selected by
+`amika rig create`, whether the CLI detects the repository from the current
+directory or you pass `--git <path-or-URL>`.
 
 ## Configuration resolution
 
@@ -40,8 +40,8 @@ from multiple sources, and Amika resolves them in priority order:
 | 4 (lowest) | **Built-in default** | Fallback when nothing else is configured |
 
 The first non-empty value wins. Each configuration dimension (setup script,
-start script, env vars, services, rig settings, additional repos, and agent
-credential defaults) is resolved independently.
+start script, env vars, services, rig settings, additional repos, agent
+credential defaults, and workflows) is resolved independently.
 
 <Tip>
 Prefer `.amika/config.toml` as your source of truth: it is versioned with your
@@ -63,6 +63,7 @@ value originates from the TOML file.
 | [`[sandbox]`](/guides/config-toml#sandbox) | Default preset, size, and boot snapshot |
 | [`[filesystem]`](/guides/config-toml#filesystem) | Additional repos to clone |
 | [`[agent_credentials]`](/guides/config-toml#agent_credentials) | Per-agent credential defaults |
+| [`[workflow]`](/guides/config-toml#workflow) | Multi-step agent workflow |
 
 ## `[lifecycle]` — Setup and start scripts
 
@@ -75,19 +76,20 @@ setup_script = "scripts/setup.sh"
 start_script = "scripts/start.sh"
 ```
 
-- **`setup_script`** runs once before the container command starts, mounted at
-  `/usr/local/etc/amikad/setup/setup.sh`, with the working directory set to
-  `$AMIKA_AGENT_CWD`. It must be executable and exit `0`. Passing
-  `--setup-script` to `amika rig create` takes priority.
+- **`setup_script`** runs once during initial creation with the working
+  directory set to `$AMIKA_AGENT_CWD`. The hosted platform reads the file's
+  contents, so its executable bit in Git is not required. A nonzero exit marks
+  setup as failed, but the rig remains accessible. Passing `--setup-script` to
+  `amika rig create` takes priority.
 - **`start_script`** runs each time a stopped rig is started again — not on
   the initial create. It is re-read on each start. Use it for steps that must
   repeat on resume (starting a dev server, re-opening a tunnel).
 
 | Flags passed | Setup source used |
 | --- | --- |
-| `--git` only | `.amika/config.toml` (if present) |
-| `--git --setup-script ./script.sh` | `--setup-script` flag |
-| `--setup-script ./script.sh` (no `--git`) | `--setup-script` flag |
+| Auto-detected repository | `.amika/config.toml` (if present) |
+| `--setup-script ./script.sh` | `--setup-script` flag |
+| `--no-setup` | Built-in no-op script |
 
 See the [`[lifecycle]` spec](/guides/config-toml#lifecycle) for full details.
 
@@ -123,7 +125,7 @@ file is read from that branch rather than the repository's default branch. This
 allows different branches to carry different rig configurations.
 
 ```bash
-amika rig create --git --branch feature/new-api
+amika rig create --branch feature/new-api
 ```
 
 ## Example
@@ -158,7 +160,7 @@ preset = "coder"
 size = "m"
 ```
 
-Running `amika rig create --git` from anywhere inside `my-project` will:
+Running `amika rig create` from anywhere inside `my-project` will:
 1. Clone the repository into the rig.
 2. Mount `.amika/setup.sh` as the setup script.
 3. Set `NODE_ENV=development` and resolve `API_KEY` from the secrets store.

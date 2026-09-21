@@ -45,6 +45,7 @@ size = "m"
 - [`[sandbox]`](#sandbox) — default rig preset, size, and snapshot
 - [`[filesystem]`](#filesystem) — additional repos to clone alongside the primary repo
 - [`[agent_credentials]`](#agent_credentials) — per-agent credential defaults
+- [`[workflow]`](#workflow): multi-step agent workflow
 
 <Note>
 The rig settings table retains the name `[sandbox]` for compatibility. Use that
@@ -52,9 +53,10 @@ exact table name in `.amika/config.toml`.
 </Note>
 
 <Note>
-**CLI vs. hosted scope.** The open-source `amika` CLI parses only
-`[lifecycle].setup_script` and `[services.<name>]`. The remaining sections
-(`[env]`, `[sandbox]`, `[filesystem]`, `[agent_credentials]`, and
+**Open-source server vs. hosted scope.** The Go config parser used by the
+open-source `amika-server` supports only `[lifecycle].setup_script` and
+`[services.<name>]`. The remaining sections
+(`[env]`, `[sandbox]`, `[filesystem]`, `[agent_credentials]`, `[workflow]`, and
 `[lifecycle].start_script`) are applied by the hosted platform when a rig is
 created from a repository.
 </Note>
@@ -80,17 +82,15 @@ start_script = "scripts/start.sh"
 | **Required** | No |
 | **Default** | Built-in no-op script (`exit 0`) |
 
-Path to an executable script that is mounted into the container at
-`/usr/local/etc/amikad/setup/setup.sh` and run once before the container command
-starts.
-
-Relative paths are resolved from the repository root (the directory containing
-`.git`). Absolute paths are used as-is.
+Path to a repository script whose contents Amika installs as the setup hook. It
+runs once during initial rig creation. Use a path relative to the repository
+root.
 
 **Requirements:**
-- Must be executable (`chmod +x`).
-- Must exit with status code `0` on success. A non-zero exit prevents the container command from running.
-- Runs with the working directory set to `$AMIKA_AGENT_CWD`.
+- Include a shebang and exit with status code `0` on success.
+- The executable bit in Git is not required for hosted rigs.
+- A nonzero exit records a setup failure, but the hosted rig remains accessible.
+- The script runs with the working directory set to `$AMIKA_AGENT_CWD`.
 
 **CLI override:** `--setup-script` on `amika rig create` takes priority over
 this value.
@@ -103,20 +103,18 @@ this value.
 | **Required** | No |
 | **Default** | Built-in no-op script (`exit 0`) |
 
-Path to an executable script mounted at
-`/usr/local/etc/amikad/setup/start.sh`. Unlike `setup_script`, it does **not**
-run on the initial create — it runs each time a stopped rig is started
-again. It is re-read on each start, so edits take effect without recreating the
-rig.
+Path to a repository script that Amika installs as the start hook. Unlike
+`setup_script`, it does **not** run on the initial create. It runs each time a
+stopped rig is started again. It is re-read on each start, so edits take effect
+without recreating the rig.
 
-Use it for steps that must repeat whenever a rig resumes — starting a
-long-running dev server, re-opening a tunnel — rather than one-time
-provisioning, which belongs in `setup_script`. Relative paths resolve from the
-repository root. The same executability and exit-code requirements as
-`setup_script` apply.
+Use it for steps that must repeat whenever a rig resumes, such as starting a
+long-running dev server or re-opening a tunnel. Put one-time provisioning in
+`setup_script`. Relative paths resolve from the repository root. The same
+exit-code behavior as `setup_script` applies.
 
-This key is applied by the hosted platform. The open-source CLI does not run a
-start script.
+This key is applied by the hosted platform. The open-source Go config parser
+does not support a start script.
 
 ---
 
@@ -314,12 +312,13 @@ Sets default rig settings for the repository.
 | **Type** | String |
 | **Required** | No |
 | **Default** | `"coder"` |
-| **Values** | `"coder"`, `"coder-dind"` |
+| **Values** | `"coder"`, `"coder-plus-docker"` |
 
 The base image preset for rigs created from this repository.
 
-- `coder` — Ubuntu 24.04 with Git, Node.js, Python, and agent CLIs (Claude Code, Codex, OpenCode).
-- `coder-dind` — Same as `coder` with Docker-in-Docker support.
+- `coder`: Ubuntu 24.04 with Git, Node.js, Python, and the Claude Code, Codex,
+  OpenCode, and Pi agent CLIs.
+- `coder-plus-docker`: Same as `coder`, with Docker support inside the rig.
 
 See [Presets](/reference/presets) for full details on what each preset includes.
 
@@ -330,15 +329,19 @@ See [Presets](/reference/presets) for full details on what each preset includes.
 | **Type** | String |
 | **Required** | No |
 | **Default** | `"m"` |
-| **Values** | `"xs"`, `"m"`, `"l"`, `"xl"` |
+| **Values** | Friendly aliases `"xs"`, `"m"`, `"l"`, `"xl"`, or a versioned size offered by the provider |
 
 The resource allocation size for rigs created from this repository.
 
 ```toml
 [sandbox]
-preset = "coder-dind"
+preset = "coder-plus-docker"
 size = "m"
 ```
+
+The API also accepts versioned sizes such as `a0.m` and `a1.medium` when the
+selected provider offers them. The `coder-plus-docker` preset does not support
+the `xs` tier.
 
 ### `snapshot`
 
@@ -444,6 +447,50 @@ Each key is an agent kind. Each value is an inline table:
 
 See [Inject credentials](/guides/inject-credentials) for how these defaults
 interact with per-rig credential selection.
+
+---
+
+## `[workflow]`
+
+Defines a hosted multi-step agent workflow. Each step reads its prompt from a
+repository file and selects the next step based on success or failure.
+
+```toml
+[workflow]
+default_agent = "claude"
+start = "implement"
+
+[workflow.steps.implement]
+prompt_file = ".amika/workflows/implement.md"
+on_success = "review"
+on_failure = "implement"
+
+[workflow.steps.review]
+prompt_file = ".amika/workflows/review.md"
+```
+
+| Key | Required | Description |
+| --- | --- | --- |
+| `default_agent` | No | `"claude"` or `"codex"`; defaults to `"claude"` |
+| `start` | Yes | Name of the first step |
+| `steps` | Yes | One or more named step tables |
+
+Each `[workflow.steps.<name>]` table supports:
+
+| Key | Required | Description |
+| --- | --- | --- |
+| `prompt_file` | Yes | Repo-relative path to a non-empty prompt file |
+| `on_success` | No | Next step after success; omit for terminal success |
+| `on_failure` | No | Next step after failure; omit for terminal failure |
+
+The `start`, `on_success`, and `on_failure` values must reference defined
+steps. Step names may contain letters, numbers, underscores, and hyphens.
+`prompt_file` must be repo-relative and cannot contain `..`.
+
+The hosted platform runs this workflow only when workflow mode is enabled and
+rig creation includes an initial prompt. A configured workflow is
+automatically selected when the request supplies an initial prompt and does not
+explicitly disable workflow mode.
 
 ---
 

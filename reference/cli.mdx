@@ -7,7 +7,7 @@ Use this page as the command index for the `amika` CLI.
 
 ## `amika rig`
 
-Manage Docker-backed persistent rigs with bind mounts and named volumes.
+Manage hosted rigs.
 
 <Note>
 `amika sandbox` remains available as a compatibility alias. Use `amika rig` in
@@ -16,46 +16,24 @@ new commands and scripts.
 
 ### Global rig flags
 
-These flags apply to all `rig` subcommands (`create`, `list`, `connect`, `stop`, `start`, `delete`, `ssh`, `code`, `agent-send`):
-
-| Flag | Default | Description |
-| --- | --- | --- |
-| `--local` | `false` | Only operate on local rigs |
-| `--remote` | `false` | Only operate on remote rigs |
-
-When neither flag is set, commands default to remote mode. Use `--local` to operate on local rigs only.
-
-`--local` and `--remote` are mutually exclusive.
+Rigs are always hosted. `--remote` remains an accepted no-op for compatibility.
+The retired `--local` flag is hidden and returns an error.
 
 ### Create
 
 ```bash
-# Minimal — auto-generates a name, uses the coder preset image
-amika rig create --yes
+# Use the current Git repository and generate a rig name
+amika rig create
 
-# Named rig with mounts
-amika rig create --name dev-rig \
-  --mount ./src:/workspace/src:ro \
-  --mount ./out:/workspace/out
-
-# Mount the current git repo (clean clone by default)
-amika rig create --name dev-rig --git
-
-# Mount git repo with untracked/uncommitted files included
-amika rig create --name dev-rig --git --no-clean
-
-# Mount git repo containing a specific path
+# Use the repository containing a specific path
 amika rig create --name dev-rig --git ./src
 
-# Use the coder-dind preset image
-amika rig create --name dind-box --preset coder-dind
+# Use a remote Git repository
+amika rig create --name dev-rig \
+  --git https://github.com/gofixpoint/example-repo.git
 
-# Use a custom Docker image
-amika rig create --name custom-box --image myimage:latest
-
-# Attach an existing tracked volume
-amika rig create --name dev-rig-2 \
-  --volume amika-rwcopy-dev-rig-workspace-out-123:/workspace/out:rw
+# Use the preset that includes Docker
+amika rig create --name dind-box --preset coder-plus-docker
 
 # Set environment variables
 amika rig create --name dev-rig --env MY_KEY=my_value
@@ -63,32 +41,29 @@ amika rig create --name dev-rig --env MY_KEY=my_value
 # Create and immediately connect
 amika rig create --name dev-rig --connect
 
-# Run a setup script on container start
+# Override the setup script
 amika rig create --name dev-rig --setup-script ./install-deps.sh
 
-# Publish a container port to the host
-amika rig create --name dev-rig --port 8080:8080
-
-# Publish a port bound to all interfaces
-amika rig create --name dev-rig --port 3000:3000 --port-host-ip 0.0.0.0
-
 # Clone a specific git branch
-amika rig create --name dev-rig --git --branch develop
+amika rig create --name dev-rig --branch develop
 
 # Create a new branch from your current branch
-amika rig create --git --new-branch feature-x
+amika rig create --new-branch feature-x
 
 # Create a new branch starting from a specific existing branch
-amika rig create --git --branch main --new-branch bugfix-1
+amika rig create --branch main --new-branch bugfix-1
 
-# Inject remote secrets (remote rigs only)
-amika rig create --name dev-rig --git --remote \
+# Inject a stored secret
+amika rig create --name dev-rig \
   --secret env:ANTHROPIC_API_KEY=my-claude-key
 
 # Pin which agent credential gets injected at create time
-amika rig create --name dev-rig --git --remote \
+amika rig create --name dev-rig \
   --agent-credential-type claude=api-key \
   --no-agent-credential codex
+
+# Create a rig without a repository
+amika rig create --name scratch --no-git
 ```
 
 ### Create flags
@@ -96,31 +71,25 @@ amika rig create --name dev-rig --git --remote \
 | Flag | Default | Description |
 | --- | --- | --- |
 | `--name <name>` | auto-generated | Name for the rig. If omitted, a random `{color}-{city}` name is generated |
-| `--provider <name>` | `docker` | Sandbox provider (only `docker` is currently supported) |
-| `--image <image>` | `amika/coder:latest` | Docker image to use (mutually exclusive with `--preset`) |
-| `--preset <name>` | | Use a preset environment, e.g. `coder` or `coder-dind` (mutually exclusive with `--image`) |
-| `--mount <spec>` | | Mount a host path (`source:target[:mode]`, mode defaults to `rwcopy`). Repeatable |
-| `--volume <spec>` | | Mount an existing named volume (`name:target[:mode]`, mode defaults to `rw`). Repeatable |
-| `--git [path-or-URL]` | | Mount a git repo (accepts a local path or a git URL over HTTPS or SSH) to `/home/amika/workspace/{repo}`. If omitted and the cwd is inside a git repo, that repo is used automatically |
+| `--preset <name>` | repository or platform default | Use `coder` or `coder-plus-docker` |
+| `--size <size>` | repository or platform default | Rig size, such as `m` or `a1.medium` |
+| `--snapshot <slug>` | | Fork from a captured snapshot |
+| `--git <path-or-URL>` | auto-detected | Use a local repository path or a Git URL. If omitted, the CLI detects a repository from the current directory |
 | `--no-git` | `false` | Skip git repo auto-detection; create a repo-less rig with no repo mounted |
-| `--no-clean` | `false` | With `--git`, include untracked/uncommitted files instead of a clean clone |
 | `--env <KEY=VALUE>` | | Set environment variable. Repeatable |
-| `--port <spec>` | | Publish a container port (`hostPort:containerPort[/protocol]`). Repeatable |
-| `--port-host-ip <ip>` | `127.0.0.1` | Host IP address to bind published ports to. Use `0.0.0.0` for all interfaces |
-| `--yes` | `false` | Skip mount confirmation prompt |
+| `--secret <spec>` | | Inject a stored secret (`env:FOO=SECRET_NAME` or `env:SECRET_NAME`). Repeatable |
 | `--connect` | `false` | Connect to the rig shell immediately after creation |
-| `--setup-script <path>` | | Mount a local script to `/usr/local/etc/amikad/setup/setup.sh` |
-| `--branch <name>` | | Check out this branch, or create it if it doesn't exist. Used with `--git` |
-| `--new-branch <name>` | | Create a new branch (errors if it already exists). Starts from `--branch` if set, otherwise from the base branch. Used with `--git` |
-| `--size <size>` | `m` | Rig resource size: `xs` or `m`. Remote rigs only |
-| `--no-setup` | `false` | Skip the setup script (ignore both `--setup-script` and `.amika/config.toml` setup) |
-| `--secret <spec>` | | Inject a remote secret (`env:FOO=SECRET_NAME` or `env:SECRET_NAME`). Repeatable. Requires `--remote` |
+| `--setup-script <path>` | | Upload a local setup script |
+| `--no-setup` | `false` | Replace the configured setup script with a no-op script |
+| `--branch <name>` | | Check out this branch, or create it if the remote has none |
+| `--new-branch <name>` | | Create a new branch from `--branch` or the inferred base branch |
+| `--github-auth-mode <mode>` | platform default | GitHub authentication mode: `pat`, `app_token`, or `app-token` |
 | `--agent-credential <KIND=NAME>` | | Pin an agent credential by stored name (e.g. `claude=personal-oauth`). Repeatable per kind |
 | `--agent-credential-type <KIND=TYPE>` | | Pin an agent credential by type, where `TYPE` is `oauth` or `api-key` (e.g. `claude=oauth`). Repeatable per kind |
 | `--no-agent-credential <KIND>` | | Skip injecting any credential of this kind (e.g. `codex`). Repeatable per kind |
 
 <Note>
-The `--secret` flag requires `--remote` mode — secrets are resolved by the remote API.
+`--no-setup` and `--setup-script` are mutually exclusive.
 </Note>
 
 <Note>
@@ -128,20 +97,10 @@ Supported agent kinds for `--agent-credential`, `--agent-credential-type`, and `
 </Note>
 
 <Note>
-When `--git` is used with a repo that contains `.amika/config.toml` service declarations, those service ports are published automatically. If a `--port` flag conflicts with a service port (same container port and protocol), the command returns an error. See [Services](/reference/services) for details.
+Hosted rigs clone from the repository remote. Push local commits before
+creation. The CLI rejects an inferred branch that is not present and up to date
+on `origin`.
 </Note>
-
-<Note>
-The base branch is your current checked-out branch when `--git` is a local path, or the repo's default branch when it's a URL.
-</Note>
-
-### Mount modes
-
-| Mode | Behavior |
-| --- | --- |
-| `ro` | Read-only bind mount from host |
-| `rw` | Read-write bind mount from host (writes sync back to host) |
-| `rwcopy` | Read-write snapshot in a Docker volume (default for `--mount`). Host files are copied in; writes stay in the volume and do not sync back |
 
 ### List
 
@@ -384,14 +343,14 @@ Aliases: `ls`
 ```bash
 amika service list
 amika service ls
-amika service list --sandbox-name dev-rig
+amika service list --rig-name dev-rig
 ```
 
 Output columns: `SERVICE`, `SANDBOX`, `PORTS`, `URL`.
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--sandbox-name <name>` | (none) | Filter services to a specific rig |
+| `--rig-name <name>` | (none) | Filter services to a specific rig |
 
 See [Services](/reference/services) for how to declare services in `.amika/config.toml`.
 
@@ -630,7 +589,7 @@ amika materialize --script ./pull-data.sh --destdir ./output
 amika materialize --cmd "curl -s https://api.example.com/data > result.json" --destdir ./output
 amika materialize --script ./transform.sh --outdir /app/results --destdir ./output
 amika materialize -i --cmd claude --mount $(pwd):/workspace --env ANTHROPIC_API_KEY=...
-amika materialize --preset coder-dind --cmd "docker ps" --destdir /tmp/out
+amika materialize --preset coder-plus-docker --cmd "docker ps" --destdir /tmp/out
 amika materialize --setup-script ./install-deps.sh --cmd "echo done" --destdir /tmp/out
 ```
 
@@ -643,7 +602,7 @@ amika materialize --setup-script ./install-deps.sh --cmd "echo done" --destdir /
 | `--destdir <path>` | **(required)** | Host directory where output files are copied |
 | `--outdir <path>` | workdir | Container directory to copy from |
 | `--image <image>` | `amika/coder:latest` | Docker image to use (mutually exclusive with `--preset`) |
-| `--preset <name>` | | Preset image, e.g. `coder` or `coder-dind` (mutually exclusive with `--image`) |
+| `--preset <name>` | | Preset image, e.g. `coder` or `coder-plus-docker` (mutually exclusive with `--image`) |
 | `--mount <spec>` | | Mount a host directory (`source:target[:mode]`, mode defaults to `rw`). Repeatable |
 | `--env <KEY=VALUE>` | | Set environment variable in the container. Repeatable |
 | `-i`, `--interactive` | `false` | Run interactively with TTY |
