@@ -33,6 +33,7 @@ amika rig create --no-setup --connect
 In the rig, open your coding agent from the repository directory and give it
 the prompt below.
 
+{/* <!-- #amika/annotate "we don't want this to be a copy-paste prompt. The agent is actually going to read this doc and follow its steps, so no need to nest a prompt. We can take the prompt and turn it into part of the doc pages" --> */}
 ## Agent prompt
 
 Copy and paste this prompt into the coding agent:
@@ -109,11 +110,18 @@ Docker. Recommend `coder` unless the project needs Docker inside the rig.
 
 ### Environment and secrets
 
+- Ask the user how they store secrets. Use this info to decide how to get
+  secrets into the config or onto the rig.
 - Find environment-variable reads and example env files.
 - Separate required secrets, required non-secret configuration, and optional
   settings.
-- Never put a secret value in `.amika/config.toml` or commit one to Git.
+- Never directly read a secret value or put one in plaintext in
+  `.amika/config.toml` or commit one to Git.
 - Use an `[env]` secret reference for every secret.
+- In some cases, users might have an file with encrypted secrets in it, which
+  can just be copied into a Rig, or sometimes is checked into the Git repo
+  itself.  If they haven't checked in this file to the repo, DO NOT check it in
+  yourself.
 
 ## 2. Confirm the plan
 
@@ -125,8 +133,9 @@ Before editing, show the user:
 4. Each required environment variable and whether it is secret.
 5. The install, build, migration, and service-start commands you plan to use.
 
-Ask only the questions needed to resolve uncertainty. Do not ask the user for
-secret values. Tell them which `amika secret push` commands they must run.
+Be concise. Ask only the questions needed to resolve uncertainty.  user for
+secret values. Do not automatically read or push secrets yourself. Tell them
+which `amika secret push` commands they must run.
 
 ## 3. Create the configuration
 
@@ -137,6 +146,7 @@ A typical hosted configuration looks like this:
 ```toml
 [sandbox]
 preset = "coder"
+# #amika/annotate "this is an outdated size. Use a1.* sizes"
 size = "m"
 
 [lifecycle]
@@ -158,6 +168,7 @@ Add only the sections the repository needs.
 
 - Valid presets are `coder` and `coder-plus-docker`.
 - Use `coder-plus-docker` only when the project needs Docker inside the rig.
+<!-- #amika/annotate "this is an outdated size. Use a1.* sizes" -->
 - The friendly size aliases are `xs`, `m`, `l`, and `xl`. The API also accepts
   versioned sizes such as `a0.m` and `a1.medium` when the selected provider
   offers them.
@@ -174,7 +185,6 @@ Add only the sections the repository needs.
   bit in Git is not required.
 - Give every script a shebang and `set -euo pipefail`.
 - Use `$AMIKA_AGENT_CWD` for the primary repository path.
-- Make setup deterministic and safe to run again.
 - Exit nonzero when setup fails. The rig remains accessible, but Amika records
   the setup failure.
 
@@ -206,14 +216,7 @@ set -euo pipefail
 bash "$AMIKA_AGENT_CWD/.amika/scripts/start-services.sh"
 ```
 
-For long-running services:
-
-- Start them in the background with `nohup`.
-- Write user-managed logs under `/var/log/amika/`.
-- Use PID files under `/tmp/amika/` if the project needs them.
-- Check whether a process is already running before starting another copy.
-- Use a bounded readiness check against the service port or health endpoint.
-  Do not rely on a fixed sleep.
+For long-running services, you can use systemd unit files.
 
 ### Services and environment
 
@@ -285,23 +288,19 @@ amika secret push SECRET_NAME=value
 Create and connect to a new rig:
 
 ```bash
-amika rig create --connect
+amika rig create ${new-rig-name}
+amika rig ssh ${new-rig-name}
 ```
 
-Inside the rig, verify each process directly with its local port or health
-endpoint. For example:
+Inside the rig, verify that each service is running. Use systemd to check health
+and to check logs. You can hit their ports on localhost inside the rig, or use
+`amika service list --rig-name $AMIKA_RIG_NAME` to find public URLs of those
+services. If `$AMIKA_RIG_NAME` is not defined within the rig's environment,
+check `$AMIKA_SANDBOX_NAME`.
 
-```bash
-curl -fsS http://127.0.0.1:3000/health
-tail -n 100 /var/log/amika/web.log
-```
+## Gotchas
 
-Use `amika service list` outside the rig to inspect published service bindings
-and URLs. This command does not check process health.
-
-```bash
-amika service list
-```
+- Sometimes you need an environment variable that dynamically refers to values from the rig or its services. For example, if you need the public URL of a service running from a rig so you can use it as a webhook. You can use "service reference" environment variables for this: https://docs.amika.dev/guides/config-toml#service-reference
 
 ## Related docs
 
