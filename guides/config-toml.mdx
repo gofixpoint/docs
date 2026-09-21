@@ -339,9 +339,11 @@ preset = "coder-plus-docker"
 size = "m"
 ```
 
-The API also accepts versioned sizes such as `a0.m` and `a1.medium` when the
-selected provider offers them. The `coder-plus-docker` preset does not support
-the `xs` tier.
+Friendly aliases normalize to the legacy `a0` generation, so they are not
+portable across providers. For example, `l` resolves to `a0.l`, which E2B does
+not offer. Use `a1.large` for a large E2B rig. The API accepts versioned sizes
+when the selected provider offers them. The `coder-plus-docker` preset does not
+support the `xs` tier.
 
 ### `snapshot`
 

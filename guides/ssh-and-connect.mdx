@@ -51,6 +51,23 @@ amika rig ssh dev-box -- ls -la
 amika rig ssh -t dev-box -- top
 ```
 
+## Copy files
+
+Use `amika scp` to copy files between your machine and a rig. It uses the same
+SSH identity as `amika rig ssh` and accepts standard `scp` options such as
+`-r`, `-p`, and `-C`.
+
+```bash
+# Upload a file into the rig user's home directory
+amika scp ./local.txt dev-box:local.txt
+
+# Download a directory
+amika scp -r dev-box:/srv/output ./output
+```
+
+A relative rig path starts under `/home/amika`. Use an absolute path when the
+file lives elsewhere in the rig.
+
 ## Local-Docker shell (CLI only)
 
 `amika rig connect` opens the Docker container's shell directly. It only
