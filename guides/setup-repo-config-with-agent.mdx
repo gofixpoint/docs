@@ -1,65 +1,30 @@
 ---
 title: "Set up repo config with an agent"
-description: "Give a coding agent a prompt to analyze your repository and generate its Amika rig configuration."
+description: "Have a coding agent analyze a repository and create its Amika rig configuration."
 ---
 
-Use a coding agent such as Claude Code, Codex, OpenCode, or Pi to analyze a
-repository and create its `.amika/config.toml` and lifecycle scripts.
+Use this guide from the repository you want to configure. Create only the
+configuration the project needs. Do not invent services, ports, environment
+variables, commands, or credentials.
 
-This workflow targets hosted rigs. It uses CLI commands that an agent can run.
+This workflow targets hosted rigs. Before editing, read:
 
-## Prepare a setup rig
+1. [How configuration works](/guides/configuration)
+2. [config.toml reference](/guides/config-toml)
+3. [Services](/reference/services)
+4. [Rig environment presets](/reference/presets)
+5. [Example config](https://github.com/gofixpoint/amika/blob/main/.amika/config.toml)
 
-From the repository you want to configure, confirm that the CLI is authenticated:
+Work inside a temporary hosted rig so you can inspect the actual environment.
+From an authenticated checkout, create one without running any existing setup
+script:
 
 ```bash
-cd /path/to/repo
 amika auth status
-```
-
-If necessary, authenticate before continuing:
-
-```bash
-amika auth login
-```
-
-Create a rig without running the repository's existing setup script, then
-connect to it:
-
-```bash
 amika rig create --no-setup --connect
 ```
 
-In the rig, open your coding agent from the repository directory and give it
-the prompt below.
-
-{/* <!-- #amika/annotate "we don't want this to be a copy-paste prompt. The agent is actually going to read this doc and follow its steps, so no need to nest a prompt. We can take the prompt and turn it into part of the doc pages" --> */}
-## Agent prompt
-
-Copy and paste this prompt into the coding agent:
-
-````markdown
-# Set up Amika repository configuration
-
-Create an Amika configuration for this repository. The result must provision a
-hosted rig with the project's dependencies, environment, and development
-services.
-
-Create only the configuration the repository needs. Do not invent services,
-ports, environment variables, commands, or credentials.
-
-## Reference material
-
-Read these sources before editing:
-
-1. [How configuration works](https://docs.amika.dev/guides/configuration)
-2. [config.toml reference](https://docs.amika.dev/guides/config-toml)
-3. [Services](https://docs.amika.dev/reference/services)
-4. [Rig environment presets](https://docs.amika.dev/reference/presets)
-5. [Example config](https://github.com/gofixpoint/amika/blob/main/.amika/config.toml)
-
-The task-specific rules are also summarized below. If the docs and this prompt
-disagree, call out the conflict and prefer the current Amika docs.
+Once connected, continue from the repository directory.
 
 ## 1. Investigate the repository
 
@@ -68,21 +33,13 @@ Inspect the repository before changing files.
 ### Languages and tools
 
 - Identify each language, runtime, and package manager.
-- Read version files such as `.nvmrc`, `go.mod`, `pyproject.toml`,
-  `rust-toolchain.toml`, and `Gemfile`.
-- Read lock files and package-manager configuration.
+- Read version files, lock files, and package-manager configuration.
 - Check `README.md`, `CONTRIBUTING.md`, `AGENTS.md`, `CLAUDE.md`, `Makefile`,
   and equivalent development instructions.
+- Read the existing `.amika/` directory, if present. Preserve valid settings
+  and explain any setting you plan to remove or change.
 
-### Existing Amika configuration
-
-- Read the existing `.amika/` directory, if present.
-- Preserve valid settings unless the user asks to replace them.
-- Explain any existing setting you plan to remove or change.
-
-### Installed rig tools
-
-Inspect the current rig instead of assuming exact tool versions:
+Inspect the current rig instead of assuming tool versions:
 
 ```bash
 for tool in git gh node npm pnpm python3 claude codex opencode pi docker; do
@@ -96,58 +53,48 @@ done
 ```
 
 The `coder` preset includes the standard development toolchain and the Claude
-Code, Codex, OpenCode, and Pi agent CLIs. The `coder-plus-docker` preset adds
-Docker. Recommend `coder` unless the project needs Docker inside the rig.
+Code, Codex, OpenCode, and Pi CLIs. The `coder-plus-docker` preset adds Docker.
+Use `coder` unless the project needs Docker inside the rig.
 
 ### Services
 
-- Find each development server, API, database, worker, or queue.
-- Find its start command, port, protocol, and health endpoint.
-- Check package scripts, source defaults, Docker files, Compose files, and
-  existing process-manager configuration.
-- Distinguish processes that must start automatically from commands that a
-  developer runs manually.
+Find each development server, API, database, worker, or queue. Determine its
+start command, port, protocol, health endpoint, and whether it must start
+automatically. Check package scripts, source defaults, Docker files, Compose
+files, and process-manager configuration.
 
 ### Environment and secrets
 
-- Ask the user how they store secrets. Use this info to decide how to get
-  secrets into the config or onto the rig.
+- Ask the user how the project stores secrets.
 - Find environment-variable reads and example env files.
-- Separate required secrets, required non-secret configuration, and optional
-  settings.
-- Never directly read a secret value or put one in plaintext in
-  `.amika/config.toml` or commit one to Git.
-- Use an `[env]` secret reference for every secret.
-- In some cases, users might have an file with encrypted secrets in it, which
-  can just be copied into a Rig, or sometimes is checked into the Git repo
-  itself.  If they haven't checked in this file to the repo, DO NOT check it in
-  yourself.
+- Separate secrets, required non-secret configuration, and optional settings.
+- Do not request or read secret values.
+- Use an `[env]` secret reference for every environment-variable secret.
+- Preserve an existing encrypted-secret-file workflow. Never add an untracked
+  secret file to Git. Tell the user about any manual copy or decryption step.
 
 ## 2. Confirm the plan
 
-Before editing, show the user:
+Before editing, briefly report:
 
 1. The detected runtimes and missing tools.
 2. The recommended preset and size.
 3. Each service, its port, URL scheme, start command, and health check.
 4. Each required environment variable and whether it is secret.
-5. The install, build, migration, and service-start commands you plan to use.
+5. The install, build, migration, and service-start commands.
 
-Be concise. Ask only the questions needed to resolve uncertainty.  user for
-secret values. Do not automatically read or push secrets yourself. Tell them
-which `amika secret push` commands they must run.
+Ask only the questions needed to resolve uncertainty. Do not read or push
+secrets. List the `amika secret push` commands the user must run.
 
 ## 3. Create the configuration
 
-Create `.amika/config.toml` and the required scripts under `.amika/scripts/`.
-
+Create `.amika/config.toml` and any required scripts under `.amika/scripts/`.
 A typical hosted configuration looks like this:
 
 ```toml
 [sandbox]
 preset = "coder"
-# #amika/annotate "this is an outdated size. Use a1.* sizes"
-size = "m"
+size = "a1.medium"
 
 [lifecycle]
 setup_script = ".amika/scripts/setup.sh"
@@ -168,29 +115,27 @@ Add only the sections the repository needs.
 
 - Valid presets are `coder` and `coder-plus-docker`.
 - Use `coder-plus-docker` only when the project needs Docker inside the rig.
-<!-- #amika/annotate "this is an outdated size. Use a1.* sizes" -->
-- The friendly size aliases are `xs`, `m`, `l`, and `xl`. The API also accepts
-  versioned sizes such as `a0.m` and `a1.medium` when the selected provider
-  offers them.
-- `coder-plus-docker` does not support the `xs` tier.
-- Recommend `m` unless the repository clearly needs a different size.
-- An optional `snapshot` value is a repository snapshot's friendly label.
+- A1 sizes are `a1.tiny`, `a1.small`, `a1.medium`, `a1.large`, and
+  `a1.xlarge`. Recommend `a1.medium` unless the repository needs a different
+  size. The selected provider must offer that size.
+- `coder-plus-docker` does not support the smallest size tier, including
+  `a1.tiny`.
+- An optional `snapshot` value selects a repository snapshot by its friendly
+  label.
 
 ### Lifecycle scripts
 
 - `setup_script` runs during initial rig creation.
-- `start_script` runs when a stopped rig starts again. It does not run during
-  initial creation.
-- Amika reads repository lifecycle scripts as file contents. Their executable
-  bit in Git is not required.
-- Give every script a shebang and `set -euo pipefail`.
+- `start_script` runs when a stopped rig starts again, not during creation.
+- Include a shebang and `set -euo pipefail` in every script.
 - Use `$AMIKA_AGENT_CWD` for the primary repository path.
-- Exit nonzero when setup fails. The rig remains accessible, but Amika records
-  the setup failure.
+- Exit nonzero on failure. Amika records the failure and keeps the rig
+  accessible.
+- The executable bit in Git is not required.
 
 Keep one-time installation and build work in `setup.sh`. If services must run
-after both creation and restart, put their startup logic in a shared script and
-invoke it with `bash` from both lifecycle scripts.
+after both creation and restart, invoke a shared startup script from both
+lifecycle scripts.
 
 Example `setup.sh`:
 
@@ -200,8 +145,7 @@ set -euo pipefail
 
 cd "$AMIKA_AGENT_CWD"
 
-# Install missing system tools.
-# Install project dependencies.
+# Install missing system tools and project dependencies.
 # Run required builds, code generation, and migrations.
 
 bash "$AMIKA_AGENT_CWD/.amika/scripts/start-services.sh"
@@ -216,7 +160,7 @@ set -euo pipefail
 bash "$AMIKA_AGENT_CWD/.amika/scripts/start-services.sh"
 ```
 
-For long-running services, you can use systemd unit files.
+Use systemd units when long-running services need supervision and logs.
 
 ### Services and environment
 
@@ -232,13 +176,9 @@ For long-running services, you can use systemd unit files.
 - A service reference uses
   `{ service = "service-name", field = "url" | "host" | "port" }`.
 
-Optional hosted sections include:
-
-- `[filesystem]` with `repos` for additional repositories.
-- `[agent_credentials]` for default Claude or Codex credentials.
-- `[workflow]` for a repository-defined multi-step agent workflow.
-
-Read the config reference before adding any optional section.
+Optional hosted sections include `[filesystem]` for additional repositories,
+`[agent_credentials]` for Claude or Codex credentials, and `[workflow]` for a
+multi-step agent workflow. Read the config reference before using them.
 
 ## 4. Verify the result
 
@@ -252,26 +192,24 @@ Before reporting completion:
 
 2. Run `bash -n` on every shell script.
 3. Confirm that every referenced file exists.
-4. Confirm that service ports match the commands that start them.
+4. Confirm that service ports match their start commands.
 5. Confirm that every secret uses a secret reference.
 6. Confirm that no service uses a reserved port.
 7. Run `git diff --check`.
 
-List the required secrets without requesting their values. Give the user a
-command for each one:
+List the required secret names without requesting their values. Give the user
+one command per secret:
 
 ```bash
 amika secret push SECRET_NAME=value
 ```
 
-Summarize the generated files, the selected preset and size, the services that
-will start, and any assumptions that still need testing.
-````
+Summarize the generated files, preset, size, services, and untested
+assumptions.
 
-## Test the generated configuration
+## 5. Test the configuration
 
-Review the agent's changes. Then commit and push them because hosted rigs clone
-the repository from its remote:
+Hosted rigs clone the remote repository, so commit and push the changes:
 
 ```bash
 git add .amika
@@ -279,28 +217,37 @@ git commit -m "Add Amika rig configuration"
 git push
 ```
 
-Push each secret referenced by the config:
+Ask the user to push every referenced secret before creating the test rig:
 
 ```bash
 amika secret push SECRET_NAME=value
 ```
 
-Create and connect to a new rig:
+Create a named rig, then connect to it:
 
 ```bash
-amika rig create ${new-rig-name}
-amika rig ssh ${new-rig-name}
+amika rig create --name repo-config-test
+amika rig ssh repo-config-test
 ```
 
-Inside the rig, verify that each service is running. Use systemd to check health
-and to check logs. You can hit their ports on localhost inside the rig, or use
-`amika service list --rig-name $AMIKA_RIG_NAME` to find public URLs of those
-services. If `$AMIKA_RIG_NAME` is not defined within the rig's environment,
-check `$AMIKA_SANDBOX_NAME`.
+Inside the rig, check each service with its process manager and local health
+endpoint. For a systemd service:
 
-## Gotchas
+```bash
+sudo systemctl status SERVICE_NAME
+sudo journalctl -u SERVICE_NAME --no-pager -n 100
+curl -fsS http://127.0.0.1:3000/health
+```
 
-- Sometimes you need an environment variable that dynamically refers to values from the rig or its services. For example, if you need the public URL of a service running from a rig so you can use it as a webhook. You can use "service reference" environment variables for this: https://docs.amika.dev/guides/config-toml#service-reference
+From an authenticated machine, inspect published bindings and URLs. This does
+not check process health:
+
+```bash
+amika service list --rig-name repo-config-test
+```
+
+Use a [service reference](/guides/config-toml#service-reference) when an
+environment variable needs a rig service's public URL, host, or port.
 
 ## Related docs
 
