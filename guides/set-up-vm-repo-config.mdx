@@ -119,6 +119,17 @@ changes in repository configuration or lifecycle scripts, not as manual changes
 to this temporary rig. Skip this step when the repository and preset reference
 already provide enough evidence.
 
+Use [`amika scp`](/guides/ssh-and-connect#copy-files) when you need to move a
+temporary, non-secret file between the user's machine and a rig:
+
+```bash
+amika scp ./local.txt "$setup_rig":local.txt
+amika scp -r "$setup_rig":/srv/output ./output
+```
+
+Do not use file transfer instead of committing reproducible setup files to the
+repository.
+
 ## 4. Agree on the plan
 
 Before editing, briefly report the detected development workflow, recommended
@@ -143,15 +154,19 @@ settings supported by what you found. Use the
 [config reference](/guides/config-toml) for field syntax.
 
 - Use `coder` unless the project needs Docker inside the rig. Use
-  `coder-plus-docker` when it does. Choose a provider-supported size based on
-  the project's needs.
+  `coder-plus-docker` when it does. Prefer a provider-supported versioned size.
+  Friendly aliases are not portable: for example, `l` resolves to `a0.l`,
+  which E2B does not offer. Use `a1.large` for a large E2B rig.
 - Put one-time work in `setup_script`. `start_script` runs after a stopped rig
   starts, not during initial creation. Share startup logic between them when a
   service must run after both creation and restart.
 - Use `$AMIKA_AGENT_CWD` for the primary repository. Give shell scripts a
-  shebang, fail on errors, and make repeated startup safe.
-- Use the project's existing process manager when practical. Systemd is
-  available when long-running services need supervision and logs.
+  shebang, fail on errors, and make repeated startup safe. Set the executable
+  bit on setup and start scripts with `chmod +x`, even though hosted lifecycle
+  hooks do not require it.
+- Use the project's existing process manager when practical. For systemd, keep
+  unit files in the repository, install them from the setup script, and run
+  `systemctl daemon-reload` and `systemctl enable --now`. Make this idempotent.
 - Declaring `[services.<name>]` publishes ports and URLs. It does not start the
   process. Ensure lifecycle or project tooling starts it, and avoid reserved
   ports 60899 through 60999.
@@ -175,10 +190,41 @@ permission to upload only the named variables without printing them:
 amika secret push --from-env=API_KEY,DATABASE_URL
 ```
 
-Otherwise, give the user the exact `amika secret push` command they need to run.
-Preserve an existing encrypted-file workflow when it is suitable for rigs. Do
-not add an untracked secret file to Git. Explain any manual copy or decryption
-step that cannot be represented safely in repository configuration.
+The environment-variable name becomes the Amika secret name. Reference that
+exact name in `.amika/config.toml`:
+
+```toml
+[env]
+OP_SERVICE_ACCOUNT_TOKEN = { secret = "OP_SERVICE_ACCOUNT_TOKEN" }
+```
+
+For example, `--from-env=OP_SERVICE_ACCOUNT_TOKEN` does not create a secret
+named `op-service-account-token`. If the project uses a 1Password service
+account, consult the [1Password service account
+reference](https://www.1password.dev/cli/reference/management-commands/service-account).
+
+If the values are not exported and no suitable secret file exists, create a
+temporary directory and permission-restricted file:
+
+```bash
+secret_dir="$(mktemp -d)"
+secret_file="$secret_dir/amika-secrets.env"
+touch "$secret_file"
+chmod 600 "$secret_file"
+```
+
+Give the user the exact file path and variable names, then ask them to add one
+`KEY=VALUE` per line. Do not read or print the populated file. After the user
+confirms it is ready, ask permission and upload it:
+
+```bash
+amika secret push --from-file="$secret_file"
+```
+
+Each key in the file becomes the Amika secret name. After a successful upload,
+or if the user cancels, delete the file and temporary directory. Preserve an
+existing encrypted-file workflow when it is suitable for rigs. Never add a
+secret file to the repository.
 
 ## 6. Validate the files
 
@@ -191,8 +237,9 @@ git diff --check
 ```
 
 Confirm that referenced scripts exist, service ports match their processes,
-secrets use references, reserved ports are unused, and setup does not depend on
-unexplained local state.
+setup and start scripts are executable, secrets use exact-name references,
+reserved ports are unused, and setup does not depend on unexplained local
+state.
 
 ## 7. Test the result in a new rig
 
@@ -255,6 +302,7 @@ command or question in your response.
 - [How configuration works](/guides/configuration)
 - [config.toml reference](/guides/config-toml)
 - [Services](/reference/services)
+- [SSH and file transfer](/guides/ssh-and-connect)
 - [Rig environment presets](/reference/presets)
 - [Manage secrets](/guides/manage-secrets)
 - [Amika CLI skill](https://github.com/gofixpoint/amika/tree/main/.agents/skills/amika-cli)
