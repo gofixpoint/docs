@@ -15,8 +15,9 @@ repo-less) and the
 </Info>
 
 <Note>
-The open-source `amika` CLI parses only `[lifecycle].setup_script` and
-`[services.<name>]`. The remaining sections are applied by the hosted platform.
+The Go config parser used by the open-source `amika-server` supports only
+`[lifecycle].setup_script` and `[services.<name>]`. The remaining sections are
+applied by the hosted platform.
 The singular `[service.<name>]` is accepted as an alias for `[services.<name>]`.
 </Note>
 
@@ -26,8 +27,8 @@ Setup and start scripts. See [details](/guides/config-toml#lifecycle).
 
 | Key | Type | Default | Summary |
 | --- | --- | --- | --- |
-| `setup_script` | string (path) | no-op | Executable run once before the container command starts. Overridable with `--setup-script`. |
-| `start_script` | string (path) | no-op | Executable run each time a stopped rig is restarted (hosted only). |
+| `setup_script` | string (path) | no-op | Script run once during initial creation. Overridable with `--setup-script`. |
+| `start_script` | string (path) | no-op | Script run each time a stopped rig is restarted (hosted only). |
 
 ## `[env]`
 
@@ -62,8 +63,8 @@ Default rig settings. See [details](/guides/config-toml#sandbox).
 
 | Key | Type | Default | Values |
 | --- | --- | --- | --- |
-| `preset` | string | `"coder"` | `"coder"`, `"coder-dind"` |
-| `size` | string | `"m"` | `"xs"`, `"m"`, `"l"`, `"xl"` |
+| `preset` | string | `"coder"` | `"coder"`, `"coder-plus-docker"` |
+| `size` | string | `"m"` | Friendly aliases or a versioned size offered by the provider |
 | `snapshot` | string | none | Friendly snapshot label (not the org-qualified name). |
 
 ## `[filesystem]`
@@ -90,6 +91,18 @@ Per-agent default credential (TOML only, no database layer). See
 | `name` | string | Name of the credential to select. |
 
 Keys are agent kinds (`claude`, `codex`); unknown kinds are ignored.
+
+## `[workflow]`
+
+Hosted multi-step agent workflow. See [details](/guides/config-toml#workflow).
+
+| Key | Type | Summary |
+| --- | --- | --- |
+| `default_agent` | `"claude"` or `"codex"` | Optional default agent; defaults to Claude |
+| `start` | string | Required first step name |
+| `steps.<name>.prompt_file` | string | Required repo-relative prompt file |
+| `steps.<name>.on_success` | string | Optional next step after success |
+| `steps.<name>.on_failure` | string | Optional next step after failure |
 
 ## Related docs
 

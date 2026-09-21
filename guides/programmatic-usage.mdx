@@ -45,12 +45,12 @@ non-interactive.
 <Step title="Create a remote rig cloned from the repo">
 
 ```bash
-amika rig create --git \
+amika rig create \
   --agent-credential-type claude=api-key \
   --name testing-claude-api
 ```
 
-`--git` mounts the current repo into the rig.
+Running the command inside a Git repository selects that repository.
 `--agent-credential-type claude=api-key` tells Amika to inject your stored
 API-key credential, which avoids the OAuth picker.
 
@@ -171,7 +171,7 @@ amika secret claude push \
   --from-file /path/to/your/CLAUDE_API_KEY
 
 errcho "Creating rig..."
-amika rig create --git \
+amika rig create \
   --agent-credential-type claude=api-key \
   --name testing-claude-api
 

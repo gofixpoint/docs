@@ -75,6 +75,7 @@
             "group": "Connecting to rigs",
             "pages": [
               "guides/remote-control",
+              "guides/codex-app",
               "guides/ssh-and-connect",
               "guides/open-in-editor"
             ]
@@ -87,9 +88,14 @@
             ]
           },
           {
+            "group": "Guides for agents",
+            "pages": [
+              "guides/set-up-vm-repo-config"
+            ]
+          },
+          {
             "group": "Advanced",
             "pages": [
-              "guides/setup-repo-config-with-agent",
               "guides/programmatic-usage",
               "guides/mcp-integrations",
               "guides/github-authentication"
@@ -199,6 +205,10 @@
     {
       "source": "/reference/sandbox-configuration",
       "destination": "/reference/rig-configuration"
+    },
+    {
+      "source": "/guides/setup-repo-config-with-agent",
+      "destination": "/guides/set-up-vm-repo-config"
     }
   ],
   "navbar": {
