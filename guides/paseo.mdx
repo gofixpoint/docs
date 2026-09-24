@@ -1,0 +1,143 @@
+---
+title: "Paseo"
+description: "Install the Paseo daemon in a rig snapshot and connect from Paseo Desktop."
+---
+
+[Paseo](https://paseo.sh) connects to a daemon running on your rig over SSH.
+Install the daemon in a reusable Amika snapshot so every rig created from that
+snapshot is ready for Paseo Desktop.
+
+This example installs Paseo `0.9.2` on an Ubuntu AMD64 rig. It runs the daemon
+as the rig user with a systemd user service and keeps that service running when
+the user is not signed in.
+
+## Add the snapshot files
+
+At the root of your repository, create `amika-scripts/paseo-daemon.service`:
+
+```ini amika-scripts/paseo-daemon.service
+[Unit]
+Description=Paseo daemon
+Documentation=https://paseo.sh/docs/connectivity
+
+[Service]
+Type=simple
+WorkingDirectory=%h
+Environment="PATH=%h/.local/bin:%h/.local/share/pnpm:%h/.npm-global/bin:%h/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/opt/Paseo/resources/bin/paseo daemon run --home %h/.paseo
+Restart=always
+RestartSec=5s
+TimeoutStopSec=30s
+
+[Install]
+WantedBy=default.target
+```
+
+Then create `amika-scripts/snapshot-init.sh`:
+
+```bash amika-scripts/snapshot-init.sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+PASEO_VERSION="0.9.2"
+PASEO_SHA256="848a86d424d98e40b3157cfb93804fad93a599b0fdfec1dfffe78cd9e7feeac3"
+PASEO_DEB="Paseo-${PASEO_VERSION}-amd64.deb"
+PASEO_URL="https://github.com/getpaseo/paseo/releases/download/v${PASEO_VERSION}/${PASEO_DEB}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+RIG_USER="$(id --user --name)"
+RIG_UID="$(id --user)"
+
+if [[ "$RIG_UID" == "0" ]]; then
+  echo "Run this script as the rig user, not as root." >&2
+  exit 1
+fi
+
+if [[ "$(dpkg --print-architecture)" != "amd64" ]]; then
+  echo "This example supports AMD64 Ubuntu rigs only." >&2
+  exit 1
+fi
+
+if [[ -e "$HOME/.paseo" ]]; then
+  echo "Paseo already has local state. Use a fresh snapshot base rig." >&2
+  exit 1
+fi
+
+if [[ "$(dpkg-query -W -f='${Version}' paseo 2>/dev/null || true)" != "$PASEO_VERSION" ]]; then
+  sudo apt-get update
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    ca-certificates curl libasound2t64
+
+  download_dir="$(mktemp -d)"
+  trap 'rm -rf "$download_dir"' EXIT
+  curl --fail --location --silent --show-error \
+    "$PASEO_URL" --output "$download_dir/$PASEO_DEB"
+  echo "$PASEO_SHA256  $download_dir/$PASEO_DEB" | sha256sum --check --status
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    "$download_dir/$PASEO_DEB"
+fi
+
+install -D -m 0644 "$SCRIPT_DIR/paseo-daemon.service" \
+  "$HOME/.config/systemd/user/paseo-daemon.service"
+
+# Start the user service at boot, even when this user has no login session.
+sudo loginctl enable-linger "$RIG_USER"
+sudo systemctl start "user@${RIG_UID}.service"
+export XDG_RUNTIME_DIR="/run/user/${RIG_UID}"
+systemctl --user daemon-reload
+systemctl --user enable paseo-daemon.service
+systemctl --user is-enabled --quiet paseo-daemon.service
+```
+
+Make the script executable and commit both files:
+
+```bash
+chmod +x amika-scripts/snapshot-init.sh
+git add amika-scripts/snapshot-init.sh amika-scripts/paseo-daemon.service
+git commit -m "Configure Paseo in rig snapshots"
+```
+
+<Note>
+The pinned version and checksum make snapshot builds reproducible. Update both
+values together when you upgrade Paseo. Find releases on the
+[Paseo releases page](https://github.com/getpaseo/paseo/releases).
+</Note>
+
+## Build the snapshot
+
+Follow [Create a snapshot](/guides/create-a-snapshot) to create a base rig with
+repository setup skipped. Connect to the base rig, then run the initialization
+script from the repository root:
+
+```bash
+./amika-scripts/snapshot-init.sh
+```
+
+Verify that the service is enabled:
+
+```bash
+systemctl --user is-enabled paseo-daemon
+```
+
+Do not start the daemon in the base rig. Paseo stores a stable host identity in
+`~/.paseo/server-id`. Starting it before capture would copy the same identity
+into every rig created from the snapshot.
+
+Take the snapshot after the service is enabled. Each new rig starts the Paseo
+daemon automatically on `127.0.0.1:6767` and creates its own host identity on
+first boot.
+
+## Connect Paseo Desktop
+
+Install [Paseo Desktop](https://paseo.sh/docs) on your computer. Then print the
+rig's SSH host:
+
+```bash
+amika rig code dev-box --editor paseo
+```
+
+In Paseo Desktop, click **Hosts > Add host > Remote SSH**. Paste the `ssh://`
+host printed by the command. Paseo reaches the daemon through SSH, so port
+`6767` does not need to be exposed publicly.
+
+See [Paseo connectivity](https://paseo.sh/docs/connectivity) for details about
+remote SSH connections.

@@ -75,9 +75,10 @@
             "group": "Connecting to rigs",
             "pages": [
               "guides/remote-control",
-              "guides/codex-app",
               "guides/ssh-and-connect",
-              "guides/open-in-editor"
+              "guides/open-in-editor",
+              "guides/codex-app",
+              "guides/paseo"
             ]
           },
           {
