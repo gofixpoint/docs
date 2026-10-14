@@ -72,7 +72,8 @@ amika rig create --name scratch --no-git
 | --- | --- | --- |
 | `--name <name>` | auto-generated | Name for the rig. If omitted, a random `{color}-{city}` name is generated |
 | `--preset <name>` | repository or platform default | Use `coder` or `coder-plus-docker` |
-| `--size <size>` | repository or platform default | Rig size, such as `m` or `a1.medium` |
+| `--size <size>` | repository or platform default | Rig size, such as `m` or `a1.medium`. With `--host`, one of that host's own sizes instead |
+| `--host <hostname\|id>` | | Run the rig on one of your organization's own hosts rather than on Amika Cloud. See [`amika host`](#amika-host). Cannot be combined with `--snapshot` |
 | `--snapshot <slug>` | | Fork from a captured snapshot |
 | `--git <path-or-URL>` | auto-detected | Use a local repository path or a Git URL. If omitted, the CLI detects a repository from the current directory |
 | `--no-git` | `false` | Skip git repo auto-detection; create a repo-less rig with no repo mounted |
@@ -353,6 +354,59 @@ Output columns: `SERVICE`, `SANDBOX`, `PORTS`, `URL`.
 | `--rig-name <name>` | (none) | Filter services to a specific rig |
 
 See [Services](/reference/services) for how to declare services in `.amika/config.toml`.
+
+## `amika host`
+
+Inspect and retire your organization's own hosts (bring your own compute).
+`hosts` is an alias. See [Bring your own compute](/guides/byoc) for the setup
+flow.
+
+A host registers itself when `amika-hostd up` runs on the machine, so there is
+no command to add one. A rig runs on Amika Cloud unless `amika rig create --host`
+names one of these hosts.
+
+```bash
+# List the organization's hosts
+amika host list
+
+# Show one host and the sizes it offers
+amika host get alpha.lan
+
+# Delete a host and its stored secret
+amika host delete alpha.lan
+```
+
+### List
+
+Aliases: `hosts`, `ls`
+
+Output columns: `HOSTNAME`, `URL`, `SIZES`. A host that has not registered a
+URL shows `-`, and cannot take rigs.
+
+### Get
+
+```bash
+amika host get <hostname-or-id>
+```
+
+Shows one host's details and the sizes it offers. Those size names, not the
+cloud size vocabulary, are what `rig create --host ... --size ...` accepts.
+
+### Delete
+
+Aliases: `rm`, `remove`
+
+```bash
+amika host delete <hostname-or-id> [...]
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-f`, `--force` | `false` | Skip confirmation prompt |
+
+A host that still has rigs on it is refused: delete those rigs first. The
+machine itself is untouched, so stop its daemon with `amika-hostd down` or it
+registers itself again on the next `amika-hostd up`.
 
 ## `amika auth`
 

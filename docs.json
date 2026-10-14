@@ -48,7 +48,8 @@
               "guides/what-is-a-rig",
               "guides/create-a-rig",
               "guides/rig-lifecycle",
-              "guides/create-a-snapshot"
+              "guides/create-a-snapshot",
+              "guides/byoc"
             ]
           },
           {
