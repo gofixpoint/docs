@@ -11,8 +11,7 @@ a **host**, and each rig you create on that host runs there as a local VM.
 
 <Note>
 - Linux x86_64 or arm64 with glibc 2.34+ and KVM, or macOS on Apple silicon.
-- `e2fsprogs`: smolvm makes any disk smaller than its 20 GiB template by
-  shrinking it with `resize2fs`. The installer installs it when it is missing.
+- `e2fsprogs`, for `resize2fs`. The installer installs it if it is missing.
 - A way to expose one local port to the internet over HTTPS, such as
   [ngrok](https://ngrok.com) or
   [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/).
@@ -39,12 +38,8 @@ curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install-amika
 See [Installer options](#installer-options) to pin a version, skip smolvm, or
 preview the install with `--dry-run`.
 
-If `resize2fs` is missing, the installer installs `e2fsprogs`. On macOS it
-runs `brew install e2fsprogs`. On Linux it uses `apt-get`, `dnf`, or `yum` as
-root or with `sudo`, and asks first. With `--install-deps` it installs without
-asking, but only as root or when `sudo` needs no password. When it can't
-install, it prints a warning with the reason and the exact command to run, and
-the install still succeeds.
+If `e2fsprogs` is missing, the installer installs it (on Linux, after asking).
+If it can't, it prints the command to run.
 
 The `install-amika-hostd.sh` script will generate a config file in
 `$XDG_CONFIG_HOME/amika-hostd/config.toml` (`~/.config/amika-hostd/config.toml`
@@ -334,7 +329,7 @@ doesn't remove the host from Amika: delete it with `amika host delete`.
 | `--dry-run` | Show what would be done without downloading or installing |
 | `--smolvm-version <version>` | Install this smolvm version if smolvm is missing |
 | `--skip-smolvm` | Don't install smolvm |
-| `--install-deps` | Install missing system packages (`e2fsprogs`) without asking, only as root or when `sudo` needs no password. Use it for scripts and AI agents |
+| `--install-deps` | Install `e2fsprogs` without asking, if no password is needed. For scripts and AI agents |
 | `--uninstall` | Remove `amika-hostd`. See [Uninstall the daemon](#uninstall-the-daemon) |
 
 Pass flags after `sh -s --`, for example
