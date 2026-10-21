@@ -5,17 +5,20 @@ description: "Open a shell on a rig over SSH, or open it in your editor."
 
 Once a rig is running, you have a few ways to get inside it:
 
-- **SSH** (works on hosted rigs) — for interactive shells, one-off
-  commands, or for handing the destination to your own SSH client.
-- **`rig connect`** (CLI-only, local rigs) — drops you into the
-  Docker container's shell directly.
-- **`rig code`** (CLI-only) — opens the rig in Cursor over SSH.
+- **`rig ssh`**: interactive shells, one-off commands, and port forwarding.
+- **`rig connect`** (CLI-only): a plain interactive shell over the same
+  transport.
+- **`scp`** (CLI-only): copy files to and from a rig.
+- **`rig open`** (CLI-only): opens the rig in an editor or app, such as
+  Cursor, VS Code, or Codex, over SSH.
 
 ## Prerequisites
 
 <Note>
-A rig in the `active` / `running` / `started` state. See
-[Create a rig](/guides/create-a-rig).
+- A rig in the `active` / `running` / `started` state. See
+  [Create a rig](/guides/create-a-rig).
+- An SSH key. Create one with `amika secret ssh-keygen`, or upload an existing
+  public key with `amika secret ssh-keygen --import ~/.ssh/id_ed25519.pub`.
 </Note>
 
 ## Open an interactive SSH session
@@ -28,16 +31,35 @@ The TypeScript SDK has no SSH methods. Use the CLI to open a shell.
 
 ## Run a one-off command
 
-The CLI passes anything after `--` straight to the remote shell. Use `-t`
-to allocate a TTY when the remote command needs one.
+`amika rig ssh` works like `ssh`: options go before the rig name, and the
+command goes after it. Use `-t` to allocate a TTY when the remote command
+needs one.
 
 ```bash
 # Non-interactive command
-amika rig ssh dev-box -- ls -la
+amika rig ssh dev-box ls -la
 
 # Interactive program (force TTY)
-amika rig ssh -t dev-box -- top
+amika rig ssh -t dev-box top
 ```
+
+## Forward a port
+
+Every `ssh` option works, including port forwarding. Forward a local port to a
+port in the rig with `-L`, and add `-N` to skip the remote shell:
+
+```bash
+# Reach the rig's port 3000 at http://localhost:3000
+amika rig ssh -N -L 3000:localhost:3000 dev-box
+
+# SOCKS proxy on local port 1080
+amika rig ssh -N -D 1080 dev-box
+```
+
+Local (`-L`) and dynamic (`-D`) forwarding are supported. Remote (`-R`) and
+X11 forwarding are not. Agent forwarding is on by default and uses a dedicated
+agent that holds only your Amika SSH key, so your other keys never reach the
+rig.
 
 ## Copy files
 
@@ -54,27 +76,39 @@ amika scp -r dev-box:/srv/output ./output
 ```
 
 A relative rig path starts under `/home/amika`. Use an absolute path when the
-file lives elsewhere in the rig.
-
-## Local-Docker shell (CLI only)
-
-`amika rig connect` opens the Docker container's shell directly. It only
-applies to local rigs (`--local`).
+file lives elsewhere in the rig. To see the `scp` command Amika would run
+without running it, add `--print`:
 
 ```bash
-amika rig connect dev-box                # default zsh
-amika rig connect dev-box --shell bash
+amika scp --print ./local.txt dev-box:local.txt
+```
+
+See [`amika scp`](/reference/cli#amika-scp) for copying between rigs and other
+SSH hosts.
+
+## Open a plain shell (CLI only)
+
+`amika rig connect` opens an interactive shell in the rig over the same
+transport as `rig ssh`. Use it when you don't need SSH options or a remote
+command.
+
+```bash
+amika rig connect dev-box
 ```
 
 ## Open in an editor (CLI only)
 
-`amika rig code` opens the rig in Cursor, VS Code, Claude Desktop, or
-Codex over SSH. See [Open a rig in your editor](/guides/open-in-editor) for
-the full command and instructions for other Remote-SSH editors.
+`amika rig open` opens the rig in Cursor, VS Code, Claude Desktop, Codex,
+Paseo, or Herdr over SSH. See [Open a rig in your editor](/guides/open-in-editor)
+for the full command and instructions for other Remote-SSH editors.
 
 ```bash
-amika rig code dev-box
+amika rig open dev-box
+amika rig open dev-box --app vscode
 ```
+
+On CLI v0.23.0 and earlier, the command is `amika rig code` and the flag is
+`--editor`.
 
 ## Next steps
 
