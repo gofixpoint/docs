@@ -199,8 +199,9 @@ Declares named services with port bindings and optional URL schemes. Each
 [Services](/reference/services) for usage examples and runtime behavior.
 
 <Note>
-The singular `[service.<name>]` is accepted as an alias for
-`[services.<name>]`. Use one form or the other consistently within a file.
+The hosted platform accepts the singular `[service.<name>]` as an alias for
+`[services.<name>]`. The Go parser used by the open-source `amika-server` does
+not. Use one form or the other consistently within a file.
 </Note>
 
 ### Fields
@@ -263,8 +264,9 @@ url_scheme = [
 | **url_scheme ports** | Must reference a port declared in the same service |
 | **url_scheme uniqueness** | No duplicate port entries within `url_scheme` |
 
-If validation fails, service definitions are skipped and a warning is logged.
-Other sections (e.g. `[lifecycle]`, `[env]`) are still applied.
+If a service definition fails validation, rig creation fails with a 400
+`invalid_repo_config` error whose message names the problem. Fix
+`.amika/config.toml` and create the rig again.
 
 ### Merge semantics
 
@@ -328,10 +330,21 @@ See [Presets](/reference/presets) for full details on what each preset includes.
 | --- | --- |
 | **Type** | String |
 | **Required** | No |
-| **Default** | `"m"` |
-| **Values** | Friendly aliases `"xs"`, `"m"`, `"l"`, `"xl"`, or a versioned size offered by the provider |
+| **Default** | The provider's `m` tier: `a0.m`, or `a1.medium` on E2B |
+| **Values** | A versioned size offered by the provider, or a friendly alias |
 
 The resource allocation size for rigs created from this repository.
+
+Each provider serves one size generation. E2B serves `a1`, and the other
+hosted providers serve `a0`:
+
+| Generation | Sizes                                                      |
+| ---------- | ---------------------------------------------------------- |
+| `a0`       | `a0.xs`, `a0.m`, `a0.l`, `a0.xl`                           |
+| `a1`       | `a1.tiny`, `a1.small`, `a1.medium`, `a1.large`, `a1.xlarge` |
+
+The friendly aliases are `xs` (or `extra-small`), `m` (or `medium`), `l` (or
+`large`), and `xl` (or `extra-large`). Aliases and sizes are case-insensitive.
 
 ```toml
 [sandbox]
@@ -344,6 +357,10 @@ portable across providers. For example, `l` resolves to `a0.l`, which E2B does
 not offer. Use `a1.large` for a large E2B rig. The API accepts versioned sizes
 when the selected provider offers them. The `coder-plus-docker` preset does not
 support the `xs` tier.
+
+Amika ignores a `size` value it doesn't recognize, and falls back to the
+default. An unrecognized `preset` makes it ignore the whole `[sandbox]` table,
+including `size` and `snapshot`.
 
 ### `snapshot`
 
@@ -372,9 +389,9 @@ preset/size path rather than failing the create.
 ### Merge semantics
 
 Preset, size, and snapshot are resolved independently. Database values (saved
-via the web UI) override TOML values. There is no built-in repository default
-for any of the three — when none is configured, the Create Rig dialog
-applies its own UI defaults.
+via the web UI) override TOML values. When neither sets a value, the platform
+defaults apply: the `coder` preset, the provider's `m` size (`a0.m`, or
+`a1.medium` on E2B), and no snapshot.
 
 ---
 
