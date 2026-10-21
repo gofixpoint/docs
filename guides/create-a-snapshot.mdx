@@ -5,14 +5,13 @@ description: "Capture a configured rig as a reusable base image so new rigs boot
 
 A snapshot captures a configured rig's filesystem as a reusable base
 image. New rigs that boot from it start with your dependencies,
-tools, and environment already in place — no waiting on a fresh install
+tools, and environment already in place, with no waiting on a fresh install
 each time.
 
 <Info>
-Snapshots are a hosted-cloud feature. You can create them from the CLI, the
-web UI, or the HTTP API. Creating snapshots programmatically (CLI or HTTP API)
-works only against the hosted cloud — it is **not** available in local
-open-source mode.
+You can create snapshots from the CLI, the web UI, the TypeScript SDK, or the
+HTTP API, for rigs on Amika Cloud and for rigs on
+[your own hosts](#snapshots-on-your-own-hosts).
 </Info>
 
 For a walkthrough of the whole flow, watch the demo:
@@ -34,7 +33,7 @@ The flow is:
 4. Launch new rigs from the snapshot, and optionally set it as the
    repository default.
 
-## Step 1 — Create a base rig, skipping setup
+## Step 1: Create a base rig, skipping setup
 
 When you build a base rig for a snapshot, skip the repository's setup
 script. The setup script runs automatically every time a rig is
@@ -43,14 +42,14 @@ boots from that snapshot, it executes twice. Skip it now, and let it run
 once at boot time later.
 
 <Steps>
-<Step title="Open the Create Rig dialog">
-On the **Rigs** page, click **Create Rig** and select your
+<Step title="Open the create form">
+Open **Create a rig** at [app.amika.dev](https://app.amika.dev) and select your
 repository.
 </Step>
 <Step title="Check Skip setup script">
-Expand **Rig Snapshot** and check **Skip setup script**, then click
-**Create**.
-
+On the **Setup script** row, check **Skip setup script**. Click
+**Show script** first if you want to see what you're skipping. Then create the
+rig.
 </Step>
 </Steps>
 
@@ -61,10 +60,10 @@ script:
 amika rig create --name base-box --preset coder --no-setup
 ```
 
-## Step 2 — Configure the environment
+## Step 2: Configure the environment
 
 Connect to the rig and set it up the way you want the base image to
-look — install dependencies, build caches, configure tools.
+look: install dependencies, build caches, configure tools.
 
 ```bash
 amika rig ssh base-box
@@ -74,35 +73,38 @@ pnpm install
 
 See [SSH and connect](/guides/ssh-and-connect) for the connection options.
 
-## Step 3 — Take the snapshot
+## Step 3: Take the snapshot
 
 The source rig must be running. Choose a capture mode:
 
 | Mode | Value | What it does |
 | --- | --- | --- |
-| **Snapshot and delete** (recommended) | `scrub_and_delete` | Removes Amika-injected secrets — credential files and injected environment variables — then captures the snapshot and deletes the source rig. |
-| **Full snapshot** | `full` | Captures everything as-is, including any secrets, and leaves the source rig running. |
+| **Snapshot and delete** (recommended) | `scrub_and_delete` | Removes Amika-injected secrets (credential files and injected environment variables), then captures the snapshot and deletes the source rig. |
+| **Snapshot everything** | `full` | Captures everything as-is, including any secrets, and leaves the source rig running. |
 
 <Warning>
-A **Full snapshot** captures the filesystem as-is, so any secrets present
+**Snapshot everything** captures the filesystem as-is, so any secrets present
 in the rig are baked into the image. Prefer **Snapshot and delete** for
 shared base images.
 </Warning>
 
+Not every rig offers both modes. Rigs on your own hosts, for example, only
+support **Snapshot and delete**.
+
 Capture the snapshot from any of these surfaces:
 
-<Tabs defaultTabIndex={0}>
+<Tabs>
 <Tab title="CLI">
 `amika snapshot create` is interactive by default: it prompts for the capture
 mode and name, and for `scrub_and_delete` it previews the injected secrets that
 will be removed and asks you to confirm.
 
 ```bash
-# Interactive — prompts for mode and name
-amika snapshot create --sandbox base-box
+# Interactive: prompts for mode and name
+amika snapshot create --rig base-box
 
-# Non-interactive — requires --mode and --name
-amika snapshot create --sandbox base-box \
+# Non-interactive: requires --mode and --name
+amika snapshot create --rig base-box \
   --name example-repo-base --mode scrub_and_delete --no-interactive
 ```
 
@@ -112,9 +114,26 @@ Capture runs in the background. Check progress with `amika snapshot list`.
 Open the rig's detail page and click **Take Snapshot**. Pick a capture
 mode, give the snapshot a name you'll recognize, and confirm.
 </Tab>
+<Tab title="TypeScript">
+`client.snapshots.create` starts the capture and returns right away.
+`snapshot.wait()` polls until the snapshot is `active`.
+
+```ts
+const snapshot = await client.snapshots.create({
+  rigRef: "base-box",
+  name: "example-repo-base",
+  mode: "scrub_and_delete",
+});
+await snapshot.wait();
+```
+
+`client.snapshots.previewScrub("base-box")` lists the paths and environment
+variable names a scrub would remove, without their values.
+</Tab>
 <Tab title="HTTP API">
 `POST /sandbox-snapshots` returns `202` immediately and captures in the
-background. Reference the source rig by `sandbox_name` (or `sandbox_id`).
+background. Reference the source rig by `sandbox_name`, `sandbox_id`, or
+`sandbox_ref` (an ID or a name).
 
 ```bash
 curl -X POST https://app.amika.dev/api/v0beta1/sandbox-snapshots \
@@ -125,23 +144,25 @@ curl -X POST https://app.amika.dev/api/v0beta1/sandbox-snapshots \
 </Tab>
 </Tabs>
 
-<Note>
-A TypeScript SDK method for creating snapshots is coming soon. For now, use the
-CLI or HTTP API to create snapshots programmatically.
-</Note>
+The snapshot moves through `capturing`, then `finalizing`, then `active`. Once
+it's `active` it's ready to launch from.
 
-The snapshot moves through `capturing` → `finalizing` → `active`. Once it's
-`active` it's ready to launch from.
+## Step 4: Launch from a snapshot
 
-## Step 4 — Launch from a snapshot
+When you create a new rig, pick your snapshot from **Start from snapshot** in
+the **Rig Snapshot** section. On the **Rigs** page's create panel, that section
+is under **Advanced**. The new rig boots from the captured image instead of the
+preset.
 
-When you create a new rig, expand **Rig Snapshot** and pick your
-snapshot from the **Start from snapshot** dropdown. The new rig boots
-from the captured image instead of the preset.
+From the CLI, pass `--snapshot`:
+
+```bash
+amika rig create --name dev-box --snapshot example-repo-base
+```
 
 ### Set a repository default
 
-Make every new rig for a repository boot from a snapshot by default —
+Make every new rig for a repository boot from a snapshot by default,
 either from the web UI or in your `.amika/config.toml`.
 
 <Tabs>
@@ -156,7 +177,7 @@ snapshot = "example-repo-base"
 ```
 </Tab>
 <Tab title="Web UI">
-1. Go to **Repositories**: https://app.amika.dev/repositories
+1. Go to **Repos** in the sidebar: https://app.amika.dev/repositories
 2. Click the repo you're configuring.
 3. Under **Default Snapshot**, choose your snapshot.
 
@@ -171,6 +192,24 @@ the `[sandbox]` value in `.amika/config.toml`. See the
 [`[sandbox]` reference](/reference/config-toml#sandbox) for the full
 resolution order.
 </Note>
+
+## Snapshots on your own hosts
+
+Rigs on your [own hosts](/guides/byoc) can be snapshotted too, with a few
+differences:
+
+- **The snapshot stays on the host.** It is stored on that host's disk and can
+  only boot new rigs on the same host. Pick it when you create a rig there, or
+  pass `--snapshot` along with `--host`.
+- **Only Snapshot and delete.** The host stops the rig to capture its disks, so
+  **Snapshot everything** isn't offered.
+- **No defaults.** Repository and organization default snapshots never apply to
+  a rig on your own host. The create form offers each host only its own
+  snapshots.
+
+`amika snapshot list --long` shows a `HOST` column for snapshots taken on your
+hosts. See [Snapshots on your host](/guides/byoc#snapshots-on-your-host) for
+where the host keeps them.
 
 ## Next steps
 
