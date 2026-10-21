@@ -45,21 +45,6 @@ size = "m"
 - [`[sandbox]`](#sandbox) — default rig preset, size, and snapshot
 - [`[filesystem]`](#filesystem) — additional repos to clone alongside the primary repo
 - [`[agent_credentials]`](#agent_credentials) — per-agent credential defaults
-- [`[workflow]`](#workflow): multi-step agent workflow
-
-<Note>
-The rig settings table retains the name `[sandbox]` for compatibility. Use that
-exact table name in `.amika/config.toml`.
-</Note>
-
-<Note>
-**Open-source server vs. hosted scope.** The Go config parser used by the
-open-source `amika-server` supports only `[lifecycle].setup_script` and
-`[services.<name>]`. The remaining sections
-(`[env]`, `[sandbox]`, `[filesystem]`, `[agent_credentials]`, `[workflow]`, and
-`[lifecycle].start_script`) are applied by the hosted platform when a rig is
-created from a repository.
-</Note>
 
 ---
 
@@ -466,50 +451,6 @@ Each key is an agent kind. Each value is an inline table:
 
 See [Inject credentials](/guides/inject-credentials) for how these defaults
 interact with per-rig credential selection.
-
----
-
-## `[workflow]`
-
-Defines a hosted multi-step agent workflow. Each step reads its prompt from a
-repository file and selects the next step based on success or failure.
-
-```toml
-[workflow]
-default_agent = "claude"
-start = "implement"
-
-[workflow.steps.implement]
-prompt_file = ".amika/workflows/implement.md"
-on_success = "review"
-on_failure = "implement"
-
-[workflow.steps.review]
-prompt_file = ".amika/workflows/review.md"
-```
-
-| Key | Required | Description |
-| --- | --- | --- |
-| `default_agent` | No | `"claude"` or `"codex"`; defaults to `"claude"` |
-| `start` | Yes | Name of the first step |
-| `steps` | Yes | One or more named step tables |
-
-Each `[workflow.steps.<name>]` table supports:
-
-| Key | Required | Description |
-| --- | --- | --- |
-| `prompt_file` | Yes | Repo-relative path to a non-empty prompt file |
-| `on_success` | No | Next step after success; omit for terminal success |
-| `on_failure` | No | Next step after failure; omit for terminal failure |
-
-The `start`, `on_success`, and `on_failure` values must reference defined
-steps. Step names may contain letters, numbers, underscores, and hyphens.
-`prompt_file` must be repo-relative and cannot contain `..`.
-
-The hosted platform runs this workflow only when workflow mode is enabled and
-rig creation includes an initial prompt. A configured workflow is
-automatically selected when the request supplies an initial prompt and does not
-explicitly disable workflow mode.
 
 ---
 
