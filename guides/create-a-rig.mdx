@@ -10,8 +10,8 @@ and tearing it down. By default everything runs on the hosted platform at
 ## Prerequisites
 
 <Note>
-- An Amika account and an API token. The CLI uses `amika auth login`; the
-  SDK expects you to source a token via `accessToken` or `tokenSource`.
+- An Amika account. The CLI uses `amika auth login`. The SDK needs an API
+  key, which you pass as `apiKey`.
 - (For the `--git` flow) Git installed and a repo to mount.
 - For the SDK: `npm install @amika/sdk`.
 </Note>
@@ -30,12 +30,9 @@ amika rig create --name dev-box --preset coder
 ```ts TypeScript
 import { AmikaClient } from "@amika/sdk";
 
-const amika = new AmikaClient({
-  baseUrl: process.env.AMIKA_API_URL ?? "https://app.amika.dev",
-  accessToken: process.env.AMIKA_API_KEY!,
-});
+const client = new AmikaClient({ apiKey: process.env.AMIKA_API_KEY! });
 
-const sb = await amika.createRig({
+const rig = await client.rigs.create({
   name: "dev-box",
   preset: "coder",
 });
@@ -58,7 +55,7 @@ amika rig create --name dev-box --preset coder \
 ```
 
 ```ts TypeScript
-const sb = await amika.createRig({
+const rig = await client.rigs.create({
   name: "dev-box",
   preset: "coder",
   repoUrl: "https://github.com/gofixpoint/example-repo.git",
@@ -87,8 +84,8 @@ guide.
 
 ## Step 2 — Wait until it's ready
 
-A new rig starts in state `initializing` and transitions to `active` /
-`running` / `started` once it's reachable.
+A new rig starts out initializing and becomes `running` once it's reachable
+and its setup has finished.
 
 <CodeGroup>
 
@@ -97,18 +94,18 @@ A new rig starts in state `initializing` and transitions to `active` /
 ```
 
 ```ts TypeScript
-// `createRig` returns immediately with state "initializing".
-// `waitForRig` polls every 3 seconds until ready (no client timeout).
-await amika.waitForRig(sb.name);
+// `rigs.create` returns before setup finishes.
+// `wait` polls every 3 seconds until the rig is running and setup
+// succeeded, for up to 15 minutes.
+await rig.wait();
 ```
 
 </CodeGroup>
 
 <Note>
-`waitForRig` throws an `AmikaError` if the rig reaches the `failed`
-state. New `state` values can appear over time — the wait helper treats
-`active`, `running`, and `started` as ready and anything else (except
-`failed`) as still working.
+`rig.wait()` throws an `AmikaWaitError` if provisioning fails, the setup
+script fails, or the deadline passes. Its `reason` field says which. Pass
+`{ maxWaitMs }` to change the deadline.
 </Note>
 
 ## Step 3 — Tear it down
@@ -122,7 +119,10 @@ amika rig delete dev-box --force
 ```
 
 ```ts TypeScript
-await amika.deleteRig("dev-box");
+await rig.delete();
+
+// Or, without a fetched rig:
+await client.rigs.handle("dev-box").delete();
 ```
 
 </CodeGroup>
