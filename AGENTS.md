@@ -40,7 +40,7 @@ documenting them. Don't invent.
 
 `docs.json` defines four tabs:
 
-- **Guides** — getting started and how-tos. Groups: Get started, VM Rigs,
+- **Guides** — getting started and how-tos. Groups: Get started, Rigs,
   Repository configuration, Agents and sessions, Connecting to rigs,
   Credentials, Advanced.
   - The "Code validation" group (`guides/checks`, `guides/code-annotations`)
