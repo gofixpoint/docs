@@ -170,6 +170,42 @@ On the hosted Amika platform, service definitions can also be managed through th
 **DB-wins-all:** when you save _any_ service definition via the UI, it overrides _all_ TOML-defined services for that repository. The UI pre-populates from TOML when you first edit, but from that point forward the database is the sole source.
 </Tip>
 
+## Services on your own hosts
+
+On a rig that runs on one of your [own hosts](/guides/byoc), services are
+reached through the host's `amika-hostd` daemon at the URL the host registered,
+rather than through a provider's public URL. The URL that `amika service list`
+and the rig details show depends on the host:
+
+| Host URL | Service URL | Who can open it |
+| --- | --- | --- |
+| A bare HTTPS hostname, such as `https://hostd.example.com`, with no path or port | A preview URL, `/v0beta1/rigs/<rig>/previews/<service>/` | Anyone who logs in to Amika as a member of the organization. Opening it redirects through an Amika login that lasts a day |
+| Anything else (a path, an explicit port, plain http, a loopback address) | A signed service link | Anyone with the link, until it expires a day later |
+
+Root-relative assets, such as a Vite or Next.js dev server's, load only on the
+first kind of host.
+
+### Service tokens
+
+Browsers use the URLs above. For a script or `curl`, mint a service token:
+
+```bash
+curl -X POST \
+  "https://app.amika.dev/api/v0beta1/rigs/<rig>/services/<service>/tokens?ttl_seconds=900" \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
+```
+
+| Response field | Description |
+| --- | --- |
+| `url` | The service's address on the host, ending in `/`. It carries no credential |
+| `header` | The header to send the token in, as `Bearer <token>`: `X-Amika-Authorization` |
+| `token` | The token |
+| `expires_at` | When the token expires |
+
+`ttl_seconds` is optional: tokens last an hour by default and at most a day
+(`86400`). The endpoint answers `403 service_token_forbidden` for `amikad`. It
+works only for rigs on your own hosts.
+
 ## Related docs
 
 - [Rig configuration](/reference/rig-configuration): lifecycle scripts, Git cloning, reserved ports
