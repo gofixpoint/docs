@@ -122,9 +122,7 @@
           {
             "group": "HTTP API",
             "pages": [
-              "reference/api-reference",
-              "reference/http-api",
-              "reference/amika-server-cli-reference"
+              "reference/api-reference"
             ]
           }
         ]
@@ -207,6 +205,14 @@
     {
       "source": "/guides/opencode",
       "destination": "/guides/open-in-editor"
+    },
+    {
+      "source": "/reference/http-api",
+      "destination": "/reference/api-reference"
+    },
+    {
+      "source": "/reference/amika-server-cli-reference",
+      "destination": "/reference/api-reference"
     }
   ],
   "navbar": {
