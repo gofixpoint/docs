@@ -122,6 +122,7 @@
           {
             "group": "HTTP API",
             "pages": [
+              "reference/http-api-overview",
               "reference/api-reference"
             ]
           }

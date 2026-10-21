@@ -35,6 +35,13 @@ if (turn.isError) throw new Error(turn.response);
 console.log(turn.response);
 ```
 
+```bash HTTP API
+curl -X POST https://app.amika.dev/api/v0beta1/agent-sessions \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"sandbox_id": "dev-box", "message": "Add unit tests for the auth module"}'
+```
+
 </CodeGroup>
 
 ## Step 2 — Continue or start a fresh session
@@ -70,20 +77,50 @@ await rig.send({
 });
 ```
 
+```bash HTTP API
+# Start fresh
+curl -X POST https://app.amika.dev/api/v0beta1/agent-sessions \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"sandbox_id": "dev-box", "message": "Refactor the API layer", "new_session": true}'
+
+# Resume a specific session
+curl -X POST https://app.amika.dev/api/v0beta1/agent-sessions \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Now write the tests", "session_id": "3f2a..."}'
+```
+
 </CodeGroup>
 
-## Stream the reply (SDK)
+## Stream the reply
 
 `sendStream` takes the same request and calls your handlers as the turn runs.
 `onDelta` receives reply text in order, and `onStatus` reports milestones. It
 resolves with the completed turn, like `send`.
 
-```ts
+Over HTTP, `POST /agent-sessions/stream` takes the same body and answers with
+a `text/event-stream`. Each frame's SSE `event:` field names it: `status` for
+milestones, `delta` for reply text, `done` for the completed turn (the same
+object `POST /agent-sessions` returns), or `error`.
+
+<CodeGroup>
+
+```ts TypeScript
 const turn = await client.rigs.handle("dev-box").sendStream(
   { message: "Explain the test setup" },
   { onDelta: (text) => process.stdout.write(text) },
 );
 ```
+
+```bash HTTP API
+curl -N -X POST https://app.amika.dev/api/v0beta1/agent-sessions/stream \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"sandbox_id": "dev-box", "message": "Explain the test setup"}'
+```
+
+</CodeGroup>
 
 ## Response shape
 
@@ -104,6 +141,8 @@ interface AgentSessionSendResponse {
 ```
 
 See [Types](/sdks/typescript/types#agent-sessions) for `AgentSessionUsage`.
+The HTTP API returns the same fields in snake case (`session_id`,
+`sandbox_id`, `is_error`, `is_new_session`, `created_sandbox`, `usage`).
 
 ## Things to know
 

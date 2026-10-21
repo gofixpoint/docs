@@ -36,6 +36,11 @@ for (const rig of rigs) {
 }
 ```
 
+```bash HTTP API
+curl https://app.amika.dev/api/v0beta1/rigs \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
+```
+
 </CodeGroup>
 
 ## Stop a running rig
@@ -50,6 +55,11 @@ amika rig stop dev-box
 const rig = client.rigs.handle("dev-box");
 await rig.stop();
 await rig.wait({ status: "stopped" });
+```
+
+```bash HTTP API
+curl -X POST https://app.amika.dev/api/v0beta1/rigs/dev-box/stop \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
 ```
 
 </CodeGroup>
@@ -72,10 +82,20 @@ await rig.start();
 await rig.wait();
 ```
 
+```bash HTTP API
+curl -X POST https://app.amika.dev/api/v0beta1/rigs/dev-box/start \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
+```
+
 </CodeGroup>
 
 `wait()` polls every 3 seconds until the rig is `running` and its setup
 succeeded, for up to 15 minutes.
+
+Over HTTP, start and stop return `202` with `{"ok": true}` and finish in the
+background. Poll `GET /api/v0beta1/rigs/{id}` until `status` and
+`setup_status` reach the values you need. Every rig path takes the rig's ID or
+its name. See the [HTTP API overview](/reference/http-api-overview).
 
 ## Delete a rig
 
@@ -94,6 +114,11 @@ amika rig delete dev-box-1 dev-box-2 --force
 
 ```ts TypeScript
 await client.rigs.handle("dev-box").delete();
+```
+
+```bash HTTP API
+curl -X DELETE https://app.amika.dev/api/v0beta1/rigs/dev-box \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
 ```
 
 </CodeGroup>

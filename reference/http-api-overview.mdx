@@ -1,0 +1,156 @@
+---
+title: "HTTP API overview"
+description: "Base URL, authentication, errors, pagination, and streaming for the hosted Amika API."
+---
+
+The hosted platform at [app.amika.dev](https://app.amika.dev) exposes a REST
+API. The CLI, the web UI, and the TypeScript SDK all use it. This page covers
+what applies to every endpoint. For each endpoint's parameters and schemas,
+see the [API reference](/reference/api-reference).
+
+## Base URL
+
+```text
+https://app.amika.dev/api/v0beta1
+```
+
+`v0beta1` is a beta version. Endpoints and fields can still change.
+
+## Authentication
+
+Send an Amika API key as a bearer token on every request:
+
+```bash
+curl https://app.amika.dev/api/v0beta1/rigs \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
+```
+
+Every path under `/api/v0beta1` requires authentication except the spec and
+docs pages (`/openapi.json`, `/docs`, `/llms.txt`). A request without a valid
+token gets a `401`, even when the path doesn't exist.
+
+### Create an API key
+
+- **Web UI:** **Settings → API Keys** at
+  [app.amika.dev/settings/api-keys](https://app.amika.dev/settings/api-keys).
+  The key is shown once, so copy it then.
+- **CLI:** `amika auth api-key create --name <name> --out <file>` writes the
+  new key to a file without printing it.
+- **HTTP API:** `POST /api-keys` with `{"name": "..."}`.
+
+<Note>
+`amika auth api-key create` ships in the amika CLI release after v0.23.0. With
+an older CLI, use the web UI.
+</Note>
+
+### Key scopes
+
+| Scope | Acts as | Use it for |
+| --- | --- | --- |
+| `organization` (default) | Your organization, as a service account | Automation, CI, and integrations that aren't tied to one person |
+| `user` | You | Scripts that should act as you and see your user-scoped secrets |
+
+Rigs that an organization key starts count as service-account rigs on
+[pricing](https://www.amika.dev/pricing).
+
+## Rigs and sandboxes in paths
+
+`rig` is the product term. The API serves every rig route under both names, so
+these pairs are the same endpoints:
+
+| Rig path | Equivalent path |
+| --- | --- |
+| `/rigs` | `/sandboxes` |
+| `/rig-snapshots` | `/sandbox-snapshots` |
+| `/rig-services` | `/sandbox-services` |
+
+Request and response fields still use the older name, such as `sandbox_id` and
+`sandbox_name`. A rig path's `{id}` accepts the rig's ID or its name.
+
+## Resources
+
+| Resource | Base path | What it's for |
+| --- | --- | --- |
+| Rigs | `/rigs` | Create, list, read, start, stop, and delete rigs, and manage their live services |
+| Agent sessions | `/agent-sessions` | Send a prompt to an agent (creating a rig if needed), stream replies, and read transcripts |
+| Rig snapshots | `/rig-snapshots` | Capture a snapshot of a running rig, then list, read, and delete snapshots |
+| Live services | `/rig-services` | List the services running on the organization's rigs |
+| Service definitions | `/services` | Add, change, and remove a repository's service definitions |
+| Secrets | `/secrets` | Generic secrets, Claude, Codex, and Pi credentials, and SSH public keys |
+| Repositories | `/repositories` | The organization's repositories, their integrations, and workflows |
+| Hosts | `/hosts` | Your own machines that run rigs (see [Bring your own compute](/guides/byoc)) |
+| API keys | `/api-keys` | Create, list, and delete API keys |
+| Storage | `/storage` | Signed upload and download URLs for the organization's storage bucket |
+| Git user settings | `/git-user-settings` | The Git author name and email used in your rigs |
+| Integrations | `/integrations` | List and disconnect your connected integrations |
+| Slack and Linear | `/slack/settings`, `/slack/channel-settings`, `/linear/settings` | Organization defaults for the Slack and Linear integrations |
+
+## Errors
+
+A failed request returns a JSON error body:
+
+```json
+{
+  "type": "error",
+  "error_code": "sandbox_not_found",
+  "message": "Sandbox not found",
+  "trace_id": "..."
+}
+```
+
+`error_code` is stable, so branch on it rather than on `message`. `details`
+appears on some errors, such as validation failures. Every response carries an
+`x-trace-id` header. Include it when you report a problem.
+
+Errors you're likely to handle:
+
+| Status | `error_code` | Meaning |
+| --- | --- | --- |
+| `400` | `validation_failed` | The request body or query didn't match the schema. `message` lists each problem |
+| `400` | `invalid_repo_config` | The repository's `.amika/config.toml` is invalid, for example a bad `[services]` entry |
+| `404` | `sandbox_not_found` | No rig with that ID or name in your organization |
+| `409` | `sandbox_name_conflict` | A rig with that name already exists |
+| `409` | `sandbox_provider_unreachable` | A delete couldn't reach the rig's host or provider. Retry, or pass `?forget=true` to remove only Amika's record |
+| `429` | `sandbox_limit_exceeded` | Your organization hit its limit on active or total rigs. Stop or delete one |
+| `429` | `spend_limit_exceeded` | Your organization's spend limit is reached |
+
+## Pagination
+
+Most list endpoints return everything in one response. The ones that paginate
+don't all use the same parameters:
+
+| Endpoint | Query parameters | Next page |
+| --- | --- | --- |
+| `GET /api-keys` | `after`, `limit` | `pageInfo.after` when `pageInfo.hasNextPage` is `true` |
+| `GET /agent-sessions` | `limit` (up to 200), `offset` | Raise `offset`. `total` is the full count |
+| `GET /storage/downloads` | `cursor`, `limit` (1 to 1000) | `next_cursor`, `null` on the last page |
+
+## Streaming
+
+Two endpoints answer with Server-Sent Events (`text/event-stream`):
+
+- **`POST /agent-sessions/stream`** sends a prompt like `POST /agent-sessions`
+  and streams the turn. Frames are named by their `event:` field: `status`,
+  `delta` (reply text), `done` (the completed turn), or `error`. See
+  [Send a message to an agent](/guides/send-a-message-to-an-agent#stream-the-reply).
+- **`GET /agent-sessions/{id}/events`** replays a session's event log and then
+  follows it. Each frame's `id` is the event's sequence number. Resume a
+  dropped connection with `?after_seq=` or the `Last-Event-ID` header.
+
+Pass `-N` to `curl` so it prints frames as they arrive.
+
+## Spec and tools
+
+<CardGroup cols={3}>
+  <Card title="Interactive docs" icon="book" href="https://app.amika.dev/api/v0beta1/docs">
+    Browse endpoints and try requests.
+  </Card>
+  <Card title="OpenAPI spec" icon="file-code" href="https://app.amika.dev/api/v0beta1/openapi.json">
+    Generate clients and load the API into tools.
+  </Card>
+  <Card title="llms.txt" icon="robot" href="https://app.amika.dev/api/v0beta1/llms.txt">
+    A plain-text reference for AI assistants.
+  </Card>
+</CardGroup>
+
+The [TypeScript SDK](/sdks/overview) wraps the most common endpoints.
