@@ -15,14 +15,9 @@ repo-less) and the
 </Info>
 
 <Note>
-The Go config parser used by the open-source `amika-server` supports only
-`[lifecycle].setup_script` and `[services.<name>]`. The remaining sections are
-applied by the hosted platform.
-</Note>
-
 The hosted platform also accepts the singular `[service.<name>]` as an alias
-for `[services.<name>]`. The Go parser does not, so use `[services.<name>]`
-when the file needs to work with `amika-server`.
+for `[services.<name>]`.
+</Note>
 
 ## `[lifecycle]`
 
