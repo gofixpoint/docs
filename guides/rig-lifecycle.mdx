@@ -21,6 +21,27 @@ treat anything not in the lists above (except `failed`) as "still working",
 so unknown values won't break your code.
 </Note>
 
+## Lifecycle in the web UI
+
+A rig's detail page at [app.amika.dev](https://app.amika.dev) has the same
+start, stop, and delete controls as the CLI, plus a few of its own:
+
+- **Start with script or without.** A stopped rig offers **Start with script**,
+  which reruns the repository's start script, and **Start without script**,
+  which skips it. In the HTTP API, skip it with
+  `POST /api/v0beta1/rigs/{id}/start?skip_start_script=true`.
+- **Stop while initializing.** You can stop a rig that is still
+  `initializing`, once its VM exists.
+- **Logs.** The **Logs** tab shows the output of the rig's lifecycle scripts:
+  pre-setup, setup, post-setup, and start. Search it, filter it, and copy it
+  when a script fails.
+- **Remove from Amika only.** Deleting a rig needs its host or provider to
+  answer. When it can't be reached, as with a rig on an offline
+  [host of your own](/guides/byoc), the delete fails and the dialog offers
+  **Remove from Amika only**. That deletes Amika's record but leaves anything
+  still running, which you then clean up yourself. In the HTTP API, use
+  `DELETE /api/v0beta1/rigs/{id}?forget=true`.
+
 ## List rigs
 
 <CodeGroup>
