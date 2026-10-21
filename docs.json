@@ -58,8 +58,7 @@
               "guides/send-a-message-to-an-agent",
               "guides/manage-sessions",
               "guides/capture-agent-sessions",
-              "guides/slack",
-              "guides/opencode"
+              "guides/slack"
             ]
           },
           {
@@ -204,6 +203,10 @@
     {
       "source": "/guides/setup-repo-config-with-agent",
       "destination": "/guides/set-up-vm-repo-config"
+    },
+    {
+      "source": "/guides/opencode",
+      "destination": "/guides/open-in-editor"
     }
   ],
   "navbar": {

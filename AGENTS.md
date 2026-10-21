@@ -69,8 +69,7 @@ Placement rules:
 - Active voice, second person ("you").
 - Sentence case for headings. One idea per sentence.
 - No emojis.
-- No em dashes. Use a colon, a comma, or a separate sentence instead. This
-  applies to everything written for this project, not just docs pages.
+- Use em dashes sparingly. Prefer a colon, a comma, or a separate sentence.
 - Frontmatter: `title` is required. `description` is optional.
 - Bold for UI elements (Click **Settings**); code formatting for file
   names, commands, paths, and code references.
