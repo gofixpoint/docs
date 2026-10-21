@@ -115,7 +115,7 @@ Amika validates service definitions when parsing `.amika/config.toml`:
 Container ports **60899–60999** are reserved for internal Amika services and are rejected in service declarations. See [Reserved ports](/reference/rig-configuration#reserved-ports) for details.
 </Warning>
 
-If validation fails, Amika logs a warning and treats the file as having no service definitions. The `[lifecycle]` section is still applied normally.
+If validation fails, rig creation fails with a 400 `invalid_repo_config` error whose message names the problem. Fix `.amika/config.toml` and create the rig again.
 
 ## Port resolution
 

@@ -15,10 +15,8 @@ repo-less) and the
 </Info>
 
 <Note>
-The Go config parser used by the open-source `amika-server` supports only
-`[lifecycle].setup_script` and `[services.<name>]`. The remaining sections are
-applied by the hosted platform.
-The singular `[service.<name>]` is accepted as an alias for `[services.<name>]`.
+The hosted platform also accepts the singular `[service.<name>]` as an alias
+for `[services.<name>]`.
 </Note>
 
 ## `[lifecycle]`
@@ -64,7 +62,7 @@ Default rig settings. See [details](/guides/config-toml#sandbox).
 | Key | Type | Default | Values |
 | --- | --- | --- | --- |
 | `preset` | string | `"coder"` | `"coder"`, `"coder-plus-docker"` |
-| `size` | string | `"m"` | Friendly aliases or a versioned size offered by the provider |
+| `size` | string | provider's `m` tier (`a0.m`, or `a1.medium` on E2B) | A versioned size offered by the provider, or a friendly alias. See [sizes](/guides/config-toml#size). |
 | `snapshot` | string | none | Friendly snapshot label (not the org-qualified name). |
 
 ## `[filesystem]`

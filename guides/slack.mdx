@@ -11,13 +11,13 @@ same thread continue the same rig and session.
 ## Prerequisites
 
 <Note>
-- A connected GitHub App so Amika can see the repositories you want agents to
-  work in. See [GitHub authentication](/guides/github-authentication).
-- Agent credentials configured for whichever agent the bot will run (Claude
-  Code, Codex, OpenCode, etc.). See [Inject credentials](/guides/inject-credentials).
-- The Slack app enabled for your organization. If the integration is not turned
-  on yet, the settings page shows "Slack app hooks are not configured for this
-  org yet" and the connect button is disabled. Contact Amika to enable it.
+- A connected [GitHub App](/guides/github-authentication).
+- An org [GitHub personal access token](/guides/github-authentication#personal-access-token-pat),
+  saved in [GitHub settings](https://app.amika.dev/settings/github).
+  Slack-triggered agents use it to reach GitHub.
+- [Agent credentials](/guides/inject-credentials) for the agent the bot runs.
+- The Slack app enabled for your organization. Until it is, the connect button
+  is disabled. Contact Amika to enable it.
 </Note>
 
 ## Install the Slack app

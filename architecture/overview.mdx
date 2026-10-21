@@ -3,50 +3,59 @@ title: "Architecture overview"
 description: "Core Amika concepts and system layout."
 ---
 
-Amika is an open-source CLI and HTTP API for running coding agents in rigs.
+Amika lets you create VMs and sandboxes on (a) machines you already own, (b) in
+your existing cloud accounts, or (c) in compute you rent from Amika.
+
+We call these VMs and sandboxes "rigs": isolated devboxes for developers or
+agents.  You drive rigs and their agents from the web UI, the open-source
+`amika` CLI, the TypeScript SDK, or the HTTP API.
 
 ## Core concepts
 
-- **Docker-backed rigs**: Isolated, persistent containers for agent execution.
-- **Mount modes**: `ro`, `rw`, and `rwcopy` define how agents can access data.
-- **Credential discovery**: Amika discovers local coding-agent credentials and mounts snapshots into containers.
-- **Preset environments**: Bundled environments (`coder`, `coder-plus-docker`) with common tooling.
-- **Services**: Named network-facing components with port mappings and URL schemes, declared in `.amika/config.toml`.
-- **Materialization**: Ephemeral containers run scripts or commands and copy outputs to host paths.
+- **Rigs**: Isolated VMs with your repos, agent credentials, and services in
+  place. Agents work in `/home/amika/workspace`. A rig can be temporary or
+  persistent.
+- **Hosts**: Machines you own that run rigs. The `amika-hostd` daemon registers
+  a machine with Amika and runs each rig on it as a local VM with
+  [smolvm](https://smolmachines.com). See
+  [Bring your own compute](/guides/byoc).
+- **Amika Cloud compute**: When you don't pick a host, Amika runs the rig on Amika's
+  own cloud compute.
+- **Control plane**: The hosted API and web UI at `app.amika.dev`. It
+  authenticates requests, stores configuration and secrets, provisions rigs, and
+  forwards requests to your hosts.
+- **Preset environments**: Bundled images (`coder`, `coder-plus-docker`) with
+  common tooling and agent CLIs. See [Presets](/reference/presets).
+- **Services**: Named network-facing ports with URL schemes, declared in
+  `.amika/config.toml`. See [Services](/reference/services).
+- **Snapshots**: Captured rig state you can create new rigs from. See
+  [Create a snapshot](/guides/create-a-snapshot).
+- **Credential discovery**: `amika secret extract` finds local coding-agent
+  credentials so you can push them as Amika secrets. Rigs receive credentials
+  from the control plane, not from your machine.
 
-## Command surface
+## Components
 
-| Command | Purpose |
+| Component | Purpose |
 | --- | --- |
-| `amika rig create/list/connect/delete` | Manage persistent rigs |
-| `amika volume list/delete` | Manage tracked volumes created by `rwcopy` mounts |
-| `amika auth extract` | Discover and print credentials |
-| `amika service list` | List services declared in rig configs |
-| `amika materialize` | Run command/script and copy output files |
-| `amika-server` | Expose API over HTTP |
+| `amika` | CLI for rigs, hosts, snapshots, services, secrets, and agent messages |
+| `amika-hostd` | Daemon that turns a machine you own into a host |
+| `amikad` | Daemon inside each rig that serves SSH connections and tracks injected credentials so snapshots can scrub them |
+| `@amika/sdk` | TypeScript SDK for the hosted API |
 
 ## Package layout
 
+The open-source code lives in [gofixpoint/amika](https://github.com/gofixpoint/amika).
+
 ```text
-cmd/amika            # CLI entrypoints
-cmd/amika-server     # HTTP server entrypoint
-internal/sandbox     # Sandbox + Docker operations
-internal/auth        # Credential discovery
-internal/agentconfig # Agent config auto-mounting
-internal/httpapi     # REST handlers
-pkg/amika            # Shared service API
+go/cmd/amika          # CLI entrypoint
+go/cmd/amikad         # In-rig daemon
+js/amika-hostd        # Host daemon for your own machines
+sdk/typescript        # TypeScript SDK
 ```
-
-## Dependencies
-
-| Tool | Required by |
-| --- | --- |
-| Git | when making rigs from your repos in hosted or local mode |
-| Docker | `materialize`, `rig`, `volume` (only required in local mode) |
-| `rsync` | `materialize` output copy |
 
 ## State storage
 
-State files are stored in XDG paths by default.
+The CLI stores local state files in XDG paths by default.
 
 See [Storage paths](/reference/storage) for exact locations.
