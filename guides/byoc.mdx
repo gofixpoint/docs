@@ -3,24 +3,9 @@ title: "Bring your own compute"
 description: "Run rigs on your own machines instead of Amika Cloud."
 ---
 
-import ResearchPreview from "/snippets/research-preview.mdx";
-
-<ResearchPreview />
-
 Bring your own compute (BYOC) runs rigs on hardware you control. You install
 the `amika-hostd` daemon on a machine, it registers that machine with Amika as
 a **host**, and each rig you create on that host runs there as a local VM.
-
-Everything else stays the same. The CLI, web UI, and TypeScript SDK work as
-they do on Amika Cloud: a rig only runs on your hardware when you ask for it by
-host. The VMs, their disks, and their snapshots stay on your machine, while
-creating and managing a rig goes through Amika, which authenticates the request
-and forwards it to your daemon.
-
-<Warning>
-Browser previews and `rig ssh` reach the daemon directly over your tunnel.
-Restricting the tunnel to Amika's own traffic breaks them.
-</Warning>
 
 ## Requirements
 
@@ -54,6 +39,10 @@ curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install-amika
 See [Installer options](#installer-options) to pin a version, skip smolvm, or
 preview the install with `--dry-run`.
 
+The `install-amika-hostd.sh` script will generate a config file in 
+`$XDG_CONFIG_HOME/amika-hostd/config.toml` (`~/.config/amika-hostd/config.toml`
+by default).
+
 </Step>
 
 <Step title="Store your credentials">
@@ -64,10 +53,8 @@ amika-hostd setup
 
 It asks for this host's name and your Amika API key, and generates the secret
 key Amika uses to reach the daemon. Secrets go in the system keychain. On a
-server with no keychain, set `secret_store = "file"` in the config before
-running setup. Edit the file the installer printed: the daemon reads
-`$XDG_CONFIG_HOME/amika-hostd/config.toml` (`~/.config/...` by default) if it
-exists and `/etc/amika-hostd/config.toml` otherwise, never both.
+server with no keychain, set `secret_store = "file"` in the config file before
+running setup.
 
 To set up a host without prompts, for a script or an AI agent, pipe the API key
 into `setup --non-interactive`. `amika auth api-key create` writes a new key
@@ -110,8 +97,8 @@ or `--host` to listen somewhere else (or set `port` and `host` in the config).
 
 <Step title="Give the host a public URL">
 
-Amika reaches the daemon over the internet, so expose port 3020 over HTTPS and
-record the URL:
+Amika reaches the daemon over the internet, so expose the port 3020 over HTTPS and
+record the URL. Using ngrok for example:
 
 ```bash
 ngrok http 3020                                    # in another terminal
@@ -122,12 +109,12 @@ amika-hostd register-url https://<your-tunnel-url>
 can paste it there instead.
 
 <Warning>
-Use HTTPS at the root of its own hostname on the default port, as a tunnel URL
-gives. Only such a host gets [browser-login previews](#previews-and-service-access).
-`register-url` also takes a path, an explicit port, plain http, or a loopback
-address, and warns: rigs and signed service links still work, but a browser
-preview that loads root-relative assets, such as a Vite or Next.js dev server,
-does not.
+Register a bare HTTPS hostname, such as `https://hostd.example.com`, with no
+path or port. Only these hosts get
+[browser-login previews](#previews-and-service-access).
+
+Other URLs still work for rigs and signed service links, but previews of apps
+like Vite or Next.js dev servers can break.
 </Warning>
 
 </Step>
@@ -253,24 +240,23 @@ snapshots belong to which host.
 ## Previews and service access
 
 A rig's [services](/reference/services) on your host are reached through the
-daemon, at the URL you registered. How a browser gets in depends on that URL.
+daemon, at the URL you registered. The kind of link you get in the browser
+depends on that URL.
 
-- **Browser-login previews.** On a host with an HTTPS URL at the root of its
-  own hostname, on the default port, running `amika-hostd` 0.4.0 or later,
-  each service gets a preview URL that carries no credential. Opening one sends
-  you through an Amika login and back. The login lasts a day and covers every
-  preview on that host.
-- **Signed service links.** Every other host gets a signed link instead. The
-  link itself is the credential and lasts a day, so share it only with people
-  who should reach the service.
+- **Bare HTTPS hostname** (such as `https://hostd.example.com`): each service
+  gets a preview link. Opening it asks you to sign in to Amika, and only
+  members of your organization get through. One sign-in lasts a day and covers
+  every preview on the host.
+- **Any other URL** (a path, a port, plain http, or a loopback address): each
+  service gets a signed link. Anyone with the link can open the service for a
+  day, so share it only with people who should have access.
 
 Previews on one host share an origin and a login, so treat a host as one
 trusted unit: keep code you don't trust off a host whose other previews you
 open.
 
 For scripts and tools like `curl`, mint a short-lived service token with the
-HTTP API. It works only for rigs on your own hosts, never for `amikad`, and
-needs `amika-hostd` 0.4.0 or later.
+HTTP API. It works only for rigs on your own hosts, never for `amikad`.
 
 ```bash
 curl -X POST \
