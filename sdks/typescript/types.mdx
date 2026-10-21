@@ -4,18 +4,20 @@ description: "Request and response interfaces for the TypeScript SDK."
 ---
 
 All interfaces use camelCase field names. On the wire the API uses
-snake_case JSON; the SDK maps between the two for you.
+snake_case JSON, and the SDK maps between the two for you. Import any of these
+as types from `@amika/sdk`:
+
+```ts
+import type { CreateRigRequest, RemoteRig } from "@amika/sdk";
+```
+
+Optional fields may be `undefined`. Required fields that the server can leave
+empty are typed `T | null`. Your editor shows each field's documentation on
+hover.
 
 ## Rigs
 
 ```ts
-interface AgentCredentialRef {
-  kind: string;
-  name?: string;
-  type?: "oauth" | "api_key";
-  none?: boolean;
-}
-
 interface CreateRigRequest {
   name?: string;
   provider?: string;
@@ -26,10 +28,107 @@ interface CreateRigRequest {
   secretEnvVars?: Record<string, string>;
   preset?: string;
   size?: string;
+  snapshot?: string | null;
   setupScriptText?: string;
   agentCredentials?: AgentCredentialRef[];
   branch?: string;
   newBranchName?: string;
+  githubAuthMode?: string;
+  hostId?: string;
+}
+```
+
+- `repoUrl` is a clone URL. The SDK does not detect a local Git checkout.
+- `envVars` sets literal environment variables. `secretEnvVars` maps an
+  environment variable name to a stored secret name. See
+  [Inject credentials](/guides/inject-credentials).
+- `snapshot` takes a snapshot slug to boot from. `null` opts out of the
+  repository's default snapshot. Omit it to keep the default.
+- `agentCredentials` picks which stored agent credentials the rig receives.
+  Omitting it injects none.
+- `githubAuthMode` picks how the rig authenticates to GitHub, such as
+  `app_token` or `pat`. Omit it to use the server default.
+- `hostId` runs the rig on one of your organization's own hosts. Get the ID
+  from `amika host get <hostname>`. An empty string throws. With `hostId`:
+  - `size` names one of that host's own sizes;
+  - the server rejects `provider`, `autoStopInterval`, and
+    `autoDeleteInterval`;
+  - a `snapshot` must have been taken on that same host.
+
+  See [Bring your own compute](/guides/byoc).
+
+```ts
+interface AgentCredentialRef {
+  kind: string; // "claude" or "codex"
+  name?: string;
+  type?: "oauth" | "api_key";
+  none?: boolean;
+}
+```
+
+Each entry configures one agent kind, at most one entry per kind:
+
+- `{ kind }` alone lets the server pick: the repository default, then your
+  OAuth credential, then your API key.
+- `name` picks a stored credential by name.
+- `type` picks your single credential of that type.
+- `none: true` injects nothing for that kind.
+
+```ts
+interface RemoteRig {
+  id: string;
+  name: string;
+  userId: string | null;
+  orgId: string;
+  status: string;          // lifecycle status, such as "running" or "stopped"
+  state: string;           // raw provisioning state
+  setupStatus?: string;    // such as "ok" or "setup-failed"
+  provider: string | null;
+  repoUrl: string | null;
+  repoName: string | null;
+  branch: string | null;
+  commitHash: string | null;
+  snapshot: string | null;
+  services: RemoteRigService[];
+  hostId?: string;         // set when the rig runs on one of your hosts
+  hostname?: string;
+  rigPreset?: string;
+  rigSize?: string;
+  errorMessage?: string;
+  secretNames?: string[];
+  mountedSecrets?: MountedSecret[];
+  resolvedAgentCredentials?: ResolvedAgentCredential[];
+  createdBy?: RemoteRigCreator;
+  createdAt: string;
+  updatedAt: string;
+  // …and more, such as providerUrl, githubAuthMode, origin, and agentCwd.
+}
+```
+
+- Use `rig.wait()` rather than reading `status` or `state` yourself. It checks
+  both the lifecycle status and `setupStatus`.
+- `services` is a short summary. Use `client.services.list()` for full
+  service records.
+- `secretNames` and `mountedSecrets` describe injected secrets. Values are
+  never returned.
+- `resolvedAgentCredentials` reports, per requested kind, whether a credential
+  was injected and why not if it was skipped.
+
+```ts
+interface RemoteRigService {
+  name: string;
+  url: string;           // empty when there is no URL
+  hostPort: number;
+  containerPort: number;
+  protocol: string;
+}
+
+interface MountedSecret {
+  name: string;
+  scope: string;
+  managed: boolean;      // true for credentials Amika manages for a provider
+  credentialType: string | null;
+  provider: string | null;
 }
 
 interface ResolvedAgentCredential {
@@ -46,39 +145,178 @@ interface RemoteRigCreator {
   email: string | null;
 }
 
-interface RemoteRig {
-  id: string;
-  name: string;
-  provider: string;
-  repoUrl: string;
-  state: string;
-  createdAt: string;
-  branch: string;
-  errorMessage: string;
-  resolvedAgentCredentials?: ResolvedAgentCredential[];
-  createdBy?: RemoteRigCreator | null;
+interface RigWaitOptions {
+  status?: RigWaitStatus | readonly RigWaitStatus[]; // default "running"
+  setupStatus?: "ok";
+  pollMs?: number;     // default 3000
+  maxWaitMs?: number;  // default 900000 (15 minutes)
+}
+
+type RigWaitStatus = "running" | "stopped" | "suspended";
+```
+
+## Agent sessions
+
+```ts
+interface AgentSessionSendRequest {
+  message: string;
+  agent?: string;          // such as "claude" or "codex"
+  model?: string | null;   // null resets to the agent default
+  effort?: "low" | "medium" | "high" | "xhigh" | "max" | null;
+  sessionId?: string;      // continue this chat
+  rigId?: string;          // target rig name or ID
+  newSession?: boolean;    // start a new chat on the rig
+  repoUrl?: string;        // used only if the server creates a rig
+}
+
+// rig.send() and rig.sendStream() take a subset; the rig supplies rigId.
+type AgentSendRequest = Pick<
+  AgentSessionSendRequest,
+  "message" | "newSession" | "sessionId" | "agent" | "model" | "effort"
+>;
+
+interface AgentSessionSendResponse {
+  sessionId: string;       // pass back as sessionId to continue the chat
+  sandboxId: string;       // the rig the turn ran on
+  agent: string;
+  response: string;        // the reply, or failure details when isError
+  isError: boolean;
+  isNewSession: boolean;
+  createdSandbox: boolean; // whether the turn had to create a rig
+  usage?: AgentSessionUsage;
+}
+
+interface AgentSessionUsage {
+  costUsd?: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
+  durationMs?: number;
+  numTurns?: number;
+}
+
+interface AgentSessionStreamHandlers {
+  onStatus?: (phase: string, rigId: string) => unknown;
+  onDelta?: (text: string) => unknown;
 }
 ```
 
-- `secretEnvVars` maps an env-var name to a stored secret name — see
-  [Inject credentials](/guides/inject-credentials).
-- `resolvedAgentCredentials` reports what actually got injected, per kind.
-- `state` is a string, not a fixed enum — see
-  [Rig lifecycle](/guides/rig-lifecycle).
-
-## SSH
+`AgentSendResponse` is the same type as `AgentSessionSendResponse`. Claude
+reports `usage`; Codex currently doesn't.
 
 ```ts
-interface SSHInfo {
-  sshDestination: string;
-  token: string;
-  expiresAt: string;
-  repoName: string;
+interface ListAgentSessionsOptions {
+  limit?: number;   // server default 50
+  rigRef?: string;  // only chats on this rig, by name or ID
 }
 
-interface RevokeSSHRequest {
-  token: string;
+interface ListAgentSessionsResponse {
+  sessions: AgentSessionSummary[];
+  total: number;    // can exceed sessions.length
 }
+
+interface AgentSessionSummary {
+  sessionId: string;
+  sandboxId: string;
+  sandboxName: string | null; // null if the chat outlived its rig
+  agent: string;
+  status: string;
+  preview: string | null;
+  model: string | null;
+  effort: string | null;
+  startedAt: string;
+  endedAt: string | null;     // null while still running
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface AgentSessionDetail extends AgentSessionSummary {
+  messages: AgentSessionMessage[];
+}
+
+interface AgentSessionMessage {
+  role: string;      // such as "user" or "assistant"
+  content: string;
+  timestamp: string;
+  isError?: boolean;
+}
+```
+
+`agentSessions.get()` returns an `AgentSession`: an `AgentSessionDetail` with
+bound `refresh()`, `send()`, and `sendStream()` methods.
+
+## Snapshots
+
+```ts
+type CreateRigSnapshotRequest = {
+  rigRef: string;                         // source rig name or ID
+  name: string;
+  description?: string;
+  mode?: "scrub_and_delete" | "full";     // default "scrub_and_delete"
+};
+
+interface RigSnapshot {
+  id: string;
+  snapshot: string;            // slug to pass as CreateRigRequest.snapshot
+  provider: string;
+  description: string | null;
+  sourceRigId: string | null;
+  sourceRigName: string | null;
+  repositoryId: string | null;
+  repositoryUrl: string | null;
+  baseSnapshot: string | null;
+  rigPreset: string | null;
+  rigSize: string | null;
+  captureMode: string | null;
+  state: string;               // wait() resolves when "active"
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface RigScrubPreview {
+  files: string[];          // file paths a scrub would remove
+  restoredFiles: string[];  // file paths a scrub would reset
+  envVars: string[];        // environment variable names a scrub would remove
+}
+
+interface ListRigSnapshotsOptions {
+  repositoryId?: string;
+  sourceRigId?: string;
+}
+
+interface SnapshotWaitOptions {
+  pollMs?: number;     // default 3000
+  maxWaitMs?: number;  // default 900000 (15 minutes)
+}
+```
+
+## Services
+
+```ts
+interface RigServiceRequest {
+  name: string;
+  port: number;                  // 1–65535, excluding 60899–60999
+  urlScheme: "http" | "https";
+}
+
+interface RigServiceResource {
+  id: string | null;
+  rigId: string;
+  name: string;
+  port: number;
+  urlScheme: string | null;
+  protocol: string;
+  url: string | null;            // null until a URL is provisioned
+  hostPort: number | null;
+  source: string;                // "table" or "legacy"
+  kind: string;                  // "system" or "user"
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+type ServiceLookup = "name" | "id" | "ref";
 ```
 
 ## Secrets
@@ -86,14 +324,19 @@ interface RevokeSSHRequest {
 ```ts
 interface Secret {
   id: string;
+  orgId: string;
+  userId: string;
   name: string;
-  scope: string;
+  description: string | null;
+  scope: string;        // "user" or "org"
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface CreateSecretRequest {
   name: string;
   value: string;
-  scope: string;
+  scope: string;        // "user" or "org"
 }
 
 interface UpdateSecretRequest {
@@ -101,13 +344,14 @@ interface UpdateSecretRequest {
 }
 ```
 
-## Provider secrets
+## Agent credentials
 
 ```ts
 interface CreateProviderSecretRequest {
   name: string;
   value: string;
   type: "oauth" | "api_key";
+  scope?: "user" | "org";   // defaults to "user" on the server
 }
 
 interface ProviderSecretSummary {
@@ -120,49 +364,22 @@ interface ProviderSecretListItem {
   id: string;
   name: string;
   type: string;
+  scope: string;
 }
 ```
 
-## Agent send
+## Repositories
 
 ```ts
-interface AgentSendRequest {
-  message: string;
-  newSession?: boolean;
-  sessionId?: string;
-  agent?: string;
-}
-
-interface AgentSendResponse {
-  result: string;     // server-side field name: `response`
-  sessionId: string;
-  isError: boolean;
-}
-```
-
-## Sessions
-
-```ts
-interface Session {
+interface RemoteRepository {
   id: string;
-  sandboxId: string;
-  orgId: string;
-  agentName: string;
-  status: string;
-  startedAt: string;
-  endedAt: string | null;
-  metadata: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface CreateSessionRequest {
-  agentName: string;
-  metadata?: Record<string, unknown>;
-}
-
-interface UpdateSessionRequest {
-  status?: string;
-  metadata?: Record<string, unknown>;
+  repoUrl: string;
 }
 ```
+
+## Deprecated aliases
+
+Sandbox-named types such as `RemoteSandbox`, `CreateSandboxRequest`,
+`SandboxSnapshot`, and `SandboxServiceResource` remain as deprecated aliases
+of the rig-named types. Some rig types also carry legacy field spellings, such
+as `providerSandboxId` next to `providerRigId`, with the same value.

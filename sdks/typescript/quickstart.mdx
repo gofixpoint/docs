@@ -11,78 +11,92 @@ The source lives in the `amika` repo under
 
 ## Install
 
+The SDK requires Node 18 or later.
+
 ```bash
 npm install @amika/sdk
 ```
 
-## Get an API token
+## Get an API key
 
-Generate an Amika API key in the web UI at
-[app.amika.dev/settings](https://app.amika.dev/settings). The SDK does not
-read it from your environment automatically — you pass it to the client.
+Create an Amika API key in the web UI at
+[app.amika.dev/settings/api-keys](https://app.amika.dev/settings/api-keys).
+From the CLI, `amika auth api-key create --name <name> --out <file>` writes a
+new key to a file without printing it.
+
+The SDK does not read the key from your environment automatically. You pass
+it to the client.
 
 ## Create a client
 
 ```ts
 import { AmikaClient } from "@amika/sdk";
 
-const amika = new AmikaClient({
-  baseUrl: process.env.AMIKA_API_URL ?? "https://app.amika.dev",
-  accessToken: process.env.AMIKA_API_KEY!,
-});
+const client = new AmikaClient({ apiKey: process.env.AMIKA_API_KEY! });
 ```
 
-The client appends the API path prefix (`/api/v0beta1`) to `baseUrl` for
-you, so pass just the origin.
+`baseUrl` is optional and defaults to `https://app.amika.dev`. If you set it,
+pass only the origin. The client appends the `/api/v0beta1` prefix for you.
 
 <Note>
-`accessToken` and `tokenSource` are mutually exclusive. For tokens that need
-to be fetched or refreshed, use a `tokenSource` instead — see
+Provide exactly one of `apiKey`, `accessToken`, or `tokenSource`. Use a
+`tokenSource` for tokens that need to be fetched or refreshed. See
 [Token sources](/sdks/typescript/token-sources).
 </Note>
 
 ## Create a rig and run an agent
 
 ```ts
-// 1. Create a rig and wait for it to be ready
-const sb = await amika.createRig({
+// 1. Create a rig. It returns before setup finishes.
+const rig = await client.rigs.create({
   name: "dev-box",
-  preset: "coder",
+  repoUrl: "https://github.com/your-org/your-repo",
+  agentCredentials: [{ kind: "claude" }],
 });
-await amika.waitForRig(sb.name);
 
-// 2. Send a prompt to the agent (blocks until it finishes)
-const res = await amika.agentSend(sb.name, {
+// 2. Wait until the rig is running and its setup succeeded.
+await rig.wait();
+
+// 3. Send a prompt. The call resolves when the agent turn finishes.
+const turn = await rig.send({
+  agent: "claude",
   message: "Add unit tests for the auth module",
 });
-console.log(res.result);
+if (turn.isError) throw new Error(turn.response);
+console.log(turn.response);
 
-// 3. Tear down
-await amika.deleteRig(sb.name);
+// 4. Tear down.
+await rig.delete();
 ```
+
+`agentCredentials: [{ kind: "claude" }]` asks the server to pick your stored
+Claude credential. Omitting `agentCredentials` injects no agent credentials.
+See [Inject credentials](/guides/inject-credentials).
+
+An agent failure returns `isError: true` with details in `response`, even when
+the HTTP request succeeds. Check it before using the reply.
 
 ## Timeouts and polling
 
-- Default HTTP timeout: **30 seconds**.
-- `agentSend` HTTP timeout: **10 minutes** — it blocks until the agent
-  finishes.
-- `waitForRig` / `waitForRigStart` / `waitForRigStop` poll every
-  **3 seconds** with no client-side timeout. They throw if the rig
-  enters the `failed` state.
+- Ordinary requests time out after **30 seconds**.
+- Agent sends (`send` and `sendStream`) time out after **10 minutes**.
+- `rig.wait()` polls every **3 seconds** with a **15-minute** total deadline.
+  It throws `AmikaWaitError` if provisioning or setup fails, or the deadline
+  passes. Pass `{ pollMs, maxWaitMs }` to change either.
 
 ## Next steps
 
 <CardGroup cols={2}>
   <Card title="Client reference" icon="code" href="/sdks/typescript/client">
-    Every method on `AmikaClient`.
+    Every collection and method on `AmikaClient`.
   </Card>
   <Card title="Types" icon="brackets-curly" href="/sdks/typescript/types">
     Request and response interfaces.
   </Card>
   <Card title="Errors" icon="triangle-exclamation" href="/sdks/typescript/errors">
-    `AmikaError`, `AmikaHTTPError`, and agent-auth detection.
+    `AmikaError`, `AmikaHTTPError`, and `AmikaWaitError`.
   </Card>
   <Card title="Token sources" icon="key" href="/sdks/typescript/token-sources">
-    Static tokens and custom token providers.
+    Static keys and custom token providers.
   </Card>
 </CardGroup>

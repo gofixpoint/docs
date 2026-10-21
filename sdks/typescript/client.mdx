@@ -1,113 +1,273 @@
 ---
 title: "AmikaClient"
-description: "Method-by-method reference for the TypeScript SDK client."
+description: "Collection-by-collection reference for the TypeScript SDK client."
 ---
 
 `AmikaClient` is the entry point for the TypeScript SDK. Construct one with a
-base URL and a token, then call methods on it.
+credential, then call methods on its collections, such as `client.rigs` and
+`client.agentSessions`.
 
 ## Constructor
 
 ```ts
 new AmikaClient({
-  baseUrl: string,              // required, e.g. "https://app.amika.dev"
-  accessToken?: string,         // mutually exclusive with tokenSource
-  tokenSource?: TokenSource,    // mutually exclusive with accessToken
-  fetch?: typeof fetch,         // optional override for testing/polyfills
+  apiKey?: string,           // provide exactly one of apiKey,
+  accessToken?: string,      // accessToken,
+  tokenSource?: TokenSource, // or tokenSource
+  baseUrl?: string,          // defaults to "https://app.amika.dev"
+  fetch?: typeof fetch,      // optional override for tests or polyfills
 })
 ```
 
-- `baseUrl` — the API origin. The client appends `/api/v0beta1`.
-- `accessToken` — a static bearer token.
-- `tokenSource` — a provider for dynamic/refreshing tokens. See
-  [Token sources](/sdks/typescript/token-sources).
-- `fetch` — supply a custom `fetch` for tests or non-standard runtimes.
+- `apiKey`: a static Amika API key. This is the preferred option for scripts.
+- `accessToken`: a static bearer token.
+- `tokenSource`: an object whose `token()` method the client calls for every
+  request. See [Token sources](/sdks/typescript/token-sources).
+- `baseUrl`: the API origin. The client appends `/api/v0beta1`.
+- `fetch`: a custom `fetch` for tests or non-standard runtimes.
 
-The SDK does not read `AMIKA_API_KEY` from the environment or disk — you
-source the token yourself.
+The constructor throws an `AmikaError` unless exactly one of `apiKey`,
+`accessToken`, or `tokenSource` is set, and static credentials must be
+non-empty. The SDK does not read `AMIKA_API_KEY` from the environment or
+disk. You source the credential yourself.
 
-## Methods
+## Collections
 
-All methods are `async`. Paths shown are relative to the `/api/v0beta1`
-prefix.
+All methods return promises, except `handle()`, which makes no request.
+HTTP paths below are relative to the `/api/v0beta1` prefix.
 
-### Rigs
+| Collection                | Methods                                           |
+| ------------------------- | ------------------------------------------------- |
+| `client.rigs`             | `create`, `list`, `get`, `handle`, `getAndWait`   |
+| `client.agentSessions`    | `send`, `sendStream`, `list`, `get`               |
+| `client.snapshots`        | `create`, `list`, `get`, `handle`, `previewScrub` |
+| `client.services`         | `list`, `create`, `replace`, `delete`             |
+| `client.secrets`          | `list`, `create`, `update`                        |
+| `client.agentCredentials` | `create`, `list`, `delete`                        |
+| `client.repositories`     | `list`                                            |
 
-| Method | HTTP |
-| --- | --- |
-| `listRigs(): Promise<RemoteRig[]>` | `GET /rigs` |
-| `createRig(req: CreateRigRequest): Promise<RemoteRig>` | `POST /rigs` |
-| `getRig(name): Promise<RemoteRig>` | `GET /rigs/{name}` |
-| `waitForRig(name): Promise<RemoteRig>` | polls `getRig` every 3s |
-| `startRig(name): Promise<void>` | `POST /rigs/{name}/start` |
-| `waitForRigStart(name): Promise<RemoteRig>` | polls every 3s |
-| `stopRig(name): Promise<void>` | `POST /rigs/{name}/stop` |
-| `waitForRigStop(name): Promise<RemoteRig>` | polls every 3s |
-| `deleteRig(name): Promise<void>` | `DELETE /rigs/{name}` |
-
-`createRig` returns immediately with state `initializing`. Use
-`waitForRig` to block until it's ready. The older `createSandbox`,
-`listSandboxes`, and related lifecycle methods remain available for
-compatibility.
-
-The wait helpers poll every 3 seconds with no client-side timeout. They
-throw an `AmikaError` if the rig enters the `failed` state.
-
-### SSH
-
-| Method | HTTP |
-| --- | --- |
-| `getSSH(name): Promise<SSHInfo>` | `POST /sandboxes/{name}/ssh` |
-| `revokeSSH(name, token): Promise<void>` | `DELETE /sandboxes/{name}/ssh` |
-
-`getSSH` returns a destination, a token, an expiry, and the repo subdir —
-hand these to your own SSH client. See
-[SSH and connect](/guides/ssh-and-connect).
-
-### Agent
-
-| Method | HTTP |
-| --- | --- |
-| `agentSend(name, req: AgentSendRequest): Promise<AgentSendResponse>` | `POST /sandboxes/{name}/agent-send` |
-
-`agentSend` blocks until the agent finishes and uses a **10-minute** HTTP
-timeout (every other call defaults to 30 seconds). It detects agent-side
-auth failures and rewrites them to a friendlier error — see
+Ordinary requests time out after 30 seconds. Agent sends time out after 10
+minutes. HTTP failures throw `AmikaHTTPError`. See
 [Errors](/sdks/typescript/errors).
 
-### Sessions
+## Rigs
 
-| Method | HTTP |
-| --- | --- |
-| `createSession(name, req): Promise<Session>` | `POST /sandboxes/{name}/sessions` |
-| `listSessions(name): Promise<Session[]>` | `GET /sandboxes/{name}/sessions` |
-| `getLatestSession(name): Promise<Session \| null>` | `GET /sandboxes/{name}/sessions/latest` |
-| `getSession(name, sessionId): Promise<Session>` | `GET /sandboxes/{name}/sessions/{sessionId}` |
-| `updateSession(name, sessionId, req): Promise<Session>` | `PATCH /sandboxes/{name}/sessions/{sessionId}` |
+| Method                                 | Returns     | HTTP                |
+| -------------------------------------- | ----------- | ------------------- |
+| `rigs.create(req: CreateRigRequest)`   | `Rig`       | `POST /rigs`        |
+| `rigs.list()`                          | `Rig[]`     | `GET /rigs`         |
+| `rigs.get(nameOrId)`                   | `Rig`       | `GET /rigs/{ref}`   |
+| `rigs.handle(nameOrId)`                | `RigHandle` | none                |
+| `rigs.getAndWait(nameOrId, options?)`  | `Rig`       | polls `GET /rigs/{ref}` |
 
-`getLatestSession` returns `null` on a 404 (meaning "no session yet") rather
-than throwing.
+- `create` returns the rig's initial metadata before setup finishes. Call
+  `rig.wait()` to wait for it to be ready.
+- `get` rejects if the rig is missing or inaccessible. It returns stopped rigs
+  too, without starting them.
+- `handle` builds a `RigHandle` from a name or ID without a request or an
+  existence check.
+- `getAndWait` fetches a rig and waits for it under one deadline.
 
-### Secrets
+To run the rig on one of your organization's own hosts, pass the host's ID as
+`hostId`. See [Bring your own compute](/guides/byoc).
 
-| Method | HTTP |
-| --- | --- |
-| `listSecrets(): Promise<Secret[]>` | `GET /secrets` |
-| `createSecret(req: CreateSecretRequest): Promise<void>` | `POST /secrets` |
-| `updateSecret(id, req: UpdateSecretRequest): Promise<void>` | `PUT /secrets/{id}` |
+### `Rig` and `RigHandle`
 
-There is no `deleteSecret` for generic secrets — the server doesn't expose
-one. Provider secrets can be deleted (below).
+A `RigHandle` has operations but no fetched data. A `Rig` is the rig's fetched
+metadata (`RemoteRig`) plus the same operations, bound to the rig's ID.
 
-### Provider secrets
+| Method                                 | Returns                    | HTTP                          |
+| -------------------------------------- | -------------------------- | ----------------------------- |
+| `fetch()`                              | `Rig`                      | `GET /rigs/{ref}`             |
+| `wait(options?: RigWaitOptions)`       | `Rig`                      | polls `GET /rigs/{ref}`       |
+| `start()`                              | `void`                     | `POST /rigs/{ref}/start`      |
+| `stop()`                               | `void`                     | `POST /rigs/{ref}/stop`       |
+| `delete()`                             | `void`                     | `DELETE /rigs/{ref}`          |
+| `send(req: AgentSendRequest)`          | `AgentSessionSendResponse` | `POST /agent-sessions`        |
+| `sendStream(req, handlers?)`           | `AgentSessionSendResponse` | `POST /agent-sessions/stream` |
+| `refresh()` (`Rig` only)               | `Rig`                      | `GET /rigs/{ref}`             |
 
-| Method | HTTP |
-| --- | --- |
-| `createProviderSecret(provider, req): Promise<ProviderSecretSummary>` | `POST /secrets/{provider}` |
-| `listProviderSecrets(provider): Promise<ProviderSecretListItem[]>` | `GET /secrets/{provider}` |
-| `deleteProviderSecret(provider, id): Promise<void>` | `DELETE /secrets/{provider}/{id}` |
+`start()` and `stop()` resolve when the server accepts the request. Call
+`wait()` to wait for the new state. Fetched data is a snapshot, not a live
+view: `refresh()` and `wait()` update and return the same object.
 
-`provider` is `"claude"` or `"codex"`.
+```ts
+const handle = client.rigs.handle("dev-box"); // No request.
+await handle.start();
+const rig = await handle.wait(); // Running, with setup finished.
+
+await rig.stop();
+await rig.wait({ status: "stopped" });
+```
+
+### Waiting
+
+`wait()` and `getAndWait()` take `RigWaitOptions`:
+
+| Option        | Default                | Meaning                                                                    |
+| ------------- | ---------------------- | -------------------------------------------------------------------------- |
+| `status`      | `"running"`            | `running`, `stopped`, or `suspended`, or an array where any status matches |
+| `setupStatus` | `"ok"` when `running` is a target | Also require the setup script to have succeeded                  |
+| `pollMs`      | `3000`                 | Delay between checks, in milliseconds                                      |
+| `maxWaitMs`   | `900000` (15 minutes)  | Total deadline, including the first fetch                                  |
+
+Waiting for `stopped` also accepts `suspended`. Waiting never creates or
+starts a rig. If provisioning fails, setup fails, or the deadline passes,
+`wait()` throws an `AmikaWaitError`. HTTP errors, including 404, propagate
+immediately without retries.
+
+## Agent sessions
+
+An agent session is a durable chat with a coding agent. Its transcript is
+stored on the server and can outlive the rig it ran on.
+
+| Method                                          | Returns                     | HTTP                          |
+| ----------------------------------------------- | --------------------------- | ----------------------------- |
+| `agentSessions.send(req: AgentSessionSendRequest)` | `AgentSessionSendResponse` | `POST /agent-sessions`      |
+| `agentSessions.sendStream(req, handlers?)`      | `AgentSessionSendResponse`  | `POST /agent-sessions/stream` |
+| `agentSessions.list(options?)`                  | `ListAgentSessionsResponse` | `GET /agent-sessions`         |
+| `agentSessions.get(sessionId)`                  | `AgentSession`              | `GET /agent-sessions/{id}`    |
+
+- `send` resolves when the agent turn finishes. Pass `sessionId` to continue a
+  chat or `rigId` to target a rig. With neither, the server can create a rig,
+  using `repoUrl` if you pass one.
+- `sendStream` does the same, calling `onStatus(phase, rigId)` and
+  `onDelta(text)` in order as the turn runs. The SDK awaits each callback, and
+  a callback that rejects fails the send.
+- `list({ limit, rigRef })` returns `{ sessions, total }`, newest first.
+  `limit` defaults to 50 on the server. `total` can be larger than
+  `sessions.length`.
+- `get` returns an `AgentSession`: the chat, its `messages` transcript, and
+  bound `send`, `sendStream`, and `refresh` methods.
+
+An agent failure returns `isError: true` with details in `response`, even when
+the HTTP request succeeds. If a stream ends without a final result, the SDK
+throws. Check the chat before retrying, because the turn may have completed.
+
+```ts
+const chat = await client.agentSessions.get(turn.sessionId);
+await chat.sendStream(
+  { message: "Explain the test setup" },
+  { onDelta: (text) => process.stdout.write(text) },
+);
+await chat.refresh(); // Reload the transcript.
+```
+
+## Snapshots
+
+| Method                                          | Returns           | HTTP                                  |
+| ----------------------------------------------- | ----------------- | ------------------------------------- |
+| `snapshots.create(req: CreateRigSnapshotRequest)` | `Snapshot`      | `POST /rig-snapshots`                 |
+| `snapshots.list(options?)`                      | `Snapshot[]`      | `GET /rig-snapshots`                  |
+| `snapshots.get(nameOrId)`                       | `Snapshot`        | `GET /rig-snapshots/{ref}`            |
+| `snapshots.handle(nameOrId)`                    | `SnapshotHandle`  | none                                  |
+| `snapshots.previewScrub(rigRef)`                | `RigScrubPreview` | `GET /rig-snapshots/scrub-preview`    |
+
+A `SnapshotHandle` has `fetch()`, `wait()`, and `delete()`
+(`DELETE /rig-snapshots/{ref}`). A fetched `Snapshot` adds `refresh()`.
+
+`create` starts the capture and returns before it finishes. `snapshot.wait()`
+polls until the snapshot is `active`, with the same 3-second interval and
+15-minute default deadline as rig waits. It throws `AmikaError` if the capture
+fails or the deadline passes.
+
+```ts
+const snapshot = await client.snapshots.create({
+  rigRef: "dev-box",
+  name: "project-base",
+  mode: "scrub_and_delete",
+});
+await snapshot.wait();
+const fork = await client.rigs.create({ snapshot: snapshot.snapshot });
+```
+
+`mode` defaults to `scrub_and_delete`, which removes Amika-injected secrets,
+captures the cleaned filesystem, and deletes the source rig. `full` keeps the
+source rig and captures everything, including credentials. Some providers,
+including your own hosts, support only `scrub_and_delete`, and the server
+rejects `full` there. `previewScrub` lists the file paths and environment
+variable names a scrub would remove, never their values.
+
+`list({ repositoryId, sourceRigId })` filters by repository or by source rig.
+
+## Services
+
+Services are a rig's published ports.
+
+| Method                                               | Returns                | HTTP                                  |
+| ---------------------------------------------------- | ---------------------- | ------------------------------------- |
+| `services.list({ rigRef }?)`                         | `RigServiceResource[]` | `GET /rig-services`                   |
+| `services.create(rigRef, req: RigServiceRequest)`    | `RigServiceResource`   | `POST /rigs/{ref}/services`           |
+| `services.replace(rigRef, serviceRef, req, by?)`     | `RigServiceResource`   | `PUT /rigs/{ref}/services/{service}`  |
+| `services.delete(rigRef, serviceRef)`                | `void`                 | `DELETE /rigs/{ref}/services/{service}` |
+
+- `list` without `rigRef` lists every service in your organization.
+- `create` and `replace` reject ports outside 1–65535 and the reserved range
+  60899–60999 before sending a request.
+- `replace` looks the service up by name by default. Pass `by: "id"` or
+  `by: "ref"` to change that. `delete` looks it up by name.
+
+`rig.services` holds a shorter summary of each service, fetched with the rig.
+
+## Secrets
+
+| Method                                       | Returns    | HTTP                |
+| -------------------------------------------- | ---------- | ------------------- |
+| `secrets.list()`                             | `Secret[]` | `GET /secrets`      |
+| `secrets.create(req: CreateSecretRequest)`   | `void`     | `POST /secrets`     |
+| `secrets.update(id, req: UpdateSecretRequest)` | `void`   | `PUT /secrets/{id}` |
+
+Listings return metadata, never secret values. The SDK has no method to delete
+a generic secret. The HTTP API has one, `DELETE /secrets/{id}`, and you can
+also delete secrets in the web UI.
+
+## Agent credentials
+
+Agent credentials are stored Claude or Codex logins that Amika can inject into
+rigs.
+
+| Method                                                    | Returns                    | HTTP                              |
+| --------------------------------------------------------- | -------------------------- | --------------------------------- |
+| `agentCredentials.create(provider, req: CreateProviderSecretRequest)` | `ProviderSecretSummary` | `POST /secrets/{provider}` |
+| `agentCredentials.list(provider)`                         | `ProviderSecretListItem[]` | `GET /secrets/{provider}`         |
+| `agentCredentials.delete(provider, id)`                   | `void`                     | `DELETE /secrets/{provider}/{id}` |
+
+`provider` is `"claude"` or `"codex"`. Listings never return credential
+values.
+
+## Repositories
+
+| Method                 | Returns              | HTTP                |
+| ---------------------- | -------------------- | ------------------- |
+| `repositories.list()`  | `RemoteRepository[]` | `GET /repositories` |
+
+## Deprecated flat methods
+
+Earlier SDK versions put every method directly on the client. Those methods
+still work but are deprecated. Move to the grouped API:
+
+| Deprecated                                         | Use instead                                   |
+| -------------------------------------------------- | --------------------------------------------- |
+| `listRigs()`, `createRig()`, `getRig()`            | `rigs.list()`, `rigs.create()`, `rigs.get()`  |
+| `startRig()`, `stopRig()`, `deleteRig()`           | `rig.start()`, `rig.stop()`, `rig.delete()`   |
+| `waitForRig()`, `waitForRigStart()`, `waitForRigStop()` | `rig.wait()`, `rig.wait({ status: "stopped" })` |
+| `agentSend(name, req)`                             | `rigs.handle(name).send(req)`                 |
+| `sendAgentSession()`, `listAgentSessions()`, …     | `agentSessions.send()`, `agentSessions.list()`, … |
+| `listSecrets()`, `createSecret()`, `updateSecret()` | `secrets.list()`, `secrets.create()`, `secrets.update()` |
+| `createProviderSecret()`, `listProviderSecrets()`, `deleteProviderSecret()` | `agentCredentials.create()`, `.list()`, `.delete()` |
+| `listRigSnapshots()`, `createRigSnapshot()`, …     | `snapshots.list()`, `snapshots.create()`, …   |
+| `listRigServices()`, `createRigService()`, …       | `services.list()`, `services.create()`, …     |
+| `listRepositories()`                               | `repositories.list()`                         |
+| `*Sandbox*` methods and types                      | The matching `rig` names                      |
+
+The old wait helpers keep their original behavior. They check provisioning
+state only, without checking setup, and have no total deadline. Use
+`wait()` for bounded waits that also check setup.
+
+The SSH methods (`getSSH`, `revokeSSH`), the session-record methods
+(`createSession`, `listSessions`, `getLatestSession`, `getSession`,
+`updateSession`), `extractAgentAuthError`, and `StaticTokenSource` have been
+removed. For SSH, use the CLI. See [SSH and connect](/guides/ssh-and-connect).
 
 ## See also
 
@@ -116,6 +276,6 @@ one. Provider secrets can be deleted (below).
     Request and response interfaces.
   </Card>
   <Card title="Errors" icon="triangle-exclamation" href="/sdks/typescript/errors">
-    Error classes and helpers.
+    Error classes and wait failures.
   </Card>
 </CardGroup>

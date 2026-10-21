@@ -1,24 +1,26 @@
 ---
 title: "Token sources"
-description: "Supply static or dynamically-refreshed API tokens to the SDK."
+description: "Supply a static API key or a dynamically refreshed token to the SDK."
 ---
 
-`AmikaClient` needs a bearer token for every request. You provide it in one
-of two ways: a static `accessToken`, or a `tokenSource` that the client
-calls each time it needs a token. They're mutually exclusive.
+`AmikaClient` needs a credential for every request. Provide exactly one of
+three options:
 
-## Static token
+- `apiKey`: a static Amika API key. This is the usual choice.
+- `accessToken`: a static bearer token.
+- `tokenSource`: an object the client calls each time it needs a token.
 
-The simplest case — pass a token string you already have.
+## Static key
+
+The simplest case: pass a key string you already have.
 
 ```ts
 import { AmikaClient } from "@amika/sdk";
 
-const amika = new AmikaClient({
-  baseUrl: "https://app.amika.dev",
-  accessToken: process.env.AMIKA_API_KEY!,
-});
+const client = new AmikaClient({ apiKey: process.env.AMIKA_API_KEY! });
 ```
+
+Static credentials must be non-empty strings, or the constructor throws.
 
 ## The `TokenSource` interface
 
@@ -30,31 +32,17 @@ interface TokenSource {
 }
 ```
 
-The client calls `token()` to obtain a bearer for requests. Returning a
-promise lets you fetch or refresh on demand.
-
-## `StaticTokenSource`
-
-A ready-made `TokenSource` that always returns the same token. Equivalent to
-passing `accessToken`, but useful when an API expects a `TokenSource`.
-
-```ts
-import { AmikaClient, StaticTokenSource } from "@amika/sdk";
-
-const amika = new AmikaClient({
-  baseUrl: "https://app.amika.dev",
-  tokenSource: new StaticTokenSource(process.env.AMIKA_API_KEY!),
-});
-```
+The client calls `token()` for every request. Returning a promise lets you
+fetch or refresh on demand.
 
 ## A refreshing token source
 
-Implement `TokenSource` yourself when tokens expire and need refreshing.
 The client awaits `token()` on each request, so you can cache and refresh
 inside it.
 
 ```ts
-import { AmikaClient, TokenSource } from "@amika/sdk";
+import { AmikaClient } from "@amika/sdk";
+import type { TokenSource } from "@amika/sdk";
 
 class RefreshingTokenSource implements TokenSource {
   private cached?: { token: string; expiresAt: number };
@@ -68,14 +56,14 @@ class RefreshingTokenSource implements TokenSource {
   }
 }
 
-const amika = new AmikaClient({
-  baseUrl: "https://app.amika.dev",
-  tokenSource: new RefreshingTokenSource(),
-});
+const client = new AmikaClient({ tokenSource: new RefreshingTokenSource() });
 ```
+
+`fetchTokenFromYourAuthService` stands in for your own credential-loading
+code.
 
 <Note>
 The SDK never reads `AMIKA_API_KEY` from the environment or disk on your
-behalf. Sourcing the token — from an env var, a secret manager, or an auth
-service — is always the caller's responsibility.
+behalf. Sourcing the credential, from an env var, a secret manager, or an
+auth service, is always the caller's responsibility.
 </Note>
