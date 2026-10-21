@@ -17,9 +17,9 @@ requires you to pass an `apiKey`, an `accessToken`, or a `tokenSource`. See
 
 `amika auth login` has two modes:
 
-- **Browser login** — interactive device authorization flow. Best for local
+- **Browser login**: interactive device authorization flow. Best for local
   development.
-- **API key login** — non-interactive, for CI and automation.
+- **API key login**: non-interactive, for CI and automation.
 
 ## Browser login
 
@@ -48,14 +48,27 @@ amika auth logout
 
 ## API key login
 
-Use an Amika API key when you need to authenticate without a browser — for
-example, from CI jobs or automated scripts.
+Use an Amika API key when you need to authenticate without a browser, for
+example from CI jobs or automated scripts.
 
 ### Create a key
 
 Generate API keys in the web UI at
 [app.amika.dev/settings/api-keys](https://app.amika.dev/settings/api-keys) in the
 **API Keys** section.
+
+Or create one from the CLI with
+[`amika auth api-key create`](/reference/cli#amika-auth-api-key-create). It
+writes the key to a file and never prints it. This command ships in the next
+CLI release, so use the web UI until then.
+
+```bash
+amika auth api-key create --name ci --out ./amika-key
+amika auth login --api-key-file ./amika-key
+```
+
+Keys are scoped to your organization by default. Pass `--scope user` for a key
+that acts as you.
 
 ### Use the key
 
@@ -75,7 +88,7 @@ session. Good for ephemeral CI runs.
 # From a file
 amika auth login --api-key-file ./key.txt
 
-# From stdin — pairs well with secret managers
+# From stdin, which pairs well with secret managers
 vault kv get -field=key secret/amika | amika auth login --api-key-file -
 ```
 
@@ -97,19 +110,19 @@ key and the browser session.
 
 ## Local credential discovery
 
-`amika auth extract` discovers locally stored API credentials from coding
-agent tools and prints them as shell environment assignments. Use it to copy
-agent credentials into Amika's web UI or to seed rigs.
+`amika secret extract` discovers API credentials that coding agent tools store
+on your machine, shows them masked, and with `--push` uploads them to the Amika
+secrets store. See [Manage secrets](/guides/manage-secrets).
 
 ```bash
-# Print detected assignments
-amika auth extract
+# Show detected credentials
+amika secret extract
 
-# Export into current shell
-eval "$(amika auth extract --export)"
+# Push them to the secrets store after confirmation
+amika secret extract --push
 
 # Skip OAuth sources
-amika auth extract --no-oauth
+amika secret extract --no-oauth
 ```
 
 ### Supported sources
@@ -128,30 +141,25 @@ multiple files provide the same provider key.
 | 200 | OpenCode | `~/.local/share/opencode/auth.json` | Any |
 | 100 | Amp | `~/.amp/config.json` | Anthropic |
 
-### Output mapping
+### Secret names
 
-Amika normalizes provider names and exports common aliases:
+Amika normalizes provider names and uses common aliases as secret names:
 
-- Anthropic keys output as both `ANTHROPIC_API_KEY` and `CLAUDE_API_KEY`.
-- OpenAI keys output as both `OPENAI_API_KEY` and `CODEX_API_KEY`.
+- Anthropic keys become both `ANTHROPIC_API_KEY` and `CLAUDE_API_KEY`.
+- OpenAI keys become both `OPENAI_API_KEY` and `CODEX_API_KEY`.
 
-```bash
-ANTHROPIC_API_KEY='sk-ant-...'
-CLAUDE_API_KEY='sk-ant-...'
-OPENAI_API_KEY='sk-...'
-CODEX_API_KEY='sk-...'
-```
+Provider names are canonicalized before deduplication: `claude` and
+`anthropic` become `anthropic`, `codex` and `openai` become `openai`, and other
+providers are lowercased with separators normalized to hyphens. OAuth tokens
+with an `expiresAt` or `expires` timestamp are skipped if expired.
 
-Provider names are canonicalized before deduplication: `claude`/`anthropic`
-→ `anthropic`; `codex`/`openai` → `openai`; other providers are lowercased
-with separators normalized to hyphens. OAuth tokens with an `expiresAt` or
-`expires` timestamp are skipped if expired.
-
-### `extract` flags
+### `secret extract` flags
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--export` | `false` | Prefix lines with `export` |
+| `--push` | `false` | Push discovered secrets to the remote store after confirmation |
+| `--only <keys>` | | Comma-separated list of secret names to include |
+| `--scope <scope>` | `user` | Secret scope for pushed secrets: `user` or `org` |
 | `--homedir <path>` | `$HOME` | Override home directory for discovery |
 | `--no-oauth` | `false` | Skip OAuth credential sources |
 
@@ -160,11 +168,11 @@ with separators normalized to hyphens. OAuth tokens with an `expiresAt` or
 | Variable | Default | Description |
 | --- | --- | --- |
 | `AMIKA_API_KEY` | | Amika API key used to authenticate CLI requests. Overrides any stored API key or browser session when set |
-| `AMIKA_API_URL` | `https://app.amika.dev` | Override the remote API base URL. Used by rig commands when operating on remote rigs |
+| `AMIKA_API_URL` | `https://app.amika.dev` | Override the remote API base URL. |
 | `AMIKA_WORKOS_CLIENT_ID` | | Override the default WorkOS client ID. If you change `AMIKA_API_URL`, you likely need to update this too |
 
 ## Related docs
 
-- [Manage secrets](/guides/manage-secrets) — push and inject credentials
-- [Secrets reference](/reference/secrets) — scope model and provider secrets
-- [Storage paths](/reference/storage) — where sessions and caches live
+- [Manage secrets](/guides/manage-secrets): push and inject credentials
+- [Secrets reference](/reference/secrets): scope model and provider secrets
+- [Storage paths](/reference/storage): where sessions and caches live

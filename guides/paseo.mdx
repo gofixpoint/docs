@@ -132,8 +132,10 @@ Install [Paseo Desktop](https://paseo.sh/docs) on your computer. Then print the
 rig's SSH host:
 
 ```bash
-amika rig code dev-box --editor paseo
+amika rig open dev-box --app paseo
 ```
+
+On CLI v0.23.0 and earlier, run `amika rig code dev-box --editor paseo`.
 
 In Paseo Desktop, click **Hosts > Add host > Remote SSH**. Paste the `ssh://`
 host printed by the command. Paseo reaches the daemon through SSH, so port

@@ -5,8 +5,8 @@ description: "List, read, and continue agent sessions on a rig."
 
 An agent session is a durable chat with a coding agent on a rig. Its
 transcript is stored on the server and can outlive the rig. You pick a
-session each time you send a prompt, and the SDK can also list sessions and
-read their transcripts.
+session each time you send a prompt. The CLI can list and read sessions with
+`amika sessions`, and the SDK can list sessions and read their transcripts.
 
 ## Prerequisites
 
@@ -17,8 +17,7 @@ A rig in the `active` / `running` / `started` state. See
 
 ## CLI: pick or start a session at agent-send time
 
-The CLI doesn't expose session CRUD directly. To control which session a
-prompt runs in, use the flags on `agent-send`.
+To control which session a prompt runs in, use the flags on `agent-send`.
 
 ```bash
 # Start a fresh session
@@ -29,9 +28,26 @@ amika rig agent-send dev-box "Continue from earlier" \
   --session-id 3f2a...
 ```
 
-To get a list of sessions, use the SDK or call the HTTP API directly. See
-[CLI reference — agent-send](/reference/cli#agent-send) for the full flag
+See [CLI reference: agent-send](/reference/cli#agent-send) for the full flag
 table.
+
+## CLI: list and read sessions
+
+`amika sessions list` lists your organization's agent chats.
+`amika sessions show` prints one chat and every message in it.
+
+```bash
+# List chats (the server's page size is 50)
+amika sessions list
+amika sessions list --limit 100
+
+# Read one chat
+amika sessions show 3f2a...
+```
+
+The list shows each chat's session ID, agent, status, rig, and last update.
+Add `-o json` to either command for machine-readable output. See
+[`amika sessions`](/reference/cli#amika-sessions) for details.
 
 ## SDK: list, read, and continue sessions
 
