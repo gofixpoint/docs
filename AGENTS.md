@@ -40,7 +40,7 @@ documenting them. Don't invent.
 
 `docs.json` defines four tabs:
 
-- **Guides** — getting started and how-tos. Groups: Get started, VM Rigs,
+- **Guides** — getting started and how-tos. Groups: Get started, Rigs,
   Repository configuration, Agents and sessions, Connecting to rigs,
   Credentials, Advanced.
   - The "Code validation" group (`guides/checks`, `guides/code-annotations`)
@@ -71,7 +71,7 @@ Placement rules:
 - No emojis.
 - No em dashes. Use a colon, a comma, or a separate sentence instead. This
   applies to everything written for this project, not just docs pages.
-- Frontmatter: `title` + `description`.
+- Frontmatter: `title` is required. `description` is optional.
 - Bold for UI elements (Click **Settings**); code formatting for file
   names, commands, paths, and code references.
 - Mintlify components in use: `<Note>`, `<Info>`, `<Tip>`, `<Warning>`,
