@@ -83,13 +83,6 @@
             ]
           },
           {
-            "group": "Code validation",
-            "pages": [
-              "guides/checks",
-              "guides/code-annotations"
-            ]
-          },
-          {
             "group": "Guides for agents",
             "pages": [
               "guides/set-up-vm-repo-config"

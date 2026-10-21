@@ -41,8 +41,12 @@ documenting them. Don't invent.
 `docs.json` defines four tabs:
 
 - **Guides** — getting started and how-tos. Groups: Get started, VM Rigs,
-  Repository configuration, Agents and sessions, Connecting to rigs, Code
-  validation, Credentials, Advanced.
+  Repository configuration, Agents and sessions, Connecting to rigs,
+  Credentials, Advanced.
+  - The "Code validation" group (`guides/checks`, `guides/code-annotations`)
+    is hidden: out of `docs.json` and marked `hidden`/`noindex`. We haven't
+    productionized those features and aren't focusing on them. Don't link
+    to these pages or re-add them to the nav until that changes.
 - **SDKs** — the TypeScript SDK reference.
 - **CLI and API Reference** — flag and config tables, endpoint lists,
   `.amika/config.toml` key lookup.
