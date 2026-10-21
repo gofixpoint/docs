@@ -1,54 +1,59 @@
 ---
 title: "Introduction"
-description: "Multiplayer cloud workstations for coding agents and humans"
+description: "Cloud devboxes for coding agents, on computers you already own"
 ---
 
-## Multiplayer cloud workstations for coding agents and humans
+## Cloud devboxes for coding agents, on computers you already own
 
-Amika lets you **provision VMs on any cloud or computer, load them with your favorite agent(s), and then remote control the agents from any chat surface or app.**
+Amika **slices computers you already own into isolated devbox VMs for coding
+agents**, and lets you reach them and their agents from anywhere.
 
-Each VM is configured as an **Amika Rig**, a **workstation tuned for coding agents and humans** to collaborate in.
+Each devbox is an **Amika rig**: a VM tuned for coding agents, with your repos,
+credentials, and services already in place.
 
-- **Run anywhere.** Use Kubernetes, E2B, or your own computer.
+- **Run on your own machines.** Add a Mac Mini, a desktop, or EC2 in your VPC, and run several isolated rigs on each one. If you'd rather not run hardware, Amika hosts rigs too.
 - **Bring any agent.** Use Codex, Claude, OpenCode, Pi, or your own agent with existing subscriptions and API keys.
 - **Control from anywhere.** Use chat apps, the web UI, API, CLI, SSH, or your editor or ADE.
 
-![Amika Rig dashboard showing OpenCode and Pi coding agents, exposed services, and Rig controls.](/images/amika-sandbox-dashboard.png)
+![Amika rig dashboard showing OpenCode and Pi coding agents, exposed services, and rig controls.](/images/amika-sandbox-dashboard.png)
 
-## What can an Amika Rig do?
+## What can an Amika rig do?
 
-On a Rig, you can
+On a rig, you can
 
 - **run 1 or more agents** simultaneously
 - **expose the HTTPS URLs** of the apps your agent is working on
-- let Rigs and their agents **communicate with each other**
-- **programmatically control** the Rig and its agents
-- **connect** to the Rig from tools like the **Codex app, Cursor, and cmux**
+- let rigs and their agents **communicate with each other**
+- **programmatically control** the rig and its agents
+- **connect** to the rig from tools like the **Codex app, Cursor, and cmux**
 
-Each Rig can be short-lived or persistent, depending on whether you want it to disappear when your PR is done, or whether you want to keep it around more permanently.
+Each rig can be short-lived or persistent, depending on whether you want it to disappear when your PR is done, or whether you want to keep it around more permanently.
 
-Amika **automatically wires your Git repos and agent configs and credentials** into each Rig.
+Amika **automatically wires your Git repos and agent configs and credentials** into each rig.
 
 ## What can you use Amika for?
 
-Since Amika schedules cloud VMs and then gives you networking, agent messaging, and chat UIs, you can use it in many ways. Some examples:
+Since Amika runs isolated VMs on your machines or in its cloud, and then gives you networking, agent messaging, and chat UIs, you can use it in many ways. Some examples:
 
-- create **multiplayer cloud devboxes** for engineers that are pre-configured with your tech stack
-- build **managed cloud agents** that you **control via API** to automate work in the background
+- give engineers **devboxes** that are pre-configured with your tech stack
+- build **managed agents** that you **control via API** to automate work in the background
 - **plug into your GitHub CI** to not only run unit tests, but **auto-fix failures**
 - make **custom agents for non-technical teammates** to chat with on the web
 - **talk with agents** from other **tools like Slack and Linear**
 
-You can use Amika for anything where you need cloud VMs and control over the VMs, their agents, and their file contents or git repos.
+You can use Amika for anything where you need isolated VMs and control over the VMs, their agents, and their file contents or git repos.
 
 ## Start here
 
 <CardGroup cols={2}>
   <Card title="What is a rig?" icon="server" href="/guides/what-is-a-rig">
-    Learn how VM Rigs give agents and people a shared workstation.
+    Learn how rigs give each agent its own isolated devbox VM.
   </Card>
   <Card title="Quickstart" icon="rocket" href="/quickstart">
     Install the CLI and create your first rig.
+  </Card>
+  <Card title="Run on your own machines" icon="computer" href="/guides/byoc">
+    Register a machine you own as a host and run rigs on it.
   </Card>
   <Card title="Repository configuration" icon="gear" href="/reference/repository-configuration">
     Configure rig defaults with .amika/config.toml, including precedence
@@ -58,7 +63,7 @@ You can use Amika for anything where you need cloud VMs and control over the VMs
     Browse command syntax, key flags, and examples.
   </Card>
   <Card title="Pricing" icon="dollar-sign" href="https://www.amika.dev/pricing">
-    Compare plan tiers, billing units, and managed rig costs.
+    Free for up to 3 active users. Your own machines are never metered.
   </Card>
 </CardGroup>
 
@@ -69,7 +74,7 @@ You can use Amika for anything where you need cloud VMs and control over the VMs
     Read product overview and use cases.
   </Card>
   <Card title="Pricing" icon="dollar-sign" href="https://www.amika.dev/pricing">
-    Compare plan tiers and billing units.
+    Pay per active user. Hosted compute bills per second.
   </Card>
   <Card title="GitHub" icon="github" href="https://github.com/gofixpoint/amika">
     View source code and contribute.
