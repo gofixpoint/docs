@@ -3,9 +3,12 @@ title: "Architecture overview"
 description: "Core Amika concepts and system layout."
 ---
 
-Amika runs coding agents in rigs: isolated devbox VMs on computers you already
-own or on Amika's hosted compute. You drive rigs and their agents from the web
-UI, the open-source `amika` CLI, the TypeScript SDK, or the HTTP API.
+Amika lets you create VMs and sandboxes on (a) machines you already own, (b) in
+your existing cloud accounts, or (c) in compute you rent from Amika.
+
+We call these VMs and sandboxes "rigs": isolated devboxes for developers or
+agents.  You drive rigs and their agents from the web UI, the open-source
+`amika` CLI, the TypeScript SDK, or the HTTP API.
 
 ## Core concepts
 
@@ -16,8 +19,8 @@ UI, the open-source `amika` CLI, the TypeScript SDK, or the HTTP API.
   a machine with Amika and runs each rig on it as a local VM with
   [smolvm](https://smolmachines.com). See
   [Bring your own compute](/guides/byoc).
-- **Hosted compute**: When you don't pick a host, Amika runs the rig on a hosted
-  sandbox provider.
+- **Amika Cloud compute**: When you don't pick a host, Amika runs the rig on Amika's
+  own cloud compute.
 - **Control plane**: The hosted API and web UI at `app.amika.dev`. It
   authenticates requests, stores configuration and secrets, provisions rigs, and
   forwards requests to your hosts.
@@ -39,7 +42,6 @@ UI, the open-source `amika` CLI, the TypeScript SDK, or the HTTP API.
 | `amika-hostd` | Daemon that turns a machine you own into a host |
 | `amikad` | Daemon inside each rig that serves SSH connections and tracks injected credentials so snapshots can scrub them |
 | `@amika/sdk` | TypeScript SDK for the hosted API |
-| `amika-server` | Open-source HTTP server for self-hosting the API |
 
 ## Package layout
 
@@ -48,7 +50,6 @@ The open-source code lives in [gofixpoint/amika](https://github.com/gofixpoint/a
 ```text
 go/cmd/amika          # CLI entrypoint
 go/cmd/amikad         # In-rig daemon
-go/cmd/amika-server   # HTTP server entrypoint
 go/internal/httpapi   # REST handlers for amika-server
 js/amika-hostd        # Host daemon for your own machines
 sdk/typescript        # TypeScript SDK

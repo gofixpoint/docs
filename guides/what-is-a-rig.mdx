@@ -1,18 +1,19 @@
 ---
 title: "What is a rig?"
-description: "Learn how an Amika rig gives each coding agent an isolated devbox VM."
+description: "Learn how an Amika rig gives each coding agent or developer an isolated devbox VM."
 ---
 
 A rig is an isolated devbox: a sandboxed VM tuned for coding agents. Agents
 and people can work in the same repository and environment on it, without
 touching each other's work or your everyday machine.
 
-Each rig can include:
+Each rig includes:
 
 - One or more agent harnesses, such as Claude Code, Codex, OpenCode, or Pi
 - Your Git repositories, dependencies, tools, and development services
-- Agent credentials, environment variables, and secrets
+- Agent credentials, environment variables, and secrets your agent can never read
 - SSH access and URLs for exposed services
+- VM snapshots to save a rig's filesystem and then boot new VMs from it
 
 Amika provisions the VM, prepares it from your repository configuration, and
 connects it to the control plane. You can then operate the rig and its agents
@@ -21,13 +22,16 @@ editor.
 
 ## Shared by agents and people
 
-A rig is not only a background execution environment. You and your teammates
-can connect to it while agents are working. You can inspect files, run commands,
-open the repository in an editor, view services, and continue an agent session
-without moving the work to another machine.
+You can give an agent a rig and let it work in the background, or you can use
+the rig interactively, just like a normal cloud devbox.
 
-A single rig can run multiple agents at the same time. Rigs and their agents can
-also communicate with other rigs when work needs to span environments.
+You, your teammates, and your agents can connect to a rig at any time to inspect
+files, run commands, write code, open your repo in an editor, view dev server
+URLs.
+
+A single rig can run multiple agents at the same time (it's just a VM!). All
+rigs are on a mesh network, so rigs and your agents can communicate with other
+rigs when work needs to span environments.
 
 ## Persistent or temporary
 
@@ -44,30 +48,13 @@ starting point.
 
 ## Where rigs run
 
-Rigs can run on computers you already own, such as a Mac Mini, a desktop, or EC2
-in your VPC. Install the Amika host daemon on a machine and it can run several
-isolated rigs side by side. See [Bring your own compute](/guides/byoc).
+Rigs can run on computers you already own, such as a Mac Mini, a desktop, an EC2
+in your VPC, or a sandbox cloud account you already have. Install the Amika host
+daemon on a machine and it can run several isolated rigs side by side. See
+[Bring your own compute](/guides/byoc).
 
 If you'd rather not run hardware, Amika hosts rigs too. A rig runs on Amika's
-hosted compute unless you pick one of your hosts when you create it. The control
-surface stays the same in both places.
-
-## Rig and sandbox terminology
-
-`rig` is the product term and the canonical CLI command. A rig is a devbox: a
-VM or sandbox for coding agents. So `devbox`, `VM`, `sandbox`, `sandboxed`, and
-`sandboxing` remain accurate when you describe what a rig is, its isolation, or
-generic sandbox providers.
-
-```bash
-amika rig create
-amika rig list
-```
-
-Some compatibility and configuration interfaces still use `sandbox` in exact
-identifiers. For example, `amika sandbox` remains a CLI alias, and repository
-configuration uses the `[sandbox]` table. Keep those identifiers as written when
-an example or reference page shows them.
+hosted compute unless you pick one of your hosts when you create it.
 
 ## Next steps
 
