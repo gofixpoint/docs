@@ -38,6 +38,13 @@ const rig = await client.rigs.create({
 });
 ```
 
+```bash HTTP API
+curl -X POST https://app.amika.dev/api/v0beta1/rigs \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "dev-box", "preset": "coder"}'
+```
+
 </CodeGroup>
 
 To clone a repo into the rig, run the CLI from inside that repository or pass
@@ -61,6 +68,18 @@ const rig = await client.rigs.create({
   repoUrl: "https://github.com/gofixpoint/example-repo.git",
   branch: "main",
 });
+```
+
+```bash HTTP API
+curl -X POST https://app.amika.dev/api/v0beta1/rigs \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "dev-box",
+    "preset": "coder",
+    "repo_url": "https://github.com/gofixpoint/example-repo.git",
+    "branch": "main"
+  }'
 ```
 
 </CodeGroup>
@@ -100,6 +119,13 @@ and its setup has finished.
 await rig.wait();
 ```
 
+```bash HTTP API
+# Create returns 202 before setup finishes. Poll until `status` is
+# `running` and `setup_status` is `ok`.
+curl https://app.amika.dev/api/v0beta1/rigs/dev-box \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
+```
+
 </CodeGroup>
 
 <Note>
@@ -123,6 +149,11 @@ await rig.delete();
 
 // Or, without a fetched rig:
 await client.rigs.handle("dev-box").delete();
+```
+
+```bash HTTP API
+curl -X DELETE https://app.amika.dev/api/v0beta1/rigs/dev-box \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
 ```
 
 </CodeGroup>
