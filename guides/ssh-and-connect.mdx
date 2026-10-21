@@ -20,23 +20,11 @@ A rig in the `active` / `running` / `started` state. See
 
 ## Open an interactive SSH session
 
-<CodeGroup>
-
-```bash CLI
+```bash
 amika rig ssh dev-box
 ```
 
-```ts TypeScript
-// The SDK doesn't shell out — it returns SSH connection info you
-// hand to your own SSH client.
-const ssh = await amika.getSSH("dev-box");
-console.log(ssh.sshDestination); // e.g. "user@host:2222"
-console.log(ssh.token);          // bearer for the proxy
-console.log(ssh.expiresAt);      // ISO timestamp
-console.log(ssh.repoName);       // repo subdir inside the rig
-```
-
-</CodeGroup>
+The TypeScript SDK has no SSH methods. Use the CLI to open a shell.
 
 ## Run a one-off command
 
@@ -87,23 +75,6 @@ the full command and instructions for other Remote-SSH editors.
 ```bash
 amika rig code dev-box
 ```
-
-## Revoke an SSH token
-
-The SSH credential issued by `ssh`/`getSSH` is time-bounded. You can revoke
-it on demand.
-
-<CodeGroup>
-
-```bash CLI
-amika rig ssh dev-box --revoke
-```
-
-```ts TypeScript
-await amika.revokeSSH("dev-box", ssh.token);
-```
-
-</CodeGroup>
 
 ## Next steps
 
