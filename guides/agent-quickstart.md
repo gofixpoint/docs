@@ -23,6 +23,40 @@ To set up Amika, first make sure you either:
 
 If you don't have either of the above, Your human can sign up at https://app.amika.dev/signup. Have them go through onboarding, and then report back.
 
+### Offer to install the amika-cli skill
+
+Do this once the `amika` CLI is installed and `amika auth status` shows you are
+logged in. If you are working only with an API key and the CLI is not
+installed, skip this step.
+
+The amika-cli skill teaches coding agents the CLI's commands, which commands
+block on interactive prompts, and how to get JSON output. `amika skill install`
+installs the copy of the skill embedded in the CLI binary, so the skill matches
+the installed CLI version.
+
+1. Ask your human these two questions, then stop and wait for their answers:
+   1. Install the amika-cli skill locally (this repo or project only), globally
+      (every project on this machine), or not at all?
+   2. Which agents should get it: Claude Code, Codex, Cursor, or several of
+      them? Suggest the agent you are as the default. If you are none of these,
+      ask without a default.
+2. If they chose not at all, skip the rest of this step.
+3. Otherwise, run `amika skill install` with the flags that match their answers:
+   - `--local` for this repo or project only, or `--global` for every project.
+     Pass exactly one.
+   - `--agents` with a comma-separated list of `claude`, `codex`, and `cursor`.
+
+   For example, to install the skill for Claude Code and Codex in every project:
+
+   ```bash
+   amika skill install --global --agents claude,codex
+   ```
+
+4. Tell your human which agents got the skill and whether it was installed
+   locally or globally, including any paths the command reports.
+
+### Learn how to operate Amika
+
 Read these docs first:
 
 - https://docs.amika.dev/
