@@ -39,7 +39,6 @@
               "index",
               "quickstart",
               "install",
-              "guides/byoc",
               "guides/overview"
             ]
           },
@@ -49,6 +48,7 @@
               "guides/what-is-a-rig",
               "guides/create-a-rig",
               "guides/rig-lifecycle",
+              "guides/byoc",
               "guides/create-a-snapshot"
             ]
           },
