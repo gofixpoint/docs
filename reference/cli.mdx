@@ -5,9 +5,51 @@ description: "Commands, flags, and examples for the Amika CLI."
 
 Use this page as the command index for the `amika` CLI.
 
+## Global flags
+
+Most commands accept `-o`/`--output` to choose how they print their result, so
+you can read output at a terminal and pipe the same command into a script or
+`jq`.
+
+| Value         | Description                            |
+| ------------- | -------------------------------------- |
+| `text`        | Human-readable text (the default)      |
+| `json`        | Compact, single-line JSON, for piping  |
+| `json-pretty` | Indented, multi-line JSON, for reading |
+
+```bash
+# Capture a new rig's name in a script
+name=$(amika rig create --no-git -o json | jq -r .name)
+
+# Delete several rigs and inspect per-item results
+amika rig delete a b c --force -o json | jq '.[] | select(.status=="error")'
+```
+
+Most list commands emit a JSON array. `snapshot list` is the exception and
+emits a `{ "items": [...] }` object. In JSON mode the CLI never prompts, so
+destructive commands need their confirmation flag (`--force` for deletes,
+`--no-interactive` for `snapshot create`). Progress messages go to stderr, so
+stdout carries only the JSON value.
+
+Commands that open a shell or an editor (`rig connect`, `rig open`,
+`rig create --connect`) and commands that show a masked credential table and
+ask for confirmation (`secret extract`, `secret push`) reject `-o json`.
+`rig ssh` and `scp` hand their arguments to the system `ssh` and `scp`, so they
+don't take `--output` at all.
+
+### Naming the current rig
+
+Inside a rig, any argument or flag that names a rig also accepts `_self`, which
+resolves to the current rig from the `AMIKA_RIG_NAME` environment variable:
+
+```bash
+amika service list --rig-name _self
+amika service create --rig _self --name web --port 3000 --url-scheme https
+```
+
 ## `amika rig`
 
-Manage hosted rigs.
+Manage rigs.
 
 <Note>
 `amika sandbox` remains available as a compatibility alias. Use `amika rig` in
@@ -16,8 +58,9 @@ new commands and scripts.
 
 ### Global rig flags
 
-Rigs are always hosted. `--remote` remains an accepted no-op for compatibility.
-The retired `--local` flag is hidden and returns an error.
+Rigs always run remotely, on Amika Cloud or on one of your organization's own
+hosts. `--remote` remains an accepted no-op for compatibility. The retired
+`--local` flag is hidden and returns an error.
 
 ### Create
 
@@ -62,6 +105,12 @@ amika rig create --name dev-rig \
   --agent-credential-type claude=api-key \
   --no-agent-credential codex
 
+# Fork from a captured snapshot
+amika rig create --name dev-rig --snapshot example-repo-base
+
+# Run on one of your organization's own hosts, at one of that host's sizes
+amika rig create --name dev-rig --host alpha.lan --size small
+
 # Create a rig without a repository
 amika rig create --name scratch --no-git
 ```
@@ -72,7 +121,8 @@ amika rig create --name scratch --no-git
 | --- | --- | --- |
 | `--name <name>` | auto-generated | Name for the rig. If omitted, a random `{color}-{city}` name is generated |
 | `--preset <name>` | repository or platform default | Use `coder` or `coder-plus-docker` |
-| `--size <size>` | repository or platform default | Rig size, such as `m` or `a1.medium` |
+| `--size <size>` | repository or platform default | Rig size, such as `m` or `a1.medium`. With `--host`, one of that host's own sizes instead, defaulting to 4 vCPU, 8 GiB memory, and a 20 GiB disk |
+| `--host <hostname\|id>` | | Run the rig on one of your organization's own hosts rather than on Amika Cloud. See [`amika host`](#amika-host). With `--snapshot`, the snapshot must have been taken on that same host; any other snapshot is refused |
 | `--snapshot <slug>` | | Fork from a captured snapshot |
 | `--git <path-or-URL>` | auto-detected | Use a local repository path or a Git URL. If omitted, the CLI detects a repository from the current directory |
 | `--no-git` | `false` | Skip git repo auto-detection; create a repo-less rig with no repo mounted |
@@ -97,9 +147,8 @@ Supported agent kinds for `--agent-credential`, `--agent-credential-type`, and `
 </Note>
 
 <Note>
-Hosted rigs clone from the repository remote. Push local commits before
-creation. The CLI rejects an inferred branch that is not present and up to date
-on `origin`.
+Rigs clone from the repository remote. Push local commits before creation. The
+CLI rejects an inferred branch that is not present and up to date on `origin`.
 </Note>
 
 ### List
@@ -108,26 +157,44 @@ Aliases: `ls`
 
 ```bash
 amika rig list
-amika rig ls
+amika rig ls --long
 ```
 
-Output columns: `NAME`, `STATE`, `LOCATION`, `PROVIDER`, `IMAGE`, `BRANCH`, `PORTS`, `CREATED`.
-
-### Connect
-
-```bash
-# Connect with default shell (zsh)
-amika rig connect dev-rig
-
-# Connect with a different shell
-amika rig connect dev-rig --shell bash
-```
+Output columns: `NAME`, `STATE`, `REPO`, `BRANCH`, `CREATOR`. `--long` adds
+`ID`, `BASE_SNAPSHOT`, `PORTS`, and `CREATED`. `CREATOR` shows `-` when the
+creator is unknown, for example for a rig an API key created.
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--shell <shell>` | `zsh` | Shell to run in the rig container |
+| `-l`, `--long` | `false` | Show additional columns |
 
-The shell starts in `/home/amika`.
+Column selection only applies to text output. `-o json` always includes every
+field.
+
+### Get
+
+Show one rig by name or ID.
+
+```bash
+amika rig get dev-rig
+amika rig get dev-rig -o json
+```
+
+Text output prints one `key: value` per line, with dotted keys for nested
+fields. `ssh_host` is the rig's SSH alias from `~/.ssh/amika.conf`, which you
+can use with `ssh`, `scp`, or an editor's Remote-SSH.
+
+### Connect
+
+Open an interactive shell in a rig. `connect` is the shell-only form of
+[`rig ssh`](#ssh) and uses the same transport. It takes no flags.
+
+```bash
+amika rig connect dev-rig
+```
+
+The shell starts in `/home/amika`. Like `rig ssh`, it needs an SSH key from
+[`amika secret ssh-keygen`](#amika-secret-ssh-keygen).
 
 ### Delete
 
@@ -137,17 +204,12 @@ Aliases: `rm`, `remove`
 amika rig delete dev-rig
 amika rig rm dev-rig
 amika rig delete rig-1 rig-2
-amika rig delete dev-rig --delete-volumes
-amika rig delete dev-rig --keep-volumes
+amika rig delete dev-rig --force
 ```
 
 | Flag | Default | Description |
 | --- | --- | --- |
 | `--force` | `false` | Skip confirmation prompt |
-| `--delete-volumes` | `false` | Delete associated volumes that are no longer referenced by other rigs |
-| `--keep-volumes` | `false` | Keep associated volumes without prompting |
-
-When neither flag is set and the rig is the sole reference for a volume, you will be prompted to decide.
 
 ### Stop
 
@@ -169,72 +231,231 @@ amika rig start rig-1 rig-2
 
 ### SSH
 
-SSH into a remote rig, or revoke SSH access. Optionally pass a command to execute instead of opening an interactive session.
+Aliases: `sshv2`
+
+SSH into a rig. Use it like `ssh`: options go before the rig name, and an
+optional command goes after it. Every `ssh` option works, including port
+forwarding. Requires an SSH key from
+[`amika secret ssh-keygen`](#amika-secret-ssh-keygen).
 
 ```bash
-# Interactive SSH session
+amika rig ssh [ssh-options] <name> [command...]
+```
+
+```bash
+# Interactive shell
 amika rig ssh my-rig
 
-# Run a command on the remote rig
-amika rig ssh my-rig -- ls -la
+# Run a command instead of opening a shell
+amika rig ssh my-rig uptime
 
-# Force pseudo-terminal allocation (for interactive programs)
-amika rig ssh -t my-rig -- top
+# Force pseudo-terminal allocation for an interactive program
+amika rig ssh -t my-rig top
 
-# Revoke SSH access
-amika rig ssh my-rig --revoke
+# Forward local port 6789 to port 3010 in the rig, without a shell
+amika rig ssh -N -L 6789:localhost:3010 my-rig
+
+# SOCKS proxy on local port 1080
+amika rig ssh -N -D 1080 my-rig
 ```
 
-| Flag | Default | Description |
-| --- | --- | --- |
-| `-t` | `false` | Force pseudo-terminal allocation (useful for interactive remote programs) |
-| `--revoke` | `false` | Revoke SSH access for the rig |
+`rig ssh` has no flags of its own: everything after `ssh` goes to `ssh`. Write
+Amika's own flags before `ssh`, as in `amika rig --remote ssh my-rig`.
 
-### Code
+Local (`-L`), dynamic (`-D`), and agent forwarding are supported. Agent
+forwarding uses a dedicated agent that holds only your Amika SSH key, so your
+other keys never reach the rig. Remote (`-R`) and X11 forwarding are not
+supported.
 
-Open a remote rig in an editor via SSH.
+### Open
+
+Aliases: `code`, `codev2`
+
+Open a rig in an editor or app over SSH. The command adds a named SSH host to
+Amika's managed SSH config, then starts or configures the app you pick.
+Requires an SSH key from [`amika secret ssh-keygen`](#amika-secret-ssh-keygen).
+
+<Note>
+`rig open`, `--app`, and the `herdr` app ship in the next CLI release. In
+v0.23.0 and earlier, run `amika rig code <name> --editor <app>` instead. It
+supports every app except `herdr`.
+</Note>
 
 ```bash
-amika rig code my-rig
-amika rig code my-rig --editor=cursor
+amika rig open my-rig
+amika rig open my-rig --app vscode
+amika rig open my-rig --app codex
+amika rig open my-rig --app herdr
+amika rig open my-rig --path /home/amika/workspace/other-repo
 ```
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--editor <name>` | `cursor` | Editor to open (currently only `cursor` is supported) |
+| `--app <name>` | `cursor` | App to open: `cursor`, `vscode`, `claude`, `codex`, `paseo`, or `herdr` |
+| `--editor <name>` | | Alias for `--app` |
+| `--path <path>` | | Remote path to open, absolute or relative to the rig workspace. Ignored by `paseo` and `herdr` |
+
+What each app does:
+
+| App | Behavior |
+| --- | --- |
+| `cursor` | Launches Cursor connected to the rig |
+| `vscode` | Launches VS Code connected to the rig |
+| `claude` | Registers the rig as a Claude Desktop SSH environment, then opens Claude Desktop |
+| `codex` | Turns on Codex remote connections, then opens Codex. See [Codex app](/guides/codex-app) |
+| `paseo` | Prints the SSH host to add in Paseo. See [Paseo](/guides/paseo) |
+| `herdr` | Runs `herdr machine add` to save the rig as a Herdr machine labeled with the rig name. Requires the `herdr` CLI on your `PATH` |
+
+See [Open in your editor](/guides/open-in-editor) for setup details.
 
 ### Agent Send
 
-Send a prompt to an AI agent CLI running inside a rig container. The message can be provided as a positional argument or piped via stdin. By default the command waits for the agent to finish and streams the response.
+Send a message to a coding agent in an existing rig. This is the rig-scoped
+form of [`amika send --rig <name>`](#amika-send), with the same session
+handling, streaming, and JSON output. The message can be a positional argument
+or piped through stdin. The command waits for the agent to finish.
+
+Without `--session-id` or `--new-session`, the message continues the latest
+API chat on the rig, or starts one if there is none. The session ID is printed
+to stderr as `session_id: <id>`.
 
 ```bash
-# Send a message to Claude in a rig
+# Send a message to the default agent
 amika rig agent-send my-rig "Add unit tests for the auth module"
 
-# Pipe a message via stdin
+# Pipe a message through stdin
 echo "Fix the failing tests" | amika rig agent-send my-rig
 
-# Send without waiting for a response
-amika rig agent-send my-rig "Refactor the API layer" --no-wait
+# Continue a specific chat
+amika rig agent-send my-rig "Continue the review" --session-id <session-id>
 
-# Use a different agent CLI
-amika rig agent-send my-rig "Review this code" --agent codex
+# Use a different agent and get JSON back
+amika rig agent-send my-rig "Review this code" --agent codex -o json
 ```
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--no-wait` | `false` | Send the instruction and return immediately without waiting |
-| `--workdir <path>` | `$AMIKA_AGENT_CWD` | Working directory inside the container |
-| `--agent <name>` | `claude` | Agent CLI to use |
-| `--session-id <id>` | | Resume an existing agent session. Remote rigs only |
-| `--new-session` | `false` | Start a new agent session instead of resuming. Remote rigs only |
+| `--agent <name>` | existing chat or organization setting, else `claude` | Coding agent: `claude` or `codex` |
+| `--session-id <id>` | | Continue a chat returned by an earlier send |
+| `--new-session` | `false` | Start a new chat |
+| `--stream[=false]` | on for a terminal | Stream the reply as the agent writes it. JSON output is always buffered |
+
+## `amika send`
+
+Send a message to a coding agent and keep the conversation as a chat. Name an
+existing rig with `--rig`, continue a chat with `--session-id`, or omit both to
+create a new rig for the chat.
+
+```bash
+# Create a rig from the current repository and start a chat
+amika send "What does this repo do?"
+
+# Use a specific agent
+amika send --agent codex "Summarize the open TODOs"
+
+# Send into an existing rig
+amika send "Fix the tests" --rig my-rig
+
+# Continue a chat
+amika send "Now update the README" --session-id <session-id>
+```
+
+When `send` creates a rig, repository and branch selection work like
+[`rig create`](#create): the current Git repository and branch are used unless
+`--git`, `--no-git`, `--branch`, or `--new-branch` say otherwise. These flags
+can't be combined with `--rig` or `--session-id`.
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--agent <name>` | existing chat or organization setting, else `claude` | Coding agent: `claude` or `codex` |
+| `--rig <name-or-id>` | | Send into an existing rig |
+| `--session-id <id>` | | Continue an existing chat |
+| `--new-session` | `false` | Start a new chat |
+| `--git <path-or-URL>` | auto-detected | Repository to clone into the new rig |
+| `--no-git` | `false` | Create the new rig without a repository |
+| `--branch <name>` | current branch | Branch to check out in the new rig |
+| `--new-branch <name>` | | Create a new branch in the new rig |
+| `--stream[=false]` | on for a terminal | Stream the reply as the agent writes it. JSON output is always buffered |
+
+In text output, the reply goes to stdout and metadata such as `session_id`
+goes to stderr. With `-o json`, the command prints one object with
+`session_id`, `sandbox_id`, `agent`, `response`, `is_error`, `is_new_session`,
+`created_sandbox`, and optional `usage`. If the agent fails, the command still
+prints its response, then exits with an error. `--repo` is a deprecated alias
+for `--git`.
+
+## `amika sessions`
+
+Aliases: `session`
+
+List and read the agent chats created by `amika send` and `amika rig agent-send`.
+
+### List
+
+```bash
+amika sessions list
+amika sessions list --limit 100
+```
+
+Output columns: `SESSION ID`, `AGENT`, `STATUS`, `SANDBOX`, `UPDATED`.
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--limit <n>` | server page size (50) | Maximum number of chats to list |
+
+### Show
+
+Print a chat's details and every message in it.
+
+```bash
+amika sessions show <session-id>
+```
+
+## `amika scp`
+
+Aliases: `scpv2`
+
+Copy files between your machine, rigs, and other SSH hosts. `amika scp` wraps
+the system `scp`: every argument is passed through, so the usual `scp` flags
+(`-r`, `-p`, `-C`, `-v`) work. Requires an SSH key from
+[`amika secret ssh-keygen`](#amika-secret-ssh-keygen).
+
+```bash
+amika scp <source> ... <target>
+```
+
+| Form | Meaning |
+| --- | --- |
+| `PATH` | A local path |
+| `NAME:PATH` | A path in rig `NAME`. A relative path is under `/home/amika` |
+| `sbox://NAME/PATH` | A path in rig `NAME`, in URI form. `~` is the home directory |
+| `scp://[user@]host[:port]/path` | A path on any other SSH host |
+
+A bare `host:path` always names a rig. Use an `scp://` URI to reach another SSH
+host.
+
+```bash
+# Upload a file into the rig's home directory
+amika scp ./local.txt my-rig:local.txt
+
+# Download a directory recursively
+amika scp -r my-rig:/srv/out ./out
+
+# Copy from a rig to another SSH host
+amika scp my-rig:/data.csv scp://user@host:22/tmp/data.csv
+
+# Print the resolved scp command instead of running it
+amika scp --print ./a.txt my-rig:a.txt
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--print` | `false` | Print the resolved `scp` command instead of running it |
 
 ## `amika snapshot`
 
-Manage snapshots captured from running rigs. Snapshots are a hosted-cloud
-concept — every subcommand talks to the API — so they are not available in local
-open-source mode. See [Create a snapshot](/guides/create-a-snapshot) for the
-end-to-end flow.
+Manage snapshots captured from running rigs. See
+[Create a snapshot](/guides/create-a-snapshot) for the end-to-end flow.
 
 ### Create
 
@@ -245,16 +466,16 @@ for a non-prompting run, which then requires `--mode` and `--name`.
 
 ```bash
 # Interactive
-amika snapshot create --sandbox base-box
+amika snapshot create --rig base-box
 
 # Non-interactive
-amika snapshot create --sandbox base-box \
+amika snapshot create --rig base-box \
   --name example-repo-base --mode scrub_and_delete --no-interactive
 ```
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--sandbox <name-or-id>` | **(required)** | Source rig to snapshot |
+| `--rig <name-or-id>` | **(required)** | Source rig to snapshot |
 | `--name <name>` | | Name for the snapshot (prompted if omitted in interactive mode) |
 | `--mode <mode>` | | Capture mode: `scrub_and_delete` or `full` (required with `--no-interactive`) |
 | `--description <text>` | | Optional description shown in the snapshot list |
@@ -269,6 +490,9 @@ Capture modes:
 
 Capture runs in the background; check progress with `amika snapshot list`.
 
+A snapshot of a rig on one of your own hosts stays on that host and can only
+boot rigs there. See [Bring your own compute](/guides/byoc).
+
 ### List
 
 Aliases: `ls`
@@ -276,17 +500,18 @@ Aliases: `ls`
 ```bash
 amika snapshot list
 amika snapshot ls --long
-amika snapshot list --sandbox base-box
+amika snapshot list --rig base-box
 amika snapshot list --repo example-repo
 ```
 
-Output columns: `NAME`, `STATE`, `PROVIDER`, `SOURCE`, `CREATED` (plus `SIZE`,
-`BASE`, `DESCRIPTION`, and `ERROR` with `--long`).
+Output columns: `NAME`, `STATE`, `PROVIDER`, `SOURCE`, `CREATED`. `--long` adds
+`HOST`, `SIZE`, `BASE`, `DESCRIPTION`, and `ERROR`. `HOST` names the host a
+snapshot was taken on, if it came from one of your own hosts.
 
 | Flag | Default | Description |
 | --- | --- | --- |
 | `-l`, `--long` | `false` | Show additional columns |
-| `--sandbox <name-or-id>` | | Only show snapshots captured from this rig |
+| `--rig <name-or-id>` | | Only show snapshots captured from this rig |
 | `--repo <name-or-id>` | | Only show snapshots for this repository |
 
 ### Delete
@@ -303,38 +528,12 @@ amika snapshot delete example-repo-base --force
 | --- | --- | --- |
 | `-f`, `--force` | `false` | Skip confirmation prompt |
 
-## `amika volume`
-
-Manage tracked Docker volumes used by rigs.
-
-### List
-
-Aliases: `ls`
-
-```bash
-amika volume list
-amika volume ls
-```
-
-Output columns: `NAME`, `TYPE`, `CREATED`, `IN_USE`, `SANDBOXES`, `SOURCE`.
-
-### Delete
-
-Aliases: `rm`, `remove`
-
-```bash
-amika volume delete my-volume
-amika volume rm my-volume
-amika volume delete my-volume --force
-```
-
-| Flag | Default | Description |
-| --- | --- | --- |
-| `--force` | `false` | Delete volume even if still referenced by rigs |
-
 ## `amika service`
 
-Manage services declared in rig configurations.
+Aliases: `services`
+
+Manage the services on your rigs. See [Services](/reference/services) for how
+to declare services in `.amika/config.toml`.
 
 ### List
 
@@ -352,11 +551,94 @@ Output columns: `SERVICE`, `SANDBOX`, `PORTS`, `URL`.
 | --- | --- | --- |
 | `--rig-name <name>` | (none) | Filter services to a specific rig |
 
-See [Services](/reference/services) for how to declare services in `.amika/config.toml`.
+### Create
+
+Add a service to a running rig, for a port you start listening on after the rig
+is created.
+
+```bash
+amika service create --rig dev-rig --name web --port 3000 --url-scheme https
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--rig <name-or-id>` | **(required)** | Rig to add the service to |
+| `--name <name>` | **(required)** | Service name, a single DNS label (lowercase letters, digits, and hyphens) |
+| `--port <port>` | **(required)** | Port the service listens on in the rig |
+| `--url-scheme <scheme>` | **(required)** | Scheme for the generated URL: `http` or `https` |
+
+### Delete
+
+Aliases: `rm`, `remove`
+
+```bash
+amika service delete --rig dev-rig --name web
+amika service delete --rig dev-rig --name web --force
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--rig <name-or-id>` | **(required)** | Rig the service belongs to |
+| `--name <name>` | **(required)** | Service to delete |
+| `-f`, `--force` | `false` | Skip confirmation prompt |
+
+## `amika host`
+
+Aliases: `hosts`
+
+Inspect and retire your organization's own hosts (bring your own compute). See
+[Bring your own compute](/guides/byoc) for the setup flow.
+
+A host registers itself when `amika-hostd up` runs on the machine, so there is
+no command to add one. A rig runs on Amika Cloud unless `amika rig create --host`
+names one of these hosts.
+
+```bash
+# List the organization's hosts
+amika host list
+
+# Show one host and the sizes it offers
+amika host get alpha.lan
+
+# Delete a host and its stored secret
+amika host delete alpha.lan
+```
+
+### List
+
+Aliases: `ls`
+
+Output columns: `HOSTNAME`, `URL`, `SIZES`. A host that has not registered a
+URL shows `-`, and cannot take rigs.
+
+### Get
+
+```bash
+amika host get <hostname-or-id>
+```
+
+Shows one host's details and the sizes it offers. Those size names, not the
+cloud size vocabulary, are what `rig create --host ... --size ...` accepts.
+
+### Delete
+
+Aliases: `rm`, `remove`
+
+```bash
+amika host delete <hostname-or-id> [...]
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-f`, `--force` | `false` | Skip confirmation prompt |
+
+A host that still has rigs on it is refused: delete those rigs first. The
+machine itself is untouched, so stop its daemon with `amika-hostd down` or it
+registers itself again on the next `amika-hostd up`.
 
 ## `amika auth`
 
-Authentication and credential commands.
+Authentication commands.
 
 ### `amika auth login`
 
@@ -366,7 +648,9 @@ Log in to Amika via the WorkOS Device Authorization Flow. Opens a browser for yo
 amika auth login
 ```
 
-To skip the browser flow and log in with an Amika API key — useful in CI — pass `--api-key-file`. Use `-` to read from stdin so the key never lands on disk:
+To skip the browser flow and log in with an Amika API key, for example in CI,
+pass `--api-key-file`. Use `-` to read from stdin so the key never lands on
+disk:
 
 ```bash
 amika auth login --api-key-file /path/to/key
@@ -377,7 +661,10 @@ vault kv get -field=key secret/amika | amika auth login --api-key-file -
 | --- | --- | --- |
 | `--api-key-file <path \| ->` | | Read an Amika API key from this path (or `-` for stdin) instead of running the device flow |
 
-See [Authentication](/reference/auth) for details on the login flow and session storage.
+A successful login also writes Amika's managed SSH config
+(`~/.ssh/amika.conf`, included from `~/.ssh/config`) and prints the files it
+touched. See [Authentication](/reference/auth) for details on the login flow
+and session storage.
 
 ### `amika auth status`
 
@@ -397,26 +684,50 @@ Log out of Amika and remove the saved session.
 amika auth logout
 ```
 
-### `amika auth extract`
+### `amika auth api-key create`
 
-Discover locally stored credentials from multiple sources and print shell environment assignments.
+Create an Amika API key and write it to a file. Use API keys for CI jobs,
+scripts, another machine's CLI, or an `amika-hostd` host daemon. The key's
+value is shown only once, so the command writes it to `--out` and never prints
+it, including with `-o json`.
+
+<Note>
+`amika auth api-key create` ships in the next CLI release. Until then, create
+API keys in the web UI at
+[app.amika.dev/settings/api-keys](https://app.amika.dev/settings/api-keys).
+</Note>
 
 ```bash
-amika auth extract
-eval "$(amika auth extract --export)"
-amika auth extract --homedir /tmp/test-home
-amika auth extract --no-oauth
+# Create an organization key for a host daemon, hand it to setup, remove the file
+dir=$(mktemp -d)
+amika auth api-key create --name build-01-hostd --out "$dir/api-key"
+amika-hostd setup --non-interactive --hostname build-01 < "$dir/api-key"
+rm -rf "$dir"
+
+# Create a key owned by you and log another machine's CLI in with it
+amika auth api-key create --name laptop --scope user --out ./amika-key
+amika auth login --api-key-file ./amika-key
 ```
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--export` | `false` | Prefix each line with `export` |
-| `--homedir <path>` | `$HOME` | Override home directory used for credential discovery |
-| `--no-oauth` | `false` | Skip OAuth credential sources |
+| `--name <name>` | **(required)** | Name for the key, shown in the web app's settings |
+| `--out <file>` | **(required)** | File to write the key to. A new file is created with mode `0600` |
+| `--scope <scope>` | `organization` | `organization` (owned by your organization) or `user` (owned by you) |
+| `-f`, `--force` | `false` | Replace `--out` if it already exists |
 
-See [Authentication](/reference/auth) for details on supported credential sources and priority.
+The file holds the bare key and a newline, so it works as-is with
+`amika auth login --api-key-file` and `amika-hostd setup --non-interactive`.
+The command checks that it can write `--out` before it creates the key. If the
+write still fails afterward, the error names the key's ID so you can delete it
+in the web app.
+
+A user-scoped key acts as you. Organization-scoped keys have no user behind
+them, so you can't use one to create a user-scoped key.
 
 ## `amika secret`
+
+Aliases: `secrets`
 
 Manage secrets in the remote Amika secrets store.
 
@@ -437,6 +748,9 @@ amika secret extract --push --only=ANTHROPIC_API_KEY,OPENAI_API_KEY
 | `--scope <scope>` | `user` | Secret scope: `user` (private) or `org` (visible to org members) |
 | `--homedir <path>` | | Override home directory used for credential discovery |
 | `--no-oauth` | `false` | Skip OAuth credential sources |
+
+See [Local credential discovery](/reference/auth#local-credential-discovery)
+for the sources it checks.
 
 ### `amika secret push`
 
@@ -466,11 +780,11 @@ Manage Claude Code credentials for rig authentication. Credentials pushed here c
 Push Claude Code credentials (API key or OAuth token) to the remote Amika secrets store. Scans your system for Claude credentials and lets you choose which one to push. On macOS, the keychain is also checked.
 
 ```bash
-# Interactive — discover and select credentials
+# Interactive: discover and select credentials
 amika secret claude push
 
 # Push with a custom label
-amika secret claude push --name "Claude OAuth (Work Laptop)"
+amika secret claude push --name claude-oauth-work-laptop
 
 # Push from a credentials file
 amika secret claude push --from-file ~/.claude/.credentials.json
@@ -480,14 +794,19 @@ amika secret claude push --value '{"claudeAiOauth":{...}}'
 
 # Auto-resolve by type (reads ANTHROPIC_API_KEY env var for api_key)
 amika secret claude push --type api_key
+
+# Share the credential with your organization
+amika secret claude push --scope org
 ```
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--name <label>` | | Human-readable label for the credential (prompted if omitted) |
+| `--name <label>` | | Label for the credential (prompted if omitted) |
 | `--value <string>` | | Credential value (skips interactive discovery) |
 | `--from-file <path>` | | Path to a credentials file (skips interactive discovery) |
 | `--type <type>` | `oauth` | Credential type: `oauth` or `api_key` |
+| `--scope <scope>` | `user` | Credential scope: `user` (private) or `org` (visible to org members) |
+| `--force` | `false` | Overwrite an existing Claude credential with the same name |
 
 <Note>
 `--value` and `--from-file` are mutually exclusive.
@@ -519,18 +838,18 @@ amika secret claude rm <id>
 
 ### `amika secret codex`
 
-Manage Codex credentials for rig authentication. Same shape as `amika secret claude` — pushed credentials can be injected into rigs at creation time.
+Manage Codex credentials for rig authentication. Same shape as `amika secret claude`: pushed credentials can be injected into rigs at creation time.
 
 #### `amika secret codex push`
 
 Push Codex credentials (API key or OAuth token) to the remote Amika secrets store. Scans `~/.codex/auth.json` for credentials and lets you choose which one to push.
 
 ```bash
-# Interactive — discover and select credentials
+# Interactive: discover and select credentials
 amika secret codex push
 
 # Push with a custom label
-amika secret codex push --type oauth --name "Codex OAuth"
+amika secret codex push --type oauth --name codex-oauth
 
 # Push from ~/.codex/auth.json
 amika secret codex push --from-file ~/.codex/auth.json
@@ -545,10 +864,12 @@ amika secret codex push --type oauth    # reads ~/.codex/auth.json
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--name <label>` | | Human-readable label for the credential (prompted if omitted) |
+| `--name <label>` | | Label for the credential (prompted if omitted) |
 | `--value <string>` | | Credential value (skips interactive discovery) |
 | `--from-file <path>` | | Path to a credentials file (skips interactive discovery) |
 | `--type <type>` | `oauth` | Credential type: `oauth` or `api_key` |
+| `--scope <scope>` | `user` | Credential scope: `user` (private) or `org` (visible to org members) |
+| `--force` | `false` | Overwrite an existing Codex credential with the same name |
 
 <Note>
 `--value` and `--from-file` are mutually exclusive.
@@ -578,49 +899,94 @@ amika secret codex delete <id>
 amika secret codex rm <id>
 ```
 
-## `amika materialize`
+### `amika secret ssh-keygen`
 
-Run a script or command in an ephemeral Docker container and copy output files to a destination.
-
-The container runs with working directory `/home/amika/workspace`. Exactly one of `--script` or `--cmd` must be specified.
+Generate an ed25519 SSH keypair and upload only its public half. `rig ssh`,
+`rig connect`, `rig open`, and `scp` all need one. The private key is written
+to `~/.ssh/amika_id_ed25519` and never leaves your machine.
 
 ```bash
-amika materialize --script ./pull-data.sh --destdir ./output
-amika materialize --cmd "curl -s https://api.example.com/data > result.json" --destdir ./output
-amika materialize --script ./transform.sh --outdir /app/results --destdir ./output
-amika materialize -i --cmd claude --mount $(pwd):/workspace --env ANTHROPIC_API_KEY=...
-amika materialize --preset coder-plus-docker --cmd "docker ps" --destdir /tmp/out
-amika materialize --setup-script ./install-deps.sh --cmd "echo done" --destdir /tmp/out
-```
+# Generate a keypair and upload the public key
+amika secret ssh-keygen
 
-### Flags
+# Upload an existing public key instead of generating one
+amika secret ssh-keygen --import ~/.ssh/id_ed25519.pub
+```
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--script <path>` | | Script to execute (mutually exclusive with `--cmd`) |
-| `--cmd <string>` | | Bash command to execute (mutually exclusive with `--script`) |
-| `--destdir <path>` | **(required)** | Host directory where output files are copied |
-| `--outdir <path>` | workdir | Container directory to copy from |
-| `--image <image>` | `amika/coder:latest` | Docker image to use (mutually exclusive with `--preset`) |
-| `--preset <name>` | | Preset image, e.g. `coder` or `coder-plus-docker` (mutually exclusive with `--image`) |
-| `--mount <spec>` | | Mount a host directory (`source:target[:mode]`, mode defaults to `rw`). Repeatable |
-| `--env <KEY=VALUE>` | | Set environment variable in the container. Repeatable |
-| `-i`, `--interactive` | `false` | Run interactively with TTY |
-| `--setup-script <path>` | | Mount startup script at `/usr/local/etc/amikad/setup/setup.sh` |
+| `--name <label>` | `default` | Name for the uploaded public key |
+| `--import <path>` | | Upload an existing `.pub` file instead of generating a keypair |
+| `--force` | `false` | Replace an existing key with the same name |
 
-Pass script args after `--`:
+Re-running the command is safe: an existing keypair at
+`~/.ssh/amika_id_ed25519` is reused. `--force` is only needed when the name
+already holds a different key.
+
+### `amika secret ssh-key`
+
+Manage the SSH public keys that authorize access to your rigs. Keys are
+identified by name, and a name is unique per user.
+
+#### `amika secret ssh-key create`
+
+Alias for [`amika secret ssh-keygen`](#amika-secret-ssh-keygen), with the same
+flags.
+
+#### `amika secret ssh-key push`
+
+Upload a public key that already exists on this machine. Reads
+`~/.ssh/amika_id_ed25519.pub` unless `--from-file` names another file.
 
 ```bash
-amika materialize --script ./gen.sh --destdir /tmp/dest -- arg1 arg2
+# Upload the default Amika public key
+amika secret ssh-key push
+
+# Upload a different key under a custom name
+amika secret ssh-key push --name laptop --from-file ~/.ssh/id_ed25519.pub
 ```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--name <label>` | `default` | Name for the uploaded public key |
+| `--from-file <path>` | `~/.ssh/amika_id_ed25519.pub` | Public key file to upload |
+| `--force` | `false` | Replace an existing key with the same name |
+
+Only ed25519 keys are accepted. Pushing the same key again under the same name
+does nothing.
+
+#### `amika secret ssh-key list`
+
+Aliases: `ls`
+
+```bash
+amika secret ssh-key list
+```
+
+Output columns: `ID`, `NAME`, `KEY`.
+
+#### `amika secret ssh-key delete`
+
+Aliases: `rm`
+
+```bash
+amika secret ssh-key delete <id>
+amika secret ssh-key delete <id> --force
+```
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-f`, `--force` | `false` | Skip confirmation prompt |
+
+Deleting a key doesn't revoke access on rigs that are already running. The
+change applies the next time a rig is provisioned.
 
 ## Environment variables
 
 | Variable | Description |
 | --- | --- |
-| `AMIKA_STATE_DIRECTORY` | Override the default state directory (`~/.local/state/amika`) |
-| `AMIKA_PRESET_IMAGE_PREFIX` | Override the Docker image name prefix for presets |
-| `AMIKA_API_URL` | Override the remote API base URL (default: `https://app.amika.dev`). Used by rig commands when operating on remote rigs |
-| `AMIKA_WORKOS_CLIENT_ID` | Override the default WorkOS client ID for `amika auth login`. If you change `AMIKA_API_URL`, you likely need to update this too |
 | `AMIKA_API_KEY` | Static bearer token for API authentication. When set, takes precedence over the WorkOS session from `amika auth login` |
-| `AMIKA_RUN_EXPENSIVE_TESTS` | Enable expensive integration tests |
+| `AMIKA_API_URL` | Override the remote API base URL (default: `https://app.amika.dev`) |
+| `AMIKA_WORKOS_CLIENT_ID` | Override the default WorkOS client ID for `amika auth login`. If you change `AMIKA_API_URL`, you likely need to update this too |
+| `AMIKA_STATE_DIRECTORY` | Override the default state directory (`~/.local/state/amika`) |
+| `AMIKA_RIG_NAME` | Set inside every rig to that rig's name. `_self` resolves to it |

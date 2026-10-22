@@ -27,10 +27,19 @@ amika rig agent-send dev-box "Add unit tests for the auth module"
 ```
 
 ```ts TypeScript
-const res = await amika.agentSend("dev-box", {
+const rig = client.rigs.handle("dev-box");
+const turn = await rig.send({
   message: "Add unit tests for the auth module",
 });
-console.log(res.result);
+if (turn.isError) throw new Error(turn.response);
+console.log(turn.response);
+```
+
+```bash HTTP API
+curl -X POST https://app.amika.dev/api/v0beta1/agent-sessions \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"sandbox_id": "dev-box", "message": "Add unit tests for the auth module"}'
 ```
 
 </CodeGroup>
@@ -53,53 +62,101 @@ amika rig agent-send dev-box "Now write the tests" \
 ```
 
 ```ts TypeScript
+const rig = client.rigs.handle("dev-box");
+
 // Start fresh
-await amika.agentSend("dev-box", {
+await rig.send({
   message: "Refactor the API layer",
   newSession: true,
 });
 
 // Resume a specific session
-await amika.agentSend("dev-box", {
+await rig.send({
   message: "Now write the tests",
   sessionId: "3f2a...",
 });
+```
+
+```bash HTTP API
+# Start fresh
+curl -X POST https://app.amika.dev/api/v0beta1/agent-sessions \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"sandbox_id": "dev-box", "message": "Refactor the API layer", "new_session": true}'
+
+# Resume a specific session
+curl -X POST https://app.amika.dev/api/v0beta1/agent-sessions \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Now write the tests", "session_id": "3f2a..."}'
+```
+
+</CodeGroup>
+
+## Stream the reply
+
+`sendStream` takes the same request and calls your handlers as the turn runs.
+`onDelta` receives reply text in order, and `onStatus` reports milestones. It
+resolves with the completed turn, like `send`.
+
+Over HTTP, `POST /agent-sessions/stream` takes the same body and answers with
+a `text/event-stream`. Each frame's SSE `event:` field names it: `status` for
+milestones, `delta` for reply text, `done` for the completed turn (the same
+object `POST /agent-sessions` returns), or `error`.
+
+<CodeGroup>
+
+```ts TypeScript
+const turn = await client.rigs.handle("dev-box").sendStream(
+  { message: "Explain the test setup" },
+  { onDelta: (text) => process.stdout.write(text) },
+);
+```
+
+```bash HTTP API
+curl -N -X POST https://app.amika.dev/api/v0beta1/agent-sessions/stream \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"sandbox_id": "dev-box", "message": "Explain the test setup"}'
 ```
 
 </CodeGroup>
 
 ## Response shape
 
-`agentSend` returns the agent's text output, the session id it ran in, and a
-flag indicating whether the agent itself reported an error.
+`send` and `sendStream` return the agent's reply, the session ID it ran in,
+and whether the agent reported an error.
 
 ```ts
-interface AgentSendResponse {
-  result: string;     // the agent's textual response
-  sessionId: string;
+interface AgentSessionSendResponse {
+  sessionId: string;       // pass back as sessionId to continue
+  sandboxId: string;       // the rig the turn ran on
+  agent: string;
+  response: string;        // the reply, or failure details when isError
   isError: boolean;
+  isNewSession: boolean;
+  createdSandbox: boolean;
+  usage?: AgentSessionUsage;
 }
 ```
 
-<Note>
-On the wire the field is named `response`; the SDK maps it to `result` for
-consistency with the rest of the surface.
-</Note>
+See [Types](/sdks/typescript/types#agent-sessions) for `AgentSessionUsage`.
+The HTTP API returns the same fields in snake case (`session_id`,
+`sandbox_id`, `is_error`, `is_new_session`, `created_sandbox`, `usage`).
 
 ## Things to know
 
-- **`agent-send` blocks.** The endpoint waits for the agent to finish before
-  returning. The SDK uses a **10-minute HTTP timeout** for this call (the
-  default elsewhere is 30 seconds). Anything that wraps the SDK (Lambda,
-  Cloudflare Worker, etc.) needs at least that much runtime budget.
-- **Agent-side auth errors get rewritten.** If the upstream provider returns
-  a 401 (e.g. an Anthropic auth failure), the SDK surfaces a friendlier
-  message. You can also call
-  [`extractAgentAuthError`](/sdks/typescript/errors#extractagentautherror)
-  to detect this case.
-- **CLI default is resume.** Without `--new-session` or `--session-id`, the
-  CLI resumes the stored session for the rig. The same is true for the
-  SDK.
+- **Sends block.** The call waits for the agent to finish before returning.
+  The SDK uses a **10-minute HTTP timeout** for sends (the default elsewhere
+  is 30 seconds). Anything that wraps the SDK (Lambda, Cloudflare Worker,
+  etc.) needs at least that much runtime budget.
+- **Check `isError`.** An agent failure, such as a rejected agent credential,
+  returns `isError: true` with details in `response`, even though the HTTP
+  request succeeded. To fix a credential problem, see
+  [Inject credentials](/guides/inject-credentials).
+- **Default is resume.** Without `--new-session` / `newSession` or
+  `--session-id` / `sessionId`, both the CLI and the SDK continue the rig's
+  current session.
 
 ## Next steps
 

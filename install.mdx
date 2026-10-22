@@ -26,7 +26,7 @@ amika --version
 #### Install a specific version
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install.sh | sh -s -- --install-version 0.5.0
+curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install.sh | sh -s -- --install-version 0.23.0
 ```
 
 #### Custom install directory
@@ -39,6 +39,19 @@ curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install.sh | 
 
 Make sure the directory is on your `PATH`.
 
+#### Install another component
+
+The installer also installs Amika's separately versioned binaries. Pass
+`--component` with `amika` (the default), `amikad` (the daemon that runs inside
+a rig), or `amikalog` (the agent session capture CLI, see
+[Capture agent sessions](/guides/capture-agent-sessions)):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install.sh | sh -s -- --component amikalog
+```
+
+`--install-version` applies to the component you pick.
+
 #### Dry run
 
 Preview what the installer would do without downloading or installing anything:
@@ -46,6 +59,18 @@ Preview what the installer would do without downloading or installing anything:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install.sh | sh -s -- --dry-run
 ```
+
+### Shell completion
+
+`amika completion <shell>` prints a completion script for `bash`, `zsh`,
+`fish`, or `powershell`. For example, to load zsh completion in the current
+shell:
+
+```bash
+source <(amika completion zsh)
+```
+
+Run `amika completion <shell> --help` for how to install it permanently.
 
 ### Supported platforms
 

@@ -39,11 +39,12 @@
               "index",
               "quickstart",
               "install",
+              "guides/byoc",
               "guides/overview"
             ]
           },
           {
-            "group": "VM Rigs",
+            "group": "Rigs (machines)",
             "pages": [
               "guides/what-is-a-rig",
               "guides/create-a-rig",
@@ -57,8 +58,7 @@
               "guides/send-a-message-to-an-agent",
               "guides/manage-sessions",
               "guides/capture-agent-sessions",
-              "guides/slack",
-              "guides/opencode"
+              "guides/slack"
             ]
           },
           {
@@ -79,13 +79,6 @@
               "guides/open-in-editor",
               "guides/codex-app",
               "guides/paseo"
-            ]
-          },
-          {
-            "group": "Code validation",
-            "pages": [
-              "guides/checks",
-              "guides/code-annotations"
             ]
           },
           {
@@ -129,9 +122,8 @@
           {
             "group": "HTTP API",
             "pages": [
-              "reference/api-reference",
-              "reference/http-api",
-              "reference/amika-server-cli-reference"
+              "reference/http-api-overview",
+              "reference/api-reference"
             ]
           }
         ]
@@ -210,6 +202,18 @@
     {
       "source": "/guides/setup-repo-config-with-agent",
       "destination": "/guides/set-up-vm-repo-config"
+    },
+    {
+      "source": "/guides/opencode",
+      "destination": "/guides/open-in-editor"
+    },
+    {
+      "source": "/reference/http-api",
+      "destination": "/reference/api-reference"
+    },
+    {
+      "source": "/reference/amika-server-cli-reference",
+      "destination": "/reference/api-reference"
     }
   ],
   "navbar": {
@@ -222,7 +226,7 @@
     "primary": {
       "type": "button",
       "label": "Book a demo",
-      "href": "https://cal.com/amika-ai/demo"
+      "href": "https://cal.com/amika-dev/demo"
     }
   },
   "contextual": {
@@ -239,7 +243,10 @@
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/gofixpoint/amika"
+      "github": "https://github.com/gofixpoint/amika",
+      "discord": "https://discord.gg/xDXk4KjGWg",
+      "x": "https://x.com/amikadev",
+      "linkedin": "https://www.linkedin.com/company/amikadev/"
     }
   }
 }

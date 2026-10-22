@@ -40,9 +40,13 @@ documenting them. Don't invent.
 
 `docs.json` defines four tabs:
 
-- **Guides** — getting started and how-tos. Groups: Get started, VM Rigs,
-  Repository configuration, Agents and sessions, Connecting to rigs, Code
-  validation, Credentials, Advanced.
+- **Guides** — getting started and how-tos. Groups: Get started, Rigs,
+  Repository configuration, Agents and sessions, Connecting to rigs,
+  Credentials, Advanced.
+  - The "Code validation" group (`guides/checks`, `guides/code-annotations`)
+    is hidden: out of `docs.json` and marked `hidden`/`noindex`. We haven't
+    productionized those features and aren't focusing on them. Don't link
+    to these pages or re-add them to the nav until that changes.
 - **SDKs** — the TypeScript SDK reference.
 - **CLI and API Reference** — flag and config tables, endpoint lists,
   `.amika/config.toml` key lookup.
@@ -65,9 +69,8 @@ Placement rules:
 - Active voice, second person ("you").
 - Sentence case for headings. One idea per sentence.
 - No emojis.
-- No em dashes. Use a colon, a comma, or a separate sentence instead. This
-  applies to everything written for this project, not just docs pages.
-- Frontmatter: `title` + `description`.
+- Use em dashes sparingly. Prefer a colon, a comma, or a separate sentence.
+- Frontmatter: `title` is required. `description` is optional.
 - Bold for UI elements (Click **Settings**); code formatting for file
   names, commands, paths, and code references.
 - Mintlify components in use: `<Note>`, `<Info>`, `<Tip>`, `<Warning>`,

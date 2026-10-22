@@ -11,14 +11,14 @@ transition.
 | State | Meaning |
 | --- | --- |
 | `initializing` | Provisioning; not yet reachable |
-| `active`, `running`, `started` | Reachable; the SDK treats all three as "ready" |
+| `active`, `running`, `started` | Reachable |
 | `stopped` | Paused. Can be resumed with `start` |
-| `failed` | Provisioning or runtime failure. The wait helpers throw on this |
+| `failed` | Provisioning or runtime failure. `rig.wait()` throws on this |
 
 <Note>
-The server may introduce new `state` values over time. The SDK wait helpers
-treat anything not in the lists above (except `failed`) as "still working",
-so unknown values won't break your code.
+The server may introduce new `state` values over time. The SDK's
+`rig.wait()` checks the rig's lifecycle `status` and its setup status, and
+only treats `failed` as a failure, so unknown values won't break your code.
 </Note>
 
 ## List rigs
@@ -30,10 +30,15 @@ amika rig list
 ```
 
 ```ts TypeScript
-const all = await amika.listRigs();
-for (const sb of all) {
-  console.log(sb.name, sb.state, sb.createdAt);
+const rigs = await client.rigs.list();
+for (const rig of rigs) {
+  console.log(rig.name, rig.status, rig.createdAt);
 }
+```
+
+```bash HTTP API
+curl https://app.amika.dev/api/v0beta1/rigs \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
 ```
 
 </CodeGroup>
@@ -47,15 +52,21 @@ amika rig stop dev-box
 ```
 
 ```ts TypeScript
-await amika.stopRig("dev-box");
-await amika.waitForRigStop("dev-box");
+const rig = client.rigs.handle("dev-box");
+await rig.stop();
+await rig.wait({ status: "stopped" });
+```
+
+```bash HTTP API
+curl -X POST https://app.amika.dev/api/v0beta1/rigs/dev-box/stop \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
 ```
 
 </CodeGroup>
 
-`waitForRigStop` polls every 3 seconds until the rig enters
-`stopped`. No client-side timeout — it throws if the rig transitions to
-`failed`.
+`wait({ status: "stopped" })` polls every 3 seconds until the rig is
+`stopped` (or `suspended`), for up to 15 minutes. It throws an
+`AmikaWaitError` if the rig fails or the deadline passes.
 
 ## Start a stopped rig
 
@@ -66,14 +77,25 @@ amika rig start dev-box
 ```
 
 ```ts TypeScript
-await amika.startRig("dev-box");
-await amika.waitForRigStart("dev-box");
+const rig = client.rigs.handle("dev-box");
+await rig.start();
+await rig.wait();
+```
+
+```bash HTTP API
+curl -X POST https://app.amika.dev/api/v0beta1/rigs/dev-box/start \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
 ```
 
 </CodeGroup>
 
-`waitForRigStart` polls every 3 seconds until the rig is in one of
-`active` / `running` / `started`.
+`wait()` polls every 3 seconds until the rig is `running` and its setup
+succeeded, for up to 15 minutes.
+
+Over HTTP, start and stop return `202` with `{"ok": true}` and finish in the
+background. Poll `GET /api/v0beta1/rigs/{id}` until `status` and
+`setup_status` reach the values you need. Every rig path takes the rig's ID or
+its name. See the [HTTP API overview](/reference/http-api-overview).
 
 ## Delete a rig
 
@@ -88,43 +110,39 @@ amika rig delete dev-box --force
 
 # Multiple at once
 amika rig delete dev-box-1 dev-box-2 --force
-
-# Also clean up volumes the rig owned
-amika rig delete dev-box --force --delete-volumes
 ```
 
 ```ts TypeScript
-await amika.deleteRig("dev-box");
+await client.rigs.handle("dev-box").delete();
+```
+
+```bash HTTP API
+curl -X DELETE https://app.amika.dev/api/v0beta1/rigs/dev-box \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
 ```
 
 </CodeGroup>
 
-The CLI's `--delete-volumes` / `--keep-volumes` flags control what happens
-to associated volumes; the SDK call always deletes the rig record and
-the server handles cleanup.
-
 ## End-to-end example
 
 ```ts
-const name = "dev-box";
-
 // Create
-await amika.createRig({ name, preset: "coder" });
-await amika.waitForRig(name);
+const rig = await client.rigs.create({ name: "dev-box", preset: "coder" });
+await rig.wait();
 
 // Use it…
-await amika.agentSend(name, { message: "Run the test suite" });
+await rig.send({ message: "Run the test suite" });
 
 // Stop to pause cost
-await amika.stopRig(name);
-await amika.waitForRigStop(name);
+await rig.stop();
+await rig.wait({ status: "stopped" });
 
 // Later: resume
-await amika.startRig(name);
-await amika.waitForRigStart(name);
+await rig.start();
+await rig.wait();
 
 // When done
-await amika.deleteRig(name);
+await rig.delete();
 ```
 
 ## Next steps
