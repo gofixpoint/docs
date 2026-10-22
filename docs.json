@@ -84,6 +84,7 @@
           {
             "group": "Guides for agents",
             "pages": [
+              "guides/agent-quickstart",
               "guides/set-up-vm-repo-config"
             ]
           },
