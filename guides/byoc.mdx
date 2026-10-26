@@ -7,22 +7,23 @@ Bring your own compute (BYOC) runs rigs on hardware you control. You install
 the `amika-hostd` daemon on a machine, it registers that machine with Amika as
 a **host**, and each rig you create on that host runs there as a local VM.
 
-The daemon dials out to Amika's gateway, so the machine needs no open port and
-works behind a home router or firewall. If you'd rather expose a port yourself,
-the daemon can [listen on one](#listen-on-a-port-instead) instead.
+By default (`transport = "tunnel"`), the daemon dials out to Amika's gateway,
+so the machine needs no open port and works behind a home router or firewall.
+If you'd rather expose a port yourself, the daemon can
+[listen on one](#listen-on-a-port-instead) instead.
 
 ## Requirements
 
 <Note>
 - Linux x86_64 or arm64 with glibc 2.34+ and KVM, or macOS on Apple silicon.
-- `e2fsprogs`: smolvm makes any disk smaller than its 20 GiB template by
-  shrinking it with `resize2fs`. The installer installs it when it is missing.
+- `e2fsprogs`, which smolvm needs for disks under 20 GiB. The installer adds
+  it if it is missing.
 - Outbound HTTPS from the machine to Amika.
-- A user-scoped Amika API key. Create one under **Settings → API Keys** at
-  [app.amika.dev](https://app.amika.dev/settings/api-keys), or from the CLI
-  during [setup](#set-up-a-host). Amika connects a host to its gateway only
-  for a person, so it refuses an organization-scoped key. A
-  [listening host](#listen-on-a-port-instead) can use either.
+- A user-scoped Amika API key, owned by you rather than your organization.
+  Create one under **Settings → API Keys** at
+  [app.amika.dev](https://app.amika.dev/settings/api-keys), or with the CLI
+  during [setup](#set-up-a-host). A
+  [listening host](#listen-on-a-port-instead) also accepts an organization key.
 </Note>
 
 Node.js and [smolvm](https://smolmachines.com), which the daemon needs, are
@@ -50,7 +51,7 @@ asking, but only as root or when `sudo` needs no password. When it can't
 install, it prints a warning with the reason and the exact command to run, and
 the install still succeeds.
 
-The `install-amika-hostd.sh` script will generate a config file in
+The installer creates a config file at
 `$XDG_CONFIG_HOME/amika-hostd/config.toml` (`~/.config/amika-hostd/config.toml`
 by default).
 
@@ -83,8 +84,9 @@ and it stops without changing anything if the hostname is invalid or no key
 arrives on stdin.
 
 <Note>
-`amika auth api-key create` ships in the amika CLI release after v0.23.0. With
-an older CLI, create the key in the web UI and save it to a file instead.
+`amika auth api-key create` needs amika CLI v0.24.0 or later. Run it while
+signed in as yourself (`amika auth login`): an organization key can't create a
+user key. Otherwise, create the key in the web UI and save it to a file.
 </Note>
 
 <Tip>
@@ -96,6 +98,9 @@ port, and how to get the API key without seeing it.
 </Step>
 
 <Step title="Start the daemon">
+
+To [listen on a port](#listen-on-a-port-instead) instead, set
+`transport = "listen"` in the config first.
 
 ```bash
 amika-hostd up
@@ -111,34 +116,38 @@ no URL to set up. Pass `--fg` to stay in the foreground.
 
 ### Listen on a port instead
 
-The daemon can instead bind `127.0.0.1:3020` and let you expose that port to
-the internet over HTTPS, with [ngrok](https://ngrok.com) or
+The daemon can instead listen on a port that you expose to the internet over
+HTTPS, with [ngrok](https://ngrok.com) or
 [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/),
-for example. Add this line to the config file, above its first `[` table:
+for example. Set this in the config file, above its first `[` line (the
+installer's config has it commented out):
 
 ```toml
 transport = "listen"
 ```
 
-Then start the daemon, expose the port, and record its public URL:
+The daemon listens on `127.0.0.1:3020` by default. To use another address or
+port, set `host` and `port` in the config, or pass `--host` and `--port` to
+`up`.
+
+Expose the port, then start the daemon:
 
 ```bash
-amika-hostd up
-ngrok http 3020                                    # in another terminal
-amika-hostd register-url https://<your-tunnel-url>
+ngrok http 3020   # in another terminal; note the https URL it prints
+amika-hostd up    # paste that URL when asked
 ```
 
-`amika-hostd up` prompts for this URL when the host doesn't have one, so you
-can paste it there instead. Pass `--port` or `--host` to `up` to listen
-somewhere else, or set `port` and `host` in the config.
+To set the URL later, or when it changes (a free ngrok URL changes on every
+restart), run `amika-hostd register-url https://<public-url>`.
 
 <Warning>
 Register a bare HTTPS hostname, such as `https://hostd.example.com`, with no
-path or port. Only these hosts get
-[browser-login previews](#previews-and-service-access).
+path or port. Browsers can only open
+[previews](#previews-and-service-access) on such a host. Other URLs still work
+for creating and managing rigs.
 
-Other URLs still work for rigs and signed service links, but previews of apps
-like Vite or Next.js dev servers can break.
+Browser previews and `amika rig ssh` reach the daemon directly at that URL, so
+don't limit it to Amika's IP addresses or put it behind an access gate.
 </Warning>
 
 <Note>
@@ -265,26 +274,22 @@ snapshots belong to which host.
 
 ## Previews and service access
 
-A rig's [services](/reference/services) on your host are reached through the
-daemon. On a host connected to Amika's gateway, the default, each service gets
-a preview link through the gateway. Opening it asks you to sign in to Amika,
-and only members of your organization get through.
+Each [service](/reference/services) on a host rig gets a preview link. Opening
+it asks you to sign in to Amika, and only members of your organization get
+through. The link carries no credential, so sharing it gives
+no one access. Where it points depends on the host's transport:
 
-On a [listening host](#listen-on-a-port-instead), services are reached at the
-URL you registered, and the kind of link you get in the browser depends on
-that URL.
+| Transport | Preview URL |
+| --- | --- |
+| `tunnel` (the default) | Its own subdomain, `https://<service>--<rig>.r.<org>.o.amika.run/` |
+| [`listen`](#listen-on-a-port-instead) | A path on the URL you registered, `https://<host-url>/v0beta1/rigs/<rig>/previews/<service>/` |
 
-- **Bare HTTPS hostname** (such as `https://hostd.example.com`): each service
-  gets a preview link. Opening it asks you to sign in to Amika, and only
-  members of your organization get through. One sign-in lasts a day and covers
-  every preview on the host.
-- **Any other URL** (a path, a port, plain http, or a loopback address): each
-  service gets a signed link. Anyone with the link can open the service for a
-  day, so share it only with people who should have access.
+On a listening host, all previews share one origin and one sign-in:
 
-Previews on one host share an origin and a login, so treat a host as one
-trusted unit: keep code you don't trust off a host whose other previews you
-open.
+- A page in one preview can act on any other preview you've opened there, so
+  don't run untrusted code on that host.
+- Open one preview at a time. Root-relative assets, such as a Vite or Next.js
+  dev server's, follow the preview you opened last.
 
 For scripts and tools like `curl`, mint a short-lived service token with the
 HTTP API. It works only for rigs on your own hosts, never for `amikad`.

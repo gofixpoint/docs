@@ -173,17 +173,20 @@ On the hosted Amika platform, service definitions can also be managed through th
 ## Services on your own hosts
 
 On a rig that runs on one of your [own hosts](/guides/byoc), services are
-reached through the host's `amika-hostd` daemon at the URL the host registered,
-rather than through a provider's public URL. The URL that `amika service list`
-and the rig details show depends on the host:
+reached through the host's `amika-hostd` daemon. The URL that
+`amika service list` and the rig details show is a preview URL. Opening it
+asks you to sign in to Amika, and only members of your organization get
+through. Where it points depends on the host's [transport](/guides/byoc):
 
-| Host URL | Service URL | Who can open it |
-| --- | --- | --- |
-| A bare HTTPS hostname, such as `https://hostd.example.com`, with no path or port | A preview URL, `/v0beta1/rigs/<rig>/previews/<service>/` | Anyone who logs in to Amika as a member of the organization. Opening it redirects through an Amika login that lasts a day |
-| Anything else (a path, an explicit port, plain http, a loopback address) | A signed service link | Anyone with the link, until it expires a day later |
+| Transport | Service URL |
+| --- | --- |
+| `tunnel` (the default) | Its own subdomain, `https://<service>--<rig>.r.<org>.o.amika.run/` |
+| `listen` | A path on the URL the host registered, `https://<host-url>/v0beta1/rigs/<rig>/previews/<service>/` |
 
-Root-relative assets, such as a Vite or Next.js dev server's, load only on the
-first kind of host.
+A listening host's previews work only when it registered a bare HTTPS hostname,
+such as `https://hostd.example.com`, with no path or port. Its previews share
+one origin, so open one at a time: root-relative assets, such as a Vite or
+Next.js dev server's, follow the preview you opened last.
 
 ### Service tokens
 
