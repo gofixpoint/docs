@@ -181,7 +181,7 @@ through. Where it points depends on the host's [transport](/guides/byoc):
 | Transport | Service URL |
 | --- | --- |
 | `tunnel` (the default) | Its own subdomain, `https://<service>--<rig>.r.<org>.o.amika.run/` |
-| `listen` | A path on the URL the host registered, `https://<host-url>/v0beta1/rigs/<rig>/previews/<service>/` |
+| `listen` | A path on the URL the host registered, `<registered-url>/v0beta1/rigs/<rig>/previews/<service>/` |
 
 A listening host's previews work only when it registered a bare HTTPS hostname,
 such as `https://hostd.example.com`, with no path or port. Its previews share
