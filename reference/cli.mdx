@@ -608,8 +608,10 @@ amika host delete alpha.lan
 
 Aliases: `ls`
 
-Output columns: `HOSTNAME`, `URL`, `SIZES`. A host that has not registered a
-URL shows `-`, and cannot take rigs.
+Output columns: `HOSTNAME`, `TRANSPORT`, `URL`, `SIZES`. `TRANSPORT` is
+`tunnel` (connected to Amika's gateway) or `listen` (serves a URL it
+registered). A `tunnel` host always shows `-` for `URL`. A `listen` host shows
+`-` until it registers a URL, and can't take rigs until then.
 
 ### Get
 
@@ -692,15 +694,15 @@ value is shown only once, so the command writes it to `--out` and never prints
 it, including with `-o json`.
 
 <Note>
-`amika auth api-key create` ships in the next CLI release. Until then, create
-API keys in the web UI at
+`amika auth api-key create` needs amika CLI v0.24.0 or later. With an older
+CLI, create API keys in the web UI at
 [app.amika.dev/settings/api-keys](https://app.amika.dev/settings/api-keys).
 </Note>
 
 ```bash
-# Create an organization key for a host daemon, hand it to setup, remove the file
+# Create a key owned by you for a host daemon, hand it to setup, remove the file
 dir=$(mktemp -d)
-amika auth api-key create --name build-01-hostd --out "$dir/api-key"
+amika auth api-key create --name build-01-hostd --scope user --out "$dir/api-key"
 amika-hostd setup --non-interactive --hostname build-01 < "$dir/api-key"
 rm -rf "$dir"
 
