@@ -9,8 +9,8 @@ Once a rig is running, you have a few ways to get inside it:
 - **`rig connect`** (CLI-only): a plain interactive shell over the same
   transport.
 - **`scp`** (CLI-only): copy files to and from a rig.
-- **`rig open`** (CLI-only): opens the rig in an editor or app, such as
-  Cursor, VS Code, or Codex, over SSH.
+- **`rig open`** (CLI-only): opens the rig in an editor or app over SSH.
+  Supported apps are Cursor, VS Code, Claude Desktop, Codex, Paseo, and Herdr.
 
 ## Prerequisites
 
@@ -106,9 +106,6 @@ for the full command and instructions for other Remote-SSH editors.
 amika rig open dev-box
 amika rig open dev-box --app vscode
 ```
-
-On CLI v0.23.0 and earlier, the command is `amika rig code` and the flag is
-`--editor`.
 
 ## Next steps
 

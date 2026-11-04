@@ -275,12 +275,6 @@ Open a rig in an editor or app over SSH. The command adds a named SSH host to
 Amika's managed SSH config, then starts or configures the app you pick.
 Requires an SSH key from [`amika secret ssh-keygen`](#amika-secret-ssh-keygen).
 
-<Note>
-`rig open`, `--app`, and the `herdr` app ship in the next CLI release. In
-v0.23.0 and earlier, run `amika rig code <name> --editor <app>` instead. It
-supports every app except `herdr`.
-</Note>
-
 ```bash
 amika rig open my-rig
 amika rig open my-rig --app vscode
