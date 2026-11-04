@@ -83,6 +83,13 @@ rm -rf "$dir"
 and it stops without changing anything if the hostname is invalid or no key
 arrives on stdin.
 
+<Warning>
+`--non-interactive` also keeps an API key the host already stores, and ignores
+the key on stdin. To replace a stored API key, for example to move the host to
+another organization or environment, run `amika-hostd setup` without the flag
+and answer yes when it asks to replace the key.
+</Warning>
+
 <Note>
 `amika auth api-key create` needs amika CLI v0.24.0 or later. Run it while
 signed in as yourself (`amika auth login`): an organization key can't create a
@@ -171,7 +178,9 @@ amika rig create --name dev-box --host my-host --size small
 ```
 
 `--size` takes one of that host's own sizes, not the cloud size names. Omit
-`--host` and the rig runs on Amika Cloud. To boot from a snapshot, add
+`--host` and the rig runs on Amika Cloud. On a host with more than one
+[runtime](#runtimes), `--runtime` picks one (`smol`, `lume` or `bare_metal`).
+Without it, the rig uses its preset's runtime. To boot from a snapshot, add
 `--snapshot <name>`. It must be a snapshot taken on that same host (see
 [Snapshots on your host](#snapshots-on-your-host)).
 
@@ -184,7 +193,8 @@ rig created before that finishes can time out. The daemon logs the progress.
 
 1. Open **Create a rig** at [app.amika.dev](https://app.amika.dev).
 2. Under **Runs on**, switch from **Amika Cloud** to **Your hosts**.
-3. Pick your host and one of its sizes, then click **Create rig**.
+3. Select **VM**, or **Bare metal** for a [bare-metal rig](/guides/bare-metal-rigs).
+4. Pick your host and one of its sizes, then click **Create rig**.
 
 Hosts that can't take a rig stay in the list but can't be picked. Each shows
 why: **Not responding**, **No URL yet**, or **Checking…**. When a host isn't
@@ -214,6 +224,8 @@ With `hostId`, `size` names one of that host's own sizes. `rig.hostId` and
 <Tab title="HTTP API">
 
 Send the host's ID as `host_id`. `size` then names one of the host's sizes.
+To pick a [runtime](#runtimes), add `runtime` (`smol`, `lume` or
+`bare_metal`).
 
 ```bash
 curl -X POST https://app.amika.dev/api/v0beta1/rigs \
@@ -240,14 +252,49 @@ vcpus = 2
 memory_gib = 4
 disk_gib = 20
 
-[preset_images]
-amika-coder = "ghcr.io/gofixpoint/amika-coder:latest"
+[presets.coder.runtimes.smol]
+image = "ghcr.io/gofixpoint/amika-coder:latest"
 ```
+
+`:latest` follows each release. To hold a version, pin a 12-character commit
+SHA instead, such as `amika-coder:855d403678d5`.
+
+<Note>
+amika-hostd 0.7.0 and later refuse to start with the old `[preset_images]`
+table. Run `amika-hostd config upgrade` to convert it. The installer runs it
+for you when it upgrades the daemon.
+</Note>
 
 <Tip>
 Keep `disk_gib` at 20 or more. Below that, smolvm doesn't cache the rig's
 image, so every create downloads it again.
 </Tip>
+
+## Runtimes
+
+A runtime is the way a host runs rigs. A host can offer more than one.
+
+| Runtime      | Rigs                                         | Where                     |
+| ------------ | -------------------------------------------- | ------------------------- |
+| `smol`       | Linux VMs on smolvm (the default)            | Linux and macOS           |
+| `lume`       | macOS VMs on [Lume](https://github.com/trycua/cua) | macOS on Apple silicon |
+| `bare_metal` | The host machine itself, as one rig          | Linux and macOS           |
+
+Turn a runtime on or off with one command. It installs what the runtime
+needs, updates the config file, and reloads the running daemon:
+
+```bash
+amika-hostd capabilities update --enable lume
+amika-hostd capabilities update --disable smol
+```
+
+It refuses to turn off a runtime that still has rigs. `amika host list` shows
+each host's runtimes.
+
+- **`lume`:** the host needs a macOS image to clone. Build it with
+  [`macos-image/build.sh`](https://github.com/gofixpoint/amika/tree/main/macos-image).
+  Then create rigs with `--preset macos-coder`.
+- **`bare_metal`:** see [Bare-metal rigs](/guides/bare-metal-rigs).
 
 ## Snapshots on your host
 
@@ -352,8 +399,13 @@ config and state directory, the keychain secrets, and smolvm.
 | `--yes`, `-y` | Answer yes to every question except smolvm's. Needed without a terminal |
 | `--dry-run` | Show what would be removed |
 
-smolvm is removed only if you type `remove smolvm` at its prompt. Uninstalling
-doesn't remove the host from Amika: delete it with `amika host delete`.
+smolvm is removed only if you type `remove smolvm` at its prompt.
+
+<Warning>
+Uninstalling changes nothing in Amika. The host stays registered, and its API
+key still works. Delete the host with `amika host delete`, and revoke its API
+key under **Settings → API Keys**.
+</Warning>
 
 ## Installer options
 
@@ -364,6 +416,7 @@ doesn't remove the host from Amika: delete it with `amika host delete`.
 | `--smolvm-version <version>` | Install this smolvm version if smolvm is missing |
 | `--skip-smolvm` | Don't install smolvm |
 | `--install-deps` | Install missing system packages (`e2fsprogs`) without asking, only as root or when `sudo` needs no password. Use it for scripts and AI agents |
+| `--bare-metal` | Make this machine the host's only rig: skip smolvm and turn on only the `bare_metal` runtime. See [Bare-metal rigs](/guides/bare-metal-rigs) |
 | `--uninstall` | Remove `amika-hostd`. See [Uninstall the daemon](#uninstall-the-daemon) |
 
 Pass flags after `sh -s --`, for example
