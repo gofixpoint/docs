@@ -276,16 +276,16 @@ Amika's managed SSH config, then starts or configures the app you pick.
 Requires an SSH key from [`amika secret ssh-keygen`](#amika-secret-ssh-keygen).
 
 ```bash
-amika rig open my-rig
+amika rig open my-rig --app cursor
 amika rig open my-rig --app vscode
 amika rig open my-rig --app codex
 amika rig open my-rig --app herdr
-amika rig open my-rig --path /home/amika/workspace/other-repo
+amika rig open my-rig --app cursor --path /home/amika/workspace/other-repo
 ```
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--app <name>` | `cursor` | App to open: `cursor`, `vscode`, `claude`, `codex`, `paseo`, or `herdr` |
+| `--app <name>` | | Required. App to open: `cursor`, `vscode`, `claude`, `codex`, `paseo`, or `herdr` |
 | `--editor <name>` | | Alias for `--app` |
 | `--path <path>` | | Remote path to open, absolute or relative to the rig workspace. Ignored by `paseo` and `herdr` |
 
