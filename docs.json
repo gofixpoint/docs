@@ -93,7 +93,8 @@
             "pages": [
               "guides/programmatic-usage",
               "guides/mcp-integrations",
-              "guides/github-authentication"
+              "guides/github-authentication",
+              "guides/bare-metal-rigs"
             ]
           }
         ]
