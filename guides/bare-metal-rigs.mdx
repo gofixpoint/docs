@@ -1,0 +1,176 @@
+---
+title: "Bare-metal rigs"
+description: "Make one of your own machines a rig, and reach it with Amika's SSH."
+---
+
+A bare-metal rig is a machine that you own, used directly as a rig. It is not
+a VM. Amika gives you SSH to the machine and shows it with your other rigs.
+Use it for a workstation or server that you already set up and want to keep
+as it is.
+
+A bare-metal rig runs on a [BYOC host](/guides/byoc). The `amika-hostd` daemon
+on the machine registers it with Amika. One host can run a bare-metal rig and
+VM rigs together, or only the bare-metal rig.
+
+## How it differs from a VM rig
+
+Amika changes nothing on the machine. It does not copy files, secrets or
+settings to it.
+
+| Feature                                                   | VM rig on a host | Bare-metal rig       |
+| --------------------------------------------------------- | ---------------- | -------------------- |
+| Rigs per host                                             | Many             | One                  |
+| `amika rig ssh` and editors over SSH                      | Yes              | Yes, as your account |
+| Repository clone, setup and start scripts                 | Yes              | No                   |
+| Secrets, environment variables and agent credentials      | Yes              | No                   |
+| MCP integrations and services                             | Yes              | No                   |
+| Presets, sizes and snapshots                              | Yes              | No                   |
+| Web terminal                                              | Yes              | No                   |
+| `amika send`, agent sessions and command runs             | Yes              | No                   |
+
+SSH sessions log in as the account that runs `amika-hostd`, not as `amika`.
+They start in that account's home directory. Amika never runs commands as
+root on the machine.
+
+<Warning>
+Every member of your organization who has a registered SSH key can log in to
+a bare-metal rig, as your account. Make a bare-metal rig only on a machine
+that your organization can share.
+</Warning>
+
+## Requirements
+
+- macOS, or Linux with glibc 2.34 or newer. Windows is not supported.
+- An `sshd` binary. It does not have to run as a service: Amika starts its
+  own sshd on a loopback port. macOS has one. On Linux, install
+  `openssh-server` if `sshd` is missing.
+- Directories that pass sshd's strict-mode check. Your home directory and each
+  directory above `amika-hostd`'s state directory must not be writable by the
+  group or by other users. Setup names each directory that fails, and the
+  `chmod` that fixes it.
+- A user-scoped Amika API key, as for any [BYOC host](/guides/byoc#requirements).
+
+## Set up the machine
+
+<Tabs>
+
+<Tab title="New host">
+
+1. Install the daemon with `--bare-metal`. The installer then skips smolvm,
+   because the host runs no VMs, and turns on only the `bare_metal` runtime:
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install-amika-hostd.sh | sh -s -- --bare-metal
+   ```
+
+2. Store your credentials. Setup checks the machine, installs `amikad`, and
+   prints the detected CPUs, memory and disk, and the account that SSH uses:
+
+   ```bash
+   amika-hostd setup
+   ```
+
+3. Start the daemon:
+
+   ```bash
+   amika-hostd up
+   ```
+
+</Tab>
+
+<Tab title="Existing host">
+
+If the machine already runs `amika-hostd` for VM rigs, turn on the
+`bare_metal` runtime:
+
+```bash
+amika-hostd capabilities update --enable bare_metal
+```
+
+The command checks the machine as setup does, installs `amikad`, adds
+`[runtimes.bare_metal]` to the config file, and reloads the running daemon.
+If a check fails, it changes nothing. Your VM rigs continue to run.
+
+</Tab>
+
+</Tabs>
+
+Make sure the host shows the runtime:
+
+```bash
+amika host list            # the RUNTIMES column shows bare_metal
+amika host get my-host     # shows the SSH user and the machine's resources
+```
+
+## Create the rig
+
+A bare-metal rig takes only a name.
+
+<Tabs>
+
+<Tab title="CLI">
+
+```bash
+amika rig create --name my-workstation --host my-host --runtime bare_metal
+```
+
+If `bare_metal` is the host's only runtime, you can omit `--runtime`. Do not
+give a preset, size, snapshot, repository, secret or agent option: the
+create fails with `bare_metal_unsupported_option`. The CLI ignores the
+repository in your current directory.
+
+</Tab>
+
+<Tab title="Web UI">
+
+1. Open **Create a rig** at [app.amika.dev](https://app.amika.dev).
+2. Under **Runs on**, select **Your hosts**.
+3. Select **Bare metal**, then select your host.
+4. Type a name, then click **Create rig**.
+
+The form shows the machine's CPUs, memory and disk, and no other options. A
+host that already has a bare-metal rig is disabled and shows the name of that
+rig.
+
+</Tab>
+
+<Tab title="HTTP API">
+
+Send the host's ID as `host_id` and `"runtime": "bare_metal"`. Set no other
+field except `name`.
+
+```bash
+curl -X POST https://app.amika.dev/api/v0beta1/rigs \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-workstation","host_id":"host_123","runtime":"bare_metal"}'
+```
+
+</Tab>
+
+</Tabs>
+
+A second bare-metal rig on the same host fails with `409 host_rig_limit`.
+Delete the first rig before you make another.
+
+## Connect to the rig
+
+Use SSH as for any rig. See [SSH and connect](/guides/ssh-and-connect).
+
+```bash
+amika rig ssh my-workstation
+```
+
+Your SSH key must be registered with Amika before you create the rig. If you
+register a key later, stop and start the rig to install it.
+
+## Stop and delete the rig
+
+- `amika rig stop` stops the SSH bridge. The machine continues to run.
+- `amika rig start` starts the SSH bridge again.
+- `amika rig delete` removes the rig and the bridge's state. Your files and
+  settings on the machine do not change.
+
+To stop offering bare metal on the host, delete the rig, then run
+`amika-hostd capabilities update --disable bare_metal`. The command refuses
+while the rig exists.
