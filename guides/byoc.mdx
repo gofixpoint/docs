@@ -83,13 +83,6 @@ rm -rf "$dir"
 and it stops without changing anything if the hostname is invalid or no key
 arrives on stdin.
 
-<Warning>
-`--non-interactive` also keeps an API key the host already stores, and ignores
-the key on stdin. To replace a stored API key, for example to move the host to
-another organization or environment, run `amika-hostd setup` without the flag
-and answer yes when it asks to replace the key.
-</Warning>
-
 <Note>
 `amika auth api-key create` needs amika CLI v0.24.0 or later. Run it while
 signed in as yourself (`amika auth login`): an organization key can't create a
@@ -274,11 +267,11 @@ image, so every create downloads it again.
 
 A runtime is the way a host runs rigs. A host can offer more than one.
 
-| Runtime      | Rigs                                         | Where                     |
-| ------------ | -------------------------------------------- | ------------------------- |
-| `smol`       | Linux VMs on smolvm (the default)            | Linux and macOS           |
+| Runtime      | Rigs                                         | Where                        |
+| ------------ | -------------------------------------------- | -----------------------------|
+| `smol`       | Linux VMs on smolvm (the default)            | Linux and macOS              |
 | `lume`       | macOS VMs on [Lume](https://github.com/trycua/cua) | macOS on Apple silicon |
-| `bare_metal` | The host machine itself, as one rig          | Linux and macOS           |
+| `bare_metal` | The host machine itself, as one rig          | Linux and macOS              |
 
 Turn a runtime on or off with one command. It installs what the runtime
 needs, updates the config file, and reloads the running daemon:
@@ -432,5 +425,8 @@ and `AMIKA_HOSTD_HOME` where the daemon's files go.
   </Card>
   <Card title="Create a rig" icon="server" href="/guides/create-a-rig">
     The full rig creation flow, on cloud or your own host.
+  </Card>
+  <Card title="Bare-metal rigs" icon="microchip" href="/guides/bare-metal-rigs">
+    Make your host machine itself a rig, and reach it over SSH.
   </Card>
 </CardGroup>
