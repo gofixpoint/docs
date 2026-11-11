@@ -70,6 +70,11 @@ that your organization can share.
    amika-hostd setup
    ```
 
+   Setup asks questions. To let an AI agent do the setup, tell it to run
+   `amika-hostd setup --skill` and follow the instructions that it prints.
+   The agent then uses `amika-hostd setup --non-interactive`, and does not
+   see your API key. See [Set up a host](/guides/byoc#set-up-a-host).
+
 3. Start the daemon:
 
    ```bash
@@ -98,9 +103,40 @@ If a check fails, it changes nothing. Your VM rigs continue to run.
 Make sure the host shows the runtime:
 
 ```bash
-amika host list            # the RUNTIMES column shows bare_metal
-amika host get my-host     # shows the SSH user and the machine's resources
+amika-hostd capabilities get   # on the machine: the runtimes that are on
+amika host list                # the RUNTIMES column shows bare_metal
+amika host get my-host         # shows the SSH user and the machine's resources
 ```
+
+## Update the host
+
+Each `amika-hostd` release installs one `amikad` version for bare metal. To
+get a newer `amikad`, update `amika-hostd`:
+
+1. Run the installer again, with the options of the first install. It keeps
+   your config file and your secrets. On a host with only the bare-metal rig,
+   keep `--bare-metal`, or the installer also installs smolvm:
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install-amika-hostd.sh | sh -s -- --bare-metal
+   ```
+
+2. Restart the daemon. `up` installs the `amikad` version of the new release:
+
+   ```bash
+   amika-hostd down
+   amika-hostd up
+   ```
+
+3. Make sure that you have the new version: `amika-hostd version`.
+
+<Warning>
+`amika-hostd down` also stops the VM rigs on the host. Their disks stay.
+Start them again with `amika rig start`.
+</Warning>
+
+`amika-hostd capabilities update --enable bare_metal` does not update
+`amikad`. If `bare_metal` is already on, it changes nothing.
 
 ## Create the rig
 
@@ -111,7 +147,7 @@ A bare-metal rig takes only a name.
 <Tab title="CLI">
 
 ```bash
-amika rig create --name my-workstation --host my-host --runtime bare_metal
+amika rig create my-workstation --host my-host --runtime bare_metal
 ```
 
 If `bare_metal` is the host's only runtime, you can omit `--runtime`. Do not
@@ -160,6 +196,9 @@ Use SSH as for any rig. See [SSH and connect](/guides/ssh-and-connect).
 ```bash
 amika rig ssh my-workstation
 ```
+
+In the web UI, the rig page opens on the **Terminal** tab. The tab has only
+the **Connect via SSH** button: a bare-metal rig has no web terminal.
 
 Your SSH key must be registered with Amika before you create the rig. If you
 register a key later, stop and start the rig to install it.
