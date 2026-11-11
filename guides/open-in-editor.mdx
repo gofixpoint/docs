@@ -4,14 +4,9 @@ description: "Open a running rig in Cursor, VS Code, Claude Desktop, Codex, Pase
 ---
 
 `amika rig open` opens a remote rig in Cursor, VS Code, Claude Desktop, Codex,
-Paseo, or Herdr over SSH. Cursor is the default. `amika rig code` and
-`--editor` still work as aliases for `amika rig open` and `--app`.
-
-<Note>
-`rig open`, `--app`, and the `herdr` app ship in the next CLI release. In
-v0.23.0 and earlier, run `amika rig code <name> --editor <app>` instead. It
-supports every app except `herdr`.
-</Note>
+Paseo, or Herdr over SSH. You must pick the app with `--app`. There is no
+default app. `amika rig code` is an alias for `amika rig open`, and `--editor`
+is an alias for `--app`.
 
 ## Prerequisites
 
@@ -25,9 +20,6 @@ supports every app except `herdr`.
 ## Open the rig
 
 ```bash
-amika rig open dev-box
-
-# Cursor is the default
 amika rig open dev-box --app cursor
 amika rig open dev-box --app vscode
 amika rig open dev-box --app claude
@@ -48,7 +40,7 @@ explorer is not visible, press `Cmd+Shift+E`. To open a different directory,
 pass `--path` with an absolute path or a path relative to the rig workspace:
 
 ```bash
-amika rig open dev-box --path /home/amika/workspace/other-repo
+amika rig open dev-box --app cursor --path /home/amika/workspace/other-repo
 ```
 
 `--path` has no effect with `paseo` or `herdr`.
@@ -72,8 +64,9 @@ machine so you can remove it with `herdr machine remove` and retry.
 Any editor that reads your `~/.ssh/config` and supports remote SSH can use the
 Amika-managed host alias.
 
-1. Run `amika rig open dev-box` once to write the rig alias to
-   `~/.ssh/amika.conf` and include it from your SSH config.
+1. Run `amika rig open dev-box --app paseo` once. It writes the rig alias to
+   `~/.ssh/amika.conf` and includes it from your SSH config. It prints the
+   host and does not open an app.
 2. Open your editor's remote-SSH host picker and select
    `<rig-name>.<rig-id>.<environment>.amika`.
 3. Open the repository directory in the rig, typically under
@@ -125,7 +118,7 @@ the wrong proxy.
 
 - **`cursor` or `code` CLI is not installed or not in `PATH`**: install the
   editor's shell command from its command palette.
-- **`unsupported app`**: pass one of `cursor`, `vscode`, `claude`, `codex`,
+- **`no app selected`** or **`unsupported app`**: pass `--app` with one of `cursor`, `vscode`, `claude`, `codex`,
   `paseo`, or `herdr`.
 - **Cursor or VS Code opens but cannot connect**: make sure its **Remote -
   SSH** extension is installed.
