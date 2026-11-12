@@ -94,7 +94,8 @@
               "guides/programmatic-usage",
               "guides/mcp-integrations",
               "guides/github-authentication",
-              "guides/bare-metal-rigs"
+              "guides/bare-metal-rigs",
+              "guides/github-actions-runners"
             ]
           }
         ]
