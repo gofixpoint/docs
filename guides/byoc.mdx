@@ -77,14 +77,6 @@ uses to reach the daemon. Secrets go in the system keychain. On a server
 with no keychain, set `secret_store = "file"` in the config file before you
 run setup.
 
-To connect to an Amika other than `https://app.amika.dev`, set `api_url` in
-the config file before you run setup. Setup keeps the line:
-
-```bash
-mkdir -p ~/.config/amika-hostd
-echo 'api_url = "https://amika.example.com"' > ~/.config/amika-hostd/config.toml
-```
-
 To set up without prompts, for a script or an AI agent, pipe the API key into
 `setup --non-interactive`. Name the runtimes with `--enable` and `--disable`.
 `amika auth api-key create` writes a new key to a file, and does not print it:
