@@ -1,0 +1,222 @@
+---
+title: "GitHub Actions runners"
+description: "Run GitHub Actions jobs on Amika rigs, on cloud providers or your own hosts, by changing one line of a workflow."
+---
+
+Put `amika` in a job's `runs-on`, and GitHub runs that job on a new Amika rig.
+The rest of the workflow does not change. Steps, `actions/checkout`, secrets,
+logs and pull request checks all stay in GitHub.
+
+```yaml
+jobs:
+  test:
+    runs-on: amika
+    steps:
+      - uses: actions/checkout@v4
+      - run: pnpm install && pnpm test
+```
+
+A job can run on a cloud provider, or on a [BYOC host](/guides/byoc) that your
+organization owns, including macOS hosts. Labels in `runs-on` select the
+provider or host, the preset, the size and the snapshot.
+
+## How it works
+
+1. GitHub queues the job and sends a webhook to the Amika Runners GitHub App.
+2. Amika checks the job's labels. If they are not valid, Amika refuses the job
+   and reports the reason in GitHub (see [Refused jobs](#refused-jobs)).
+3. Amika creates a new rig and starts the official GitHub Actions runner on
+   it. The runner is ephemeral: it registers on the repository, takes one job
+   and exits.
+4. The runner runs the job. GitHub shows the logs and the result, as for any
+   runner.
+5. When the job ends, Amika deletes the rig, or keeps it if the job's labels
+   say so (see [Keep a rig after a job](#keep-a-rig-after-a-job)).
+
+Each job gets its own rig. Amika does not reuse a rig for a second job.
+
+## Connect the Runners App
+
+Runners use a separate GitHub App, **Amika Runners**. It needs the repository
+permission **Administration: write** to register runners. The main Amika
+GitHub App does not ask for this permission, so you only grant it if you use
+runners.
+
+1. Open [app.amika.dev/settings/github-actions](https://app.amika.dev/settings/github-actions).
+2. Click **Connect GitHub Actions**.
+3. On GitHub, install the App on the repositories that should run jobs on
+   Amika. You must be an admin of each repository that you select.
+4. GitHub returns you to Amika, and the page shows the connected account.
+
+One installation links to one Amika organization. To connect a second GitHub
+account or organization, click **Connect another account**. To stop runners
+for an account, click **Disconnect**, or uninstall the App on GitHub.
+
+<Note>
+Amika registers runners on each repository, not on the GitHub organization.
+</Note>
+
+## Choose where a job runs
+
+With only `amika`, the job runs on your organization's default provider, with
+the `coder-plus-docker` preset and that provider's default size. Add labels to
+change this:
+
+```yaml
+jobs:
+  test:
+    runs-on: [amika, amika.size.a1.large]
+
+  integration:
+    runs-on: [amika, amika.snapshot.ci-base]
+
+  ios:
+    runs-on: [amika, amika.host.studio-mac, macos]
+```
+
+| Label                   | Selects                                                                      |
+| ----------------------- | ---------------------------------------------------------------------------- |
+| `amika`                 | Required. Without it, Amika ignores the job.                                 |
+| `amika.provider.<name>` | A cloud provider: `e2b`.                                                     |
+| `amika.host.<name>`     | One of your organization's [hosts](/guides/byoc), by its Amika name.         |
+| `amika.preset.<name>`   | A rig [preset](/reference/presets), such as `coder-plus-docker`.             |
+| `amika.size.<name>`     | A rig size, such as `a1.large`. A host uses its own size names.              |
+| `amika.snapshot.<name>` | Boot the rig from your organization's [snapshot](/guides/create-a-snapshot). |
+| `linux`, `macos`        | The OS. Must agree with the preset or snapshot.                              |
+| `x64`, `arm64`          | The architecture. Must agree with the rig.                                   |
+| `self-hosted`           | GitHub's default label. Amika passes it to the runner.                       |
+
+Rules:
+
+- Labels are not case-sensitive.
+- Each `amika.*` label can occur once per job.
+- `amika.host.*` and `amika.provider.*` cannot be used together.
+- `amika.snapshot.*` and `amika.preset.*` cannot be used together. The
+  snapshot already sets what the rig has.
+- `macos` with no preset or snapshot selects the `macos-coder` preset.
+  `linux` with no preset or snapshot selects `coder-plus-docker`.
+- With a snapshot and no host or provider label, the job runs where the
+  snapshot lives.
+- Any other label is a custom label. Amika passes it to the runner unchanged.
+  A custom label must not start with `amika.`.
+- Amika has no Windows rigs. A job with `windows` is refused.
+
+## Keep a rig after a job
+
+By default, Amika deletes the rig when the job ends. To examine a failed job,
+keep its rig with a behavior label:
+
+```yaml
+jobs:
+  test:
+    runs-on: [amika, amika.on-failure.stopped]
+```
+
+| Label                          | Values                                     | Default   |
+| ------------------------------ | ------------------------------------------ | --------- |
+| `amika.on-success.<status>`    | `active`, `stopped`, `deleted`             | `deleted` |
+| `amika.on-failure.<status>`    | `active`, `stopped`, `deleted`             | `deleted` |
+| `amika.auto-delete.<interval>` | `30m`, `12h`, `2d`, up to `7d`, or `never` | `2d`      |
+| `amika.timeout.<duration>`     | `30m`, `12h`, `2d`, up to `5d`             | `12h`     |
+
+- `on-success` applies to jobs that succeed, are cancelled or are skipped.
+  `on-failure` applies to jobs that fail or time out. A job whose result Amika
+  does not learn within an hour counts as failed.
+- `stopped` keeps the rig stopped. `active` starts it again, and the rig's
+  normal auto-stop applies.
+- `auto-delete` sets how long a kept rig stays after it stops.
+- `timeout` limits how long the runner can run. The job's own
+  `timeout-minutes` still applies, but Amika cannot read it. If a job sets
+  `timeout-minutes` above 12 hours, also set `amika.timeout.*`.
+- A runner that took no job always deletes its rig.
+
+A kept rig is a normal rig. Start it and connect to it with
+[SSH or an editor](/guides/ssh-and-connect). The runner's work directory holds
+the job's checkout and build output.
+
+<Warning>
+A kept rig can still hold the secrets that the job used. Keep rigs only when
+you need them, and set a short `amika.auto-delete.*`.
+</Warning>
+
+## What a runner rig has
+
+- The rig has no repository clone. Use `actions/checkout`, as on any runner.
+- Amika puts no credentials on the rig: no agent credentials, no organization
+  secrets, no GitHub token and no Amika API key. The job gets its credentials
+  from GitHub, as the workflow says.
+- The `coder-plus-docker` preset gives Docker, the tools of the `coder`
+  preset, and passwordless `sudo`. It does not have every tool of GitHub's
+  `ubuntu-latest` image.
+- `actions/setup-node`, `actions/setup-python`, `actions/setup-go` and the
+  other `setup-*` Actions work. The runner sets a writable tool cache for them.
+- macOS rigs use the `macos-coder` preset. GitHub's macOS runners do not have
+  Docker either.
+
+For other tools, or to make jobs start faster, build a snapshot with the tools
+and caches that your jobs need. Then select it with `amika.snapshot.<name>`.
+
+<Warning>
+A runner can boot only from a snapshot captured with `scrub_and_delete`. A
+`full` snapshot can hold the credentials of the person who made it, and every
+job could read them. See [Create a snapshot](/guides/create-a-snapshot).
+</Warning>
+
+Runner rigs are named `gha-<repository>-<suffix>`. Members of your
+organization can see them and connect to them like other rigs. Runner rigs
+count as rig usage. Rigs on your own hosts cost nothing extra.
+
+## Forks and untrusted code
+
+Amika never runs code from a fork on a rig. A fork author can copy any label,
+so Amika does not rely on labels. It refuses:
+
+- jobs for pull requests from a fork;
+- `workflow_run` events whose head repository is a fork;
+- `issue_comment` events on pull requests, including pull requests from the
+  same repository;
+- `check_run`, `check_suite`, `status` and `deployment_status` events.
+
+Amika checks before it starts a runner, again when a runner takes a job, and
+on the rig before the job's first step. Public repositories are supported.
+There is no setting to allow forks.
+
+## Refused jobs
+
+GitHub cannot fail a single queued job. When Amika refuses a job, it adds a
+failed check run named `Amika runner: <job name>` to the job's commit. The
+summary gives the error code, the label at fault and what to change. Cancel
+the workflow run in GitHub, or GitHub fails the job after 24 hours.
+
+| Error code                           | Cause                                                               |
+| ------------------------------------ | ------------------------------------------------------------------- |
+| `gh_runner_label_invalid`            | An unknown `amika.*` label, a repeated key, or a bad value.         |
+| `gh_runner_label_conflict`           | Host with provider, snapshot with preset, or two OS or arch labels. |
+| `gh_runner_host_not_found`           | No host with that name in the organization.                         |
+| `gh_runner_snapshot_not_found`       | No such snapshot, or it is not on the selected host or provider.    |
+| `gh_runner_snapshot_not_scrubbed`    | The snapshot was not captured with `scrub_and_delete`.              |
+| `gh_runner_provider_unavailable`     | The provider is not available to your organization.                 |
+| `gh_runner_target_unsupported`       | The preset, size, OS or architecture does not exist on the target.  |
+| `gh_runner_fork_refused`             | The job comes from a fork.                                          |
+| `gh_runner_check_event_refused`      | The run was started by a `check_run` or `check_suite` event.        |
+| `gh_runner_deployment_event_refused` | The run was started by a `deployment_status` event.                 |
+
+## Capacity and cancellation
+
+- **Full or offline host.** The job waits in GitHub's queue. Amika starts the
+  runner when the host has room or comes back online.
+- **Cancel in GitHub.** The runner stops the job and exits. The job counts as
+  cancelled, so `amika.on-success.*` applies.
+- **Stop or delete the rig in Amika.** The runner dies, and GitHub fails the
+  job when it loses contact with the runner.
+- **Amika deploys.** A running job keeps running. The runner talks to GitHub
+  directly.
+
+Amika does not rerun failed jobs. Rerun them in GitHub.
+
+## Related docs
+
+- [Bring your own compute](/guides/byoc)
+- [Create a snapshot](/guides/create-a-snapshot)
+- [Presets](/reference/presets)
+- [GitHub authentication](/guides/github-authentication)
