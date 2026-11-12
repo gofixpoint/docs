@@ -1,0 +1,96 @@
+---
+title: "Manage hosts"
+description: "List, take offline, delete, update, and uninstall your BYOC hosts."
+---
+
+## List and delete hosts
+
+| Command                        | What it does                                   |
+| ------------------------------ | ---------------------------------------------- |
+| `amika host list`              | List your organization's hosts and their sizes |
+| `amika host get <hostname>`    | Show one host, its ID, and its sizes           |
+| `amika host delete <hostname>` | Delete a host and its stored secret            |
+
+- Hosts register themselves, so there's no command to add one.
+- To delete a host, delete its rigs first. You can also delete it from
+  **Hosts** in the sidebar.
+- If you delete only the host record, the machine registers again on its next
+  `amika-hostd up`.
+
+## Take a host offline
+
+Run `amika-hostd down` on the machine. It stops the daemon and its VMs, and
+keeps their disks. The next `amika-hostd up` starts the daemon but not the
+rigs. Start them with `amika rig start`.
+
+## Rigs on a host that is gone
+
+Deleting a rig needs its host to answer. If the host is offline, the delete
+fails and the web UI offers **Remove from Amika only**. That removes Amika's
+record of the rig, but leaves anything running on the machine for you to
+clean up. The HTTP API does the same with
+`DELETE /api/v0beta1/rigs/{id}?forget=true`.
+
+## Update the daemon
+
+Run the installer again, then restart the daemon. The installer keeps your
+config and secrets:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install-amika-hostd.sh | sh
+amika-hostd down
+amika-hostd up
+```
+
+`up` installs anything the new release needs, such as a newer `amikad`.
+`amika-hostd down` stops the host's VM rigs too. Start them again with
+`amika rig start`.
+
+## Uninstall the daemon
+
+On the host, run the installer with `--uninstall`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install-amika-hostd.sh | sh -s -- --uninstall
+```
+
+The uninstaller:
+
+1. Shows what it found and asks you to confirm.
+2. Asks whether to remove the config, state, and keychain secrets.
+3. Stops the daemon and deletes the host's Lume rigs.
+4. Asks you to type a phrase before it deletes the macOS images
+   (`remove macos images`) or smolvm (`remove smolvm`).
+5. Deletes `amika-hostd`, its files, and anything you said yes to.
+
+It leaves Lume and any downloaded macOS restore image, since other tools may
+use them, and tells you where they are.
+
+| Flag          | What it does                                                            |
+| ------------- | ----------------------------------------------------------------------- |
+| `--purge`     | Remove the config, state directory, and keychain secrets without asking |
+| `--yes`, `-y` | Answer yes to each yes/no question. Use it when there is no terminal    |
+| `--dry-run`   | Show what it would remove                                               |
+
+No flag deletes smolvm or the macOS images.
+
+<Warning>
+Uninstalling changes nothing in Amika. The host stays registered and its API
+key still works. Delete the host with `amika host delete`, and revoke the key
+under **Settings → API Keys**.
+</Warning>
+
+## Installer options
+
+| Flag                          | What it does                                                            |
+| ----------------------------- | ----------------------------------------------------------------------- |
+| `--install-version <version>` | Install a specific `amika-hostd` version                                |
+| `--dry-run`                   | Show what it would do, and download or install nothing                  |
+| `--uninstall`                 | Remove `amika-hostd`. See [Uninstall the daemon](#uninstall-the-daemon) |
+
+Put flags after `sh -s --`, for example
+`curl -fsSL .../install-amika-hostd.sh | sh -s -- --dry-run`.
+
+- `AMIKA_INSTALL_DIR` sets where the `amika-hostd` command goes (default
+  `/usr/local/bin`).
+- `AMIKA_HOSTD_HOME` sets where the daemon's files go.

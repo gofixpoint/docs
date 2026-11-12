@@ -220,7 +220,7 @@ To stop offering bare metal on the host, delete the rig, then run
 `amika-hostd capabilities update --disable bare_metal`.
 
 To remove `amika-hostd`, see
-[Uninstall the daemon](/guides/byoc#uninstall-the-daemon). It stops `amikad`
+[Uninstall the daemon](/guides/byoc-manage-hosts#uninstall-the-daemon). It stops `amikad`
 and its sshd. If you also remove the state directory, it deletes the rig's SSH
 host keys and authorized keys. Your own `~/.ssh` and the system sshd are not
 touched.

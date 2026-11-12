@@ -1,0 +1,82 @@
+---
+title: "macOS rigs"
+description: "Run macOS rigs as VMs on your own Apple silicon Mac, with Lume."
+---
+
+A macOS rig is a macOS VM on your own Mac. It runs on a
+[BYOC host](/guides/byoc) with the `lume` runtime, which uses
+[Lume](https://github.com/trycua/cua). Use it to build and test software that
+needs macOS, such as iOS or macOS apps.
+
+## Requirements
+
+- A Mac with Apple silicon. Intel Macs and Linux can't run macOS rigs.
+- About 50 GB of free disk while the image builds, and 30 GB after.
+- A [BYOC host](/guides/byoc#set-up-a-host) on that Mac.
+
+## Turn on macOS rigs
+
+On a new host, answer yes to macOS VMs when `amika-hostd setup` asks. On a
+host that's already set up, run:
+
+```bash
+amika-hostd capabilities update --enable lume
+```
+
+Either way, this:
+
+1. Installs Lume 0.6.1 into `~/.local/bin`, if it's missing. No `sudo`.
+2. Turns on the `lume` runtime in the config file.
+3. Adds the `macos-coder` preset, which starts the `amika-macos-coder` image.
+
+## Wait for the image
+
+The daemon builds the macOS image in the background when it starts. Nothing
+waits for it, but it takes 30 minutes or more:
+
+1. Lume downloads a macOS restore image from Apple (about 20 GB).
+2. Lume installs macOS into a base VM, `amika-macos-base`.
+3. The daemon copies the base VM and installs Amika's tools into the copy,
+   `amika-macos-coder`.
+4. The daemon deletes the restore image. It keeps the base VM, so a rebuild
+   skips the download.
+
+Until the image is ready, the host refuses macOS rigs with "Lume has not
+finished setting up". Watch the progress in the daemon log:
+
+```bash
+tail -f ~/.local/state/amika-hostd/log/amika-hostd.log
+```
+
+If the build fails, the log says why. The next `amika-hostd up` or
+`amika-hostd reload` tries again.
+
+## Create a macOS rig
+
+```bash
+amika rig create --name mac-dev --host my-mac --preset macos-coder
+```
+
+Each rig is a copy of the image. The copy takes seconds and almost no disk,
+because macOS copies files on write (APFS clones).
+
+## Limits
+
+- **Two running macOS rigs per Mac.** Apple's license allows two macOS VMs at
+  a time. A third start is refused with "host is full".
+- **The disk is the image's.** A size that asks for less disk than the image
+  has is refused.
+- **No snapshots.** You can't snapshot a macOS rig.
+
+## Remove macOS rigs
+
+To stop offering macOS rigs, delete the rigs, then run:
+
+```bash
+amika-hostd capabilities update --disable lume
+```
+
+The base VM and the image stay in Lume's storage (`~/.lume`). To delete them,
+[uninstall the daemon](/guides/byoc-manage-hosts#uninstall-the-daemon) and type
+`remove macos images` when it asks. Lume itself stays installed, since other
+tools can use it.

@@ -55,7 +55,11 @@
             "group": "Bring your own compute",
             "pages": [
               "guides/byoc",
-              "guides/bare-metal-rigs"
+              "guides/byoc-configure-host",
+              "guides/macos-rigs",
+              "guides/bare-metal-rigs",
+              "guides/byoc-previews",
+              "guides/byoc-manage-hosts"
             ]
           },
           {
