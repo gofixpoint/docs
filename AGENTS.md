@@ -40,9 +40,9 @@ documenting them. Don't invent.
 
 `docs.json` defines four tabs:
 
-- **Guides** — getting started and how-tos. Groups: Get started, Rigs,
-  Repository configuration, Agents and sessions, Connecting to rigs,
-  Credentials, Advanced.
+- **Guides** — getting started and how-tos. Groups: Get started, Rigs
+  (machines), Bring your own compute, Agents and sessions, Configuration,
+  Connecting to rigs, Guides for agents, Advanced.
   - The "Code validation" group (`guides/checks`, `guides/code-annotations`)
     is hidden: out of `docs.json` and marked `hidden`/`noindex`. We haven't
     productionized those features and aren't focusing on them. Don't link
