@@ -11,7 +11,7 @@ needs macOS, such as iOS or macOS apps.
 ## Requirements
 
 - A Mac with Apple silicon. Intel Macs and Linux can't run macOS rigs.
-- About 50 GB of free disk while the image builds, and 30 GB after.
+- About 50 GB of free disk.
 - A [BYOC host](/guides/byoc#set-up-a-host) on that Mac.
 
 ## Turn on macOS rigs
@@ -38,8 +38,10 @@ waits for it, but it takes 30 minutes or more:
 2. Lume installs macOS into a base VM, `amika-macos-base`.
 3. The daemon copies the base VM and installs Amika's tools into the copy,
    `amika-macos-coder`.
-4. The daemon deletes the restore image. It keeps the base VM, so a rebuild
-   skips the download.
+4. The daemon keeps the restore image in `~/.cache/amika-hostd/macos/`. If
+   the build fails, or the base VM is deleted later, the next build skips
+   the 20 GB download. It also keeps the base VM, so a new image starts from
+   it.
 
 Until the image is ready, the host refuses macOS rigs with "Lume has not
 finished setting up". Watch the progress in the daemon log:
@@ -76,7 +78,8 @@ To stop offering macOS rigs, delete the rigs, then run:
 amika-hostd capabilities update --disable lume
 ```
 
-The base VM and the image stay in Lume's storage (`~/.lume`). To delete them,
-[uninstall the daemon](/guides/byoc-manage-hosts#uninstall-the-daemon) and type
-`remove macos images` when it asks. Lume itself stays installed, since other
-tools can use it.
+The base VM and the image stay in Lume's storage (`~/.lume`). The restore
+image stays in `~/.cache/amika-hostd/macos/`. To delete them,
+[uninstall the daemon](/guides/byoc-manage-hosts#uninstall-the-daemon). Type
+`remove macos images` and `remove macos restore image` when it asks. Lume
+itself stays installed, since other tools can use it.

@@ -59,12 +59,13 @@ The uninstaller:
 1. Shows what it found and asks you to confirm.
 2. Asks whether to remove the config, state, and keychain secrets.
 3. Stops the daemon and deletes the host's Lume rigs.
-4. Asks you to type a phrase before it deletes the macOS images
-   (`remove macos images`) or smolvm (`remove smolvm`).
+4. Asks you to type a phrase before it deletes each of these:
+   - The macOS images: `remove macos images`.
+   - The macOS restore image: `remove macos restore image`.
+   - smolvm: `remove smolvm`.
 5. Deletes `amika-hostd`, its files, and anything you said yes to.
 
-It leaves Lume and any downloaded macOS restore image, since other tools may
-use them, and tells you where they are.
+It leaves Lume, since other tools may use it, and tells you where it is.
 
 | Flag          | What it does                                                            |
 | ------------- | ----------------------------------------------------------------------- |
@@ -72,7 +73,7 @@ use them, and tells you where they are.
 | `--yes`, `-y` | Answer yes to each yes/no question. Use it when there is no terminal    |
 | `--dry-run`   | Show what it would remove                                               |
 
-No flag deletes smolvm or the macOS images.
+No flag deletes smolvm, the macOS images, or the macOS restore image.
 
 <Warning>
 Uninstalling changes nothing in Amika. The host stays registered and its API
