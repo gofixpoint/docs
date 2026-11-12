@@ -56,15 +56,16 @@ that your organization can share.
 
 <Tab title="New host">
 
-1. Install the daemon with `--bare-metal`. The installer then skips smolvm,
-   because the host runs no VMs, and turns on only the `bare_metal` runtime:
+1. Install the daemon:
 
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install-amika-hostd.sh | sh -s -- --bare-metal
+   curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install-amika-hostd.sh | sh
    ```
 
-2. Store your credentials. Setup checks the machine, installs `amikad`, and
-   prints the detected CPUs, memory and disk, and the account that SSH uses:
+2. Set up the host. When setup asks about the runtimes, answer no to Linux
+   VMs (`smol`) and yes to this machine (`bare_metal`). Setup then installs
+   no smolvm. It checks the machine, installs `amikad`, and prints the CPUs,
+   memory and disk that it found, and the account that SSH uses:
 
    ```bash
    amika-hostd setup
@@ -113,12 +114,10 @@ amika host get my-host         # shows the SSH user and the machine's resources
 Each `amika-hostd` release installs one `amikad` version for bare metal. To
 get a newer `amikad`, update `amika-hostd`:
 
-1. Run the installer again, with the options of the first install. It keeps
-   your config file and your secrets. On a host with only the bare-metal rig,
-   keep `--bare-metal`, or the installer also installs smolvm:
+1. Run the installer again. It keeps your config file and your secrets:
 
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install-amika-hostd.sh | sh -s -- --bare-metal
+   curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install-amika-hostd.sh | sh
    ```
 
 2. Restart the daemon. `up` installs the `amikad` version of the new release:

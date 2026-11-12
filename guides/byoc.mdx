@@ -3,31 +3,37 @@ title: "Bring your own compute"
 description: "Run rigs on your own machines instead of Amika Cloud."
 ---
 
-Bring your own compute (BYOC) runs rigs on hardware you control. You install
-the `amika-hostd` daemon on a machine, it registers that machine with Amika as
-a **host**, and each rig you create on that host runs there as a local VM.
+If you are an AI agent, follow this prompt:
 
-By default (`transport = "tunnel"`), the daemon dials out to Amika's gateway,
-so the machine needs no open port and works behind a home router or firewall.
-If you'd rather expose a port yourself, the daemon can
-[listen on one](#listen-on-a-port-instead) instead.
+> Set up this machine as an Amika host. Install amika-hostd with
+> `curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install-amika-hostd.sh | sh`.
+> Then run `amika-hostd setup --skill`, and follow the instructions that it
+> prints. Ask me before you turn on a runtime or create an API key. Never
+> print, copy, or read my API key.
+
+The rest of this page gives each step in more detail.
+
+Bring your own compute (BYOC) runs rigs on machines that you control. You
+install the `amika-hostd` daemon on a machine. The daemon registers the
+machine with Amika as a **host**. Each rig that you create on the host runs
+on that machine.
+
+By default (`transport = "tunnel"`), the daemon connects out to Amika's
+gateway. The machine needs no open port, so it works behind a home router or
+a firewall. You can also [listen on a port](#listen-on-a-port-instead).
 
 ## Requirements
 
 <Note>
-- Linux x86_64 or arm64 with glibc 2.34+ and KVM, or macOS on Apple silicon.
-- `e2fsprogs`, which smolvm needs for disks under 20 GiB. The installer adds
-  it if it is missing.
+- Linux x86_64 or arm64, or macOS. Linux VMs need glibc 2.34+ and KVM on
+  Linux, or Apple silicon on macOS.
 - Outbound HTTPS from the machine to Amika.
-- A user-scoped Amika API key, owned by you rather than your organization.
-  Create one under **Settings → API Keys** at
+- A user-scoped Amika API key. Create one under **Settings → API Keys** at
   [app.amika.dev](https://app.amika.dev/settings/api-keys), or with the CLI
   during [setup](#set-up-a-host). A
-  [listening host](#listen-on-a-port-instead) also accepts an organization key.
+  [listening host](#listen-on-a-port-instead) also accepts an organization
+  key.
 </Note>
-
-Node.js and [smolvm](https://smolmachines.com), which the daemon needs, are
-installed for you when the machine doesn't already have them.
 
 ## Set up a host
 
@@ -35,80 +41,85 @@ installed for you when the machine doesn't already have them.
 
 <Step title="Install the daemon">
 
-On the machine you want to run rigs:
+On the machine that will run rigs:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install-amika-hostd.sh | sh
 ```
 
-See [Installer options](#installer-options) to pin a version, skip smolvm, or
-preview the install with `--dry-run`.
-
-If `resize2fs` is missing, the installer installs `e2fsprogs`. On macOS it
-runs `brew install e2fsprogs`. On Linux it uses `apt-get`, `dnf`, or `yum` as
-root or with `sudo`, and asks first. With `--install-deps` it installs without
-asking, but only as root or when `sudo` needs no password. When it can't
-install, it prints a warning with the reason and the exact command to run, and
-the install still succeeds.
-
-The installer creates a config file at
-`$XDG_CONFIG_HOME/amika-hostd/config.toml` (`~/.config/amika-hostd/config.toml`
-by default).
+The installer installs only `amika-hostd`, and Node.js if the machine does
+not have it. It asks no questions. See [Installer options](#installer-options).
 
 </Step>
 
-<Step title="Store your credentials">
+<Step title="Set up the host">
 
 ```bash
 amika-hostd setup
 ```
 
-It asks for this host's name and your Amika API key, and generates the secret
-key Amika uses to reach the daemon. Secrets go in the system keychain. On a
-server with no keychain, set `secret_store = "file"` in the config file before
-running setup.
+Setup asks for:
 
-To set up a host without prompts, for a script or an AI agent, pipe the API key
-into `setup --non-interactive`. `amika auth api-key create` writes a new key
-straight to a file without printing it:
+1. The host's name in Amika.
+2. Your Amika API key.
+3. The [runtimes](#runtimes) that the host runs. Each question says what it
+   installs.
+
+Setup then installs what each runtime needs, and writes the config file at
+`~/.config/amika-hostd/config.toml`. It generates the secret key that Amika
+uses to reach the daemon. Secrets go in the system keychain. On a server
+with no keychain, set `secret_store = "file"` in the config file before you
+run setup.
+
+To connect to an Amika other than `https://app.amika.dev`, set `api_url` in
+the config file before you run setup. Setup keeps the line:
+
+```bash
+mkdir -p ~/.config/amika-hostd
+echo 'api_url = "https://amika.example.com"' > ~/.config/amika-hostd/config.toml
+```
+
+To set up without prompts, for a script or an AI agent, pipe the API key into
+`setup --non-interactive`. Name the runtimes with `--enable` and `--disable`.
+`amika auth api-key create` writes a new key to a file, and does not print it:
 
 ```bash
 dir=$(mktemp -d)
 amika auth api-key create --name my-host-hostd --scope user --out "$dir/api-key"
-amika-hostd setup --non-interactive --hostname my-host < "$dir/api-key"
+amika-hostd setup --non-interactive --hostname my-host --enable bare_metal < "$dir/api-key"
 rm -rf "$dir"
 ```
 
-`--non-interactive` asks nothing. It keeps any secret key the host already has,
-and it stops without changing anything if the hostname is invalid or no key
-arrives on stdin.
+`--non-interactive` asks nothing. It keeps a secret key that the host already
+has. It stops, and changes nothing, if the hostname is not valid or no key
+comes on stdin.
 
 <Note>
-`amika auth api-key create` needs amika CLI v0.24.0 or later. Run it while
-signed in as yourself (`amika auth login`): an organization key can't create a
-user key. Otherwise, create the key in the web UI and save it to a file.
+`amika auth api-key create` needs amika CLI v0.24.0 or later. Sign in as
+yourself (`amika auth login`): an organization key cannot create a user key.
+Otherwise, create the key in the web UI, and save it to a file.
 </Note>
 
 <Tip>
-`amika-hostd setup --skill` prints step-by-step instructions an AI agent can
-follow to set up the host, including whether to use the gateway or listen on a
-port, and how to get the API key without seeing it.
+`amika-hostd setup --skill` prints the steps that an AI agent follows to set
+up the host. They include the transport, the runtimes, and how to get the API
+key without seeing it.
 </Tip>
 
 </Step>
 
 <Step title="Start the daemon">
 
-To [listen on a port](#listen-on-a-port-instead) instead, set
-`transport = "listen"` in the config first.
+To [listen on a port](#listen-on-a-port-instead), set `transport = "listen"`
+in the config file first.
 
 ```bash
 amika-hostd up
 ```
 
-This registers the host with Amika, connects the daemon to Amika's gateway,
-and starts smolvm alongside it. Amika assigns the host's address, so there is
-no URL to set up. Pass `--fg` to stay in the foreground.
+This registers the host with Amika, and connects the daemon to Amika's
+gateway. Amika assigns the host's address, so you set up no URL. Pass `--fg`
+to stay in the foreground.
 
 </Step>
 
@@ -116,45 +127,36 @@ no URL to set up. Pass `--fg` to stay in the foreground.
 
 ### Listen on a port instead
 
-The daemon can instead listen on a port that you expose to the internet over
-HTTPS, with [ngrok](https://ngrok.com) or
-[Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/),
-for example. Set this in the config file, above its first `[` line (the
-installer's config has it commented out):
+The daemon can listen on a port that you expose to the internet over HTTPS,
+for example with [ngrok](https://ngrok.com) or
+[Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/).
+Put this line in the config file, above its first `[` line:
 
 ```toml
 transport = "listen"
 ```
 
-The daemon listens on `127.0.0.1:3020` by default. To use another address or
-port, set `host` and `port` in the config, or pass `--host` and `--port` to
-`up`.
+The daemon listens on `127.0.0.1:3020` by default. To change this, set `host`
+and `port` in the config file, or pass `--host` and `--port` to `up`.
 
 Expose the port, then start the daemon:
 
 ```bash
-ngrok http 3020   # in another terminal; note the https URL it prints
-amika-hostd up    # paste that URL when asked
+ngrok http 3020   # in another terminal; copy the https URL that it prints
+amika-hostd up    # paste the URL when it asks
 ```
 
-To set the URL later, or when it changes (a free ngrok URL changes on every
-restart), run `amika-hostd register-url https://<public-url>`.
+When the URL changes (a free ngrok URL changes on each restart), run
+`amika-hostd register-url https://<public-url>`.
 
 <Warning>
 Register a bare HTTPS hostname, such as `https://hostd.example.com`, with no
-path or port. Browsers can only open
-[previews](#previews-and-service-access) on such a host. Other URLs still work
-for creating and managing rigs.
+path or port. Browsers open [previews](#previews-and-service-access) only on
+such a host. Other URLs work to create and manage rigs.
 
-Browser previews and `amika rig ssh` reach the daemon directly at that URL, so
-don't limit it to Amika's IP addresses or put it behind an access gate.
+Browser previews and `amika rig ssh` connect to the daemon directly at that
+URL. Do not limit it to Amika's IP addresses, or put it behind an access gate.
 </Warning>
-
-<Note>
-A host set up before the gateway was the default has no `transport` line in
-its config. Its next `amika-hostd up` moves it to the gateway and drops its
-registered URL. Add `transport = "listen"` first to keep it listening.
-</Note>
 
 ## Create a rig on your host
 
@@ -163,45 +165,46 @@ registered URL. Add `transport = "listen"` first to keep it listening.
 <Tab title="CLI">
 
 ```bash
-# Confirm the host registered, and see the sizes it offers
+# Make sure that the host registered, and see its sizes
 amika host list
 
 # Create a rig on it
 amika rig create --name dev-box --host my-host --size small
 ```
 
-`--size` takes one of that host's own sizes, not the cloud size names. Omit
-`--host` and the rig runs on Amika Cloud. On a host with more than one
-[runtime](#runtimes), `--runtime` picks one (`smol`, `lume` or `bare_metal`).
-Without it, the rig uses its preset's runtime. To boot from a snapshot, add
-`--snapshot <name>`. It must be a snapshot taken on that same host (see
+`--size` takes one of the host's own sizes. Without `--host`, the rig runs on
+Amika Cloud. On a host with more than one [runtime](#runtimes), `--runtime`
+selects one (`smol`, `lume` or `bare_metal`). Without it, the rig uses its
+preset's runtime. To start from a snapshot, add `--snapshot <name>`. The
+snapshot must come from the same host (see
 [Snapshots on your host](#snapshots-on-your-host)).
 
-The first `amika-hostd up` downloads the preset images in the background, and a
-rig created before that finishes can time out. The daemon logs the progress.
+The first `amika-hostd up` downloads the preset images in the background. A
+rig that you create before the download is done can time out. The daemon log
+shows the progress.
 
 </Tab>
 
 <Tab title="Web UI">
 
 1. Open **Create a rig** at [app.amika.dev](https://app.amika.dev).
-2. Under **Runs on**, switch from **Amika Cloud** to **Your hosts**.
+2. Under **Runs on**, change **Amika Cloud** to **Your hosts**.
 3. Select **VM**, or **Bare metal** for a [bare-metal rig](/guides/bare-metal-rigs).
-4. Pick your host and one of its sizes, then click **Create rig**.
+4. Select your host and one of its sizes, then click **Create rig**.
 
-Hosts that can't take a rig stay in the list but can't be picked. Each shows
-why: **Not responding**, **No URL yet**, or **Checking…**. When a host isn't
-answering, the form explains the problem under the picker, with links to
-**Manage hosts** and to **check again**.
+A host that cannot take a rig stays in the list, but you cannot select it.
+Each one shows why: **Not responding**, **No URL yet**, or **Checking…**.
+When a host does not answer, the form tells why under the picker, with links
+to **Manage hosts** and **check again**.
 
-Your registered hosts are also listed under **Hosts** in the sidebar.
+Your hosts are also under **Hosts** in the sidebar.
 
 </Tab>
 
 <Tab title="TypeScript">
 
-Pass the host's ID as `hostId`. `amika host get <hostname>` prints it, along
-with the sizes the host offers.
+Pass the host's ID as `hostId`. `amika host get <hostname>` prints it, and the
+host's sizes.
 
 ```ts
 const hostId = "host_123"; // From `amika host get my-host`
@@ -209,16 +212,15 @@ const rig = await client.rigs.create({ name: "dev-box", hostId, size: "small" })
 await rig.wait();
 ```
 
-With `hostId`, `size` names one of that host's own sizes. `rig.hostId` and
-`rig.hostname` report where a rig runs.
+With `hostId`, `size` is one of the host's own sizes. `rig.hostId` and
+`rig.hostname` tell where a rig runs.
 
 </Tab>
 
 <Tab title="HTTP API">
 
-Send the host's ID as `host_id`. `size` then names one of the host's sizes.
-To pick a [runtime](#runtimes), add `runtime` (`smol`, `lume` or
-`bare_metal`).
+Send the host's ID as `host_id`. `size` is then one of the host's sizes. To
+select a [runtime](#runtimes), add `runtime` (`smol`, `lume` or `bare_metal`).
 
 ```bash
 curl -X POST https://app.amika.dev/api/v0beta1/rigs \
@@ -231,13 +233,44 @@ curl -X POST https://app.amika.dev/api/v0beta1/rigs \
 
 </Tabs>
 
+## Runtimes
+
+A runtime is how a host runs rigs. A host can have more than one.
+
+| Runtime      | Rigs                                               | Machines                           | Setup installs |
+| ------------ | -------------------------------------------------- | ---------------------------------- | -------------- |
+| `smol`       | Linux VMs on smolvm (on by default)                | Linux (glibc 2.34+), Apple silicon | smolvm         |
+| `lume`       | macOS VMs on [Lume](https://github.com/trycua/cua) | Apple silicon                      | Lume           |
+| `bare_metal` | The host machine itself, as one rig                | Linux and macOS                    | `amikad`       |
+
+Setup asks about each runtime that the machine can run. To change them later,
+use one command. It installs what the runtime needs, updates the config file,
+and reloads the running daemon:
+
+```bash
+amika-hostd capabilities update --enable lume
+amika-hostd capabilities update --disable smol
+```
+
+Add `--dry-run` to see the plan first. The command does not turn off a
+runtime that has rigs. `amika host list` shows each host's runtimes.
+
+- **`smol`:** smolvm needs `resize2fs` (from `e2fsprogs`) to start a rig with
+  a disk under 20 GiB. On Linux it also needs access to `/dev/kvm`. Setup
+  tells you when one is missing, and how to fix it.
+- **`lume`:** the daemon builds a macOS image in the background when it
+  starts. This downloads a macOS restore image from Apple (about 20 GB),
+  needs about 50 GB of free disk while it builds and 30 GB after, and takes
+  30 minutes or more. Until the image is ready, the host refuses macOS rigs.
+  Then create rigs with `--preset macos-coder`.
+- **`bare_metal`:** see [Bare-metal rigs](/guides/bare-metal-rigs).
+
 ## Configure sizes and images
 
-The config file you set up above sets the rig sizes this host offers and the
-preset image each rig boots. Every `amika-hostd up` publishes the sizes
-to Amika, so the file is the source of truth for them. Preset images stay
-local: the host pins the version it boots. Edit the file and restart the daemon
-either way.
+The config file sets the rig sizes that the host offers, and the image that
+each preset starts. Each `amika-hostd up` sends the sizes to Amika, so the
+file is the source of truth. The images stay on the host. After you edit the
+file, restart the daemon.
 
 ```toml
 [sizes.small]
@@ -249,90 +282,62 @@ disk_gib = 20
 image = "ghcr.io/gofixpoint/amika-coder:latest"
 ```
 
-`:latest` follows each release. To hold a version, pin a 12-character commit
-SHA instead, such as `amika-coder:855d403678d5`.
+`:latest` follows each release. To keep a version, use a 12-character commit
+SHA, such as `amika-coder:855d403678d5`.
 
 <Note>
-amika-hostd 0.7.0 and later refuse to start with the old `[preset_images]`
-table. Run `amika-hostd config upgrade` to convert it. The installer runs it
-for you when it upgrades the daemon.
+amika-hostd 0.7.0 and later do not start with the old `[preset_images]`
+table. Run `amika-hostd config upgrade`, or `amika-hostd setup`, to change it.
 </Note>
 
 <Tip>
-Keep `disk_gib` at 20 or more. Below that, smolvm doesn't cache the rig's
-image, so every create downloads it again.
+Keep `disk_gib` at 20 or more. Below 20, smolvm does not cache the rig's
+image, so each create downloads it again.
 </Tip>
-
-## Runtimes
-
-A runtime is the way a host runs rigs. A host can offer more than one.
-
-| Runtime      | Rigs                                         | Where                        |
-| ------------ | -------------------------------------------- | -----------------------------|
-| `smol`       | Linux VMs on smolvm (the default)            | Linux and macOS              |
-| `lume`       | macOS VMs on [Lume](https://github.com/trycua/cua) | macOS on Apple silicon |
-| `bare_metal` | The host machine itself, as one rig          | Linux and macOS              |
-
-Turn a runtime on or off with one command. It installs what the runtime
-needs, updates the config file, and reloads the running daemon:
-
-```bash
-amika-hostd capabilities update --enable lume
-amika-hostd capabilities update --disable smol
-```
-
-It refuses to turn off a runtime that still has rigs. `amika host list` shows
-each host's runtimes.
-
-- **`lume`:** the host needs a macOS image to clone. Build it with
-  [`macos-image/build.sh`](https://github.com/gofixpoint/amika/tree/main/macos-image).
-  Then create rigs with `--preset macos-coder`.
-- **`bare_metal`:** see [Bare-metal rigs](/guides/bare-metal-rigs).
 
 ## Snapshots on your host
 
-You can [snapshot](/guides/create-a-snapshot) a rig that runs on your host. The
-snapshot is a `.smolmachine` file that stays on that host's disk, and it can
-only boot new rigs on the same host.
+You can [snapshot](/guides/create-a-snapshot) a rig that runs on your host.
+The snapshot is a `.smolmachine` file on the host's disk. It can start new
+rigs only on the same host.
 
-- **Snapshot and delete is the only mode.** The daemon stops the rig to pack
-  its disks, so **Snapshot everything**, which keeps the source rig running,
-  isn't offered.
-- **Repository and organization default snapshots don't apply.** A host rig
-  boots its preset image unless you pick one of that host's snapshots when you
-  create it.
-- **Snapshots are large.** Each one is several gigabytes. Point `snapshot_dir`
-  in the config (or `AMIKA_HOSTD_SNAPSHOT_DIR`) at a disk with room for them.
-  By default they go under `~/.local/state/amika-hostd/snapshots`.
+- **Only snapshot and delete.** The daemon stops the rig to pack its disks,
+  so **Snapshot everything**, which keeps the rig running, is not available.
+- **Repository and organization default snapshots do not apply.** A host rig
+  starts its preset image, unless you select one of the host's snapshots when
+  you create it.
+- **Snapshots are large.** Each one is several gigabytes. Set `snapshot_dir`
+  in the config file (or `AMIKA_HOSTD_SNAPSHOT_DIR`) to a disk with space.
+  The default is `~/.local/state/amika-hostd/snapshots`.
 
 ```toml
 snapshot_dir = "/var/lib/amika-hostd/snapshots"
 ```
 
-`amika snapshot list --long` shows a `HOST` column, so you can tell which
-snapshots belong to which host.
+`amika snapshot list --long` shows a `HOST` column, which tells the host of
+each snapshot.
 
 ## Previews and service access
 
-Each [service](/reference/services) on a host rig gets a preview link. Opening
-it asks you to sign in to Amika, and only members of your organization get
-through. The link carries no credential, so sharing it gives
-no one access. Where it points depends on the host's transport:
+Each [service](/reference/services) on a host rig gets a preview link. When
+you open it, you sign in to Amika, and only members of your organization get
+access. The link holds no credential, so a shared link gives no access. The
+URL depends on the host's transport:
 
-| Transport | Preview URL |
-| --- | --- |
-| `tunnel` (the default) | Its own subdomain, `https://<service>--<rig>.r.<org>.o.amika.run/` |
-| [`listen`](#listen-on-a-port-instead) | A path on the URL you registered, `<registered-url>/v0beta1/rigs/<rig>/previews/<service>/` |
+| Transport                             | Preview URL                                                                              |
+| ------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `tunnel` (the default)                | Its own subdomain, `https://<service>--<rig>.r.<org>.o.amika.run/`                       |
+| [`listen`](#listen-on-a-port-instead) | A path on your registered URL, `<registered-url>/v0beta1/rigs/<rig>/previews/<service>/` |
 
 On a listening host, all previews share one origin and one sign-in:
 
-- A page in one preview can act on any other preview you've opened there, so
-  don't run untrusted code on that host.
-- Open one preview at a time. Root-relative assets, such as a Vite or Next.js
-  dev server's, follow the preview you opened last.
+- A page in one preview can act on each other preview that you opened there.
+  Do not run code that you do not trust on that host.
+- Open one preview at a time. Root-relative assets, such as those of a Vite
+  or Next.js dev server, follow the preview that you opened last.
 
-For scripts and tools like `curl`, mint a short-lived service token with the
-HTTP API. It works only for rigs on your own hosts, never for `amikad`.
+For scripts and tools such as `curl`, get a short-lived service token from
+the HTTP API. It works only for rigs on your own hosts, never for `amikad`.
 
 ```bash
 curl -X POST \
@@ -340,9 +345,9 @@ curl -X POST \
   -H "Authorization: Bearer $AMIKA_API_KEY"
 ```
 
-The response gives the service's `url`, the `header` to send the token in
-(`X-Amika-Authorization`), the `token`, and `expires_at`. Tokens last an hour
-by default and at most a day.
+The response gives the service's `url`, the `header` for the token
+(`X-Amika-Authorization`), the `token`, and `expires_at`. A token lasts one
+hour by default, and one day at most.
 
 ```bash
 curl -H "X-Amika-Authorization: Bearer $TOKEN" "$URL"
@@ -350,49 +355,57 @@ curl -H "X-Amika-Authorization: Bearer $TOKEN" "$URL"
 
 ## Manage hosts
 
-| Command | What it does |
-| --- | --- |
-| `amika host list` | List your organization's hosts and their sizes |
-| `amika host get <hostname>` | Show one host, its ID, and the sizes it offers |
-| `amika host delete <hostname>` | Delete a host and its stored secret |
+| Command                        | What it does                                   |
+| ------------------------------ | ---------------------------------------------- |
+| `amika host list`              | List your organization's hosts and their sizes |
+| `amika host get <hostname>`    | Show one host, its ID, and its sizes           |
+| `amika host delete <hostname>` | Delete a host and its stored secret            |
 
-Hosts register themselves, so there is no command to add one. A host that
-still has rigs on it can't be deleted: delete the rigs first. You can also
-delete a host from **Hosts** in the sidebar.
+A host registers itself, so no command adds one. You cannot delete a host
+that has rigs: delete the rigs first. You can also delete a host from
+**Hosts** in the sidebar.
 
-To take a host offline, run `amika-hostd down` on the machine. That stops the
-daemon and the VMs it is running, keeping their disks. The next `up` brings the
-daemon back, but not the rigs: start those with `amika rig start`. Deleting the
-host record alone leaves the machine untouched, so it registers itself again on
-the next `amika-hostd up`.
+To take a host offline, run `amika-hostd down` on the machine. This stops the
+daemon and its VMs, and keeps their disks. The next `up` starts the daemon,
+but not the rigs: start them with `amika rig start`. If you delete only the
+host record, the machine registers itself again on the next `amika-hostd up`.
 
-### Rigs on a host that's gone
+### Rigs on a host that is gone
 
-Deleting a rig needs its host to answer. When the host is offline, the delete
-fails and the web UI offers **Remove from Amika only**. That deletes Amika's
-record of the rig but leaves anything still running on the machine, which you
-then clean up yourself. The HTTP API does the same with
+To delete a rig, its host must answer. When the host is offline, the delete
+fails, and the web UI offers **Remove from Amika only**. This deletes Amika's
+record of the rig. It does not stop what still runs on the machine: you clean
+that up. The HTTP API does the same with
 `DELETE /api/v0beta1/rigs/{id}?forget=true`.
 
 ## Uninstall the daemon
 
-Run the installer with `--uninstall` on the host:
+On the host, run the installer with `--uninstall`:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install-amika-hostd.sh | sh -s -- --uninstall
 ```
 
-It shows what it found and asks you to confirm, stops the daemon, and deletes
-the launcher and its files. It then asks separately whether to remove the
-config and state directory, the keychain secrets, and smolvm.
+The uninstaller does these steps:
 
-| Flag | What it does |
-| --- | --- |
-| `--purge` | Also remove the config, state directory, and keychain secrets without asking. Keeps smolvm |
-| `--yes`, `-y` | Answer yes to every question except smolvm's. Needed without a terminal |
-| `--dry-run` | Show what would be removed |
+1. Show what it found, and ask you to confirm.
+2. Ask whether to remove the config and state directory, and the keychain
+   secrets.
+3. Stop the daemon, and delete the host's Lume rigs.
+4. Ask you to type a phrase before it deletes the macOS images
+   (`remove macos images`) or smolvm (`remove smolvm`).
+5. Delete `amika-hostd` and its files, and what you said yes to.
 
-smolvm is removed only if you type `remove smolvm` at its prompt.
+It does not delete Lume or a downloaded macOS restore image, because other
+tools can use them. It tells you where they are.
+
+| Flag          | What it does                                                            |
+| ------------- | ----------------------------------------------------------------------- |
+| `--purge`     | Remove the config, state directory, and keychain secrets without asking |
+| `--yes`, `-y` | Answer yes to each yes/no question. Use it when there is no terminal    |
+| `--dry-run`   | Show what it would remove                                               |
+
+No flag deletes smolvm or the macOS images.
 
 <Warning>
 Uninstalling changes nothing in Amika. The host stays registered, and its API
@@ -402,31 +415,27 @@ key under **Settings → API Keys**.
 
 ## Installer options
 
-| Flag | What it does |
-| --- | --- |
-| `--install-version <version>` | Install a specific `amika-hostd` version |
-| `--dry-run` | Show what would be done without downloading or installing |
-| `--smolvm-version <version>` | Install this smolvm version if smolvm is missing |
-| `--skip-smolvm` | Don't install smolvm |
-| `--install-deps` | Install missing system packages (`e2fsprogs`) without asking, only as root or when `sudo` needs no password. Use it for scripts and AI agents |
-| `--bare-metal` | Make this machine the host's only rig: skip smolvm and turn on only the `bare_metal` runtime. See [Bare-metal rigs](/guides/bare-metal-rigs) |
-| `--uninstall` | Remove `amika-hostd`. See [Uninstall the daemon](#uninstall-the-daemon) |
+| Flag                          | What it does                                                            |
+| ----------------------------- | ----------------------------------------------------------------------- |
+| `--install-version <version>` | Install a specific `amika-hostd` version                                |
+| `--dry-run`                   | Show what it would do, and download or install nothing                  |
+| `--uninstall`                 | Remove `amika-hostd`. See [Uninstall the daemon](#uninstall-the-daemon) |
 
-Pass flags after `sh -s --`, for example
+Put flags after `sh -s --`, for example
 `curl -fsSL .../install-amika-hostd.sh | sh -s -- --dry-run`.
-`AMIKA_INSTALL_DIR` sets where the launcher goes (default `/usr/local/bin`),
-and `AMIKA_HOSTD_HOME` where the daemon's files go.
+`AMIKA_INSTALL_DIR` sets the launcher's directory (default `/usr/local/bin`).
+`AMIKA_HOSTD_HOME` sets the directory for the daemon's files.
 
 ## Next steps
 
 <CardGroup cols={2}>
   <Card title="amika host reference" icon="square-terminal" href="/reference/cli#amika-host">
-    Every flag for the `amika host` commands.
+    Each flag of the `amika host` commands.
   </Card>
   <Card title="Create a rig" icon="server" href="/guides/create-a-rig">
-    The full rig creation flow, on cloud or your own host.
+    The full flow to create a rig, on Amika Cloud or on your own host.
   </Card>
   <Card title="Bare-metal rigs" icon="microchip" href="/guides/bare-metal-rigs">
-    Make your host machine itself a rig, and reach it over SSH.
+    Make the host machine itself a rig, and connect to it over SSH.
   </Card>
 </CardGroup>
