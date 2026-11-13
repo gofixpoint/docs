@@ -55,9 +55,57 @@ If the build fails, the log says why. The next `amika-hostd up` or
 
 ## Create a macOS rig
 
+<Tabs>
+
+<Tab title="CLI">
+
 ```bash
 amika rig create --name mac-dev --host my-mac --preset macos-coder
 ```
+
+</Tab>
+
+<Tab title="Web UI">
+
+1. Open **Create a rig** at [app.amika.dev](https://app.amika.dev).
+2. Under **Runs on**, select **Your hosts**.
+3. Select **MacOS VM**, then select your Mac.
+4. Click **Create rig**.
+
+The form shows no presets, sizes or snapshots. The rig gets the
+`macos-coder` preset and the host's first macOS size.
+
+</Tab>
+
+<Tab title="TypeScript">
+
+Pass the host's ID as `hostId`. `amika host get my-mac` prints it.
+
+```ts
+const rig = await client.rigs.create({
+  name: "mac-dev",
+  hostId: "host_123",
+  preset: "macos-coder",
+});
+await rig.wait();
+```
+
+</Tab>
+
+<Tab title="HTTP API">
+
+Send the host's ID as `host_id`, and `"preset": "macos-coder"`.
+
+```bash
+curl -X POST https://app.amika.dev/api/v0beta1/rigs \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"mac-dev","host_id":"host_123","preset":"macos-coder"}'
+```
+
+</Tab>
+
+</Tabs>
 
 Each rig is a copy of the image. The copy takes seconds and almost no disk,
 because macOS copies files on write (APFS clones).
