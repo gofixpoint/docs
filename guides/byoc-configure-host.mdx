@@ -1,0 +1,137 @@
+---
+title: "Configure a host"
+description: "Choose a host's runtimes, rig sizes, images, snapshot folder, and how Amika reaches it."
+---
+
+A host's settings live in its config file, `~/.config/amika-hostd/config.toml`.
+[Setup](/guides/byoc#set-up-a-host) writes it. This page covers what you can
+change after that.
+
+| To change                           | See                                               |
+| ----------------------------------- | ------------------------------------------------- |
+| Which kinds of rigs the host runs   | [Runtimes](#runtimes)                             |
+| Rig sizes and the image each starts | [Sizes and images](#sizes-and-images)             |
+| Where snapshots go                  | [Snapshots on your host](#snapshots-on-your-host) |
+| How Amika reaches the host          | [Listen on a port](#listen-on-a-port)             |
+
+After you edit the file, apply it:
+
+- Runtimes, presets, images, sizes and limits: run `amika-hostd reload`. The
+  daemon keeps running.
+- Anything else, such as `transport` or `snapshot_dir`: restart the daemon
+  with `amika-hostd down`, then `amika-hostd up`.
+
+## Runtimes
+
+A runtime is how a host runs rigs. A host can have more than one.
+
+| Runtime      | Rigs                                               | Machines                           | Setup installs |
+| ------------ | -------------------------------------------------- | ---------------------------------- | -------------- |
+| `smol`       | Linux VMs on smolvm (on by default)                | Linux (glibc 2.34+), Apple silicon | smolvm         |
+| `lume`       | macOS VMs on [Lume](https://github.com/trycua/cua) | Apple silicon                      | Lume           |
+| `bare_metal` | The host machine itself, as one rig                | Linux and macOS                    | `amikad`       |
+
+Setup asks about each runtime the machine can run. To change them later, run
+`capabilities update`. It installs what the runtime needs, updates the config
+file, and reloads the daemon:
+
+```bash
+amika-hostd capabilities update --enable lume
+amika-hostd capabilities update --disable smol
+```
+
+- Add `--dry-run` to see the plan first.
+- It won't turn off a runtime that still has rigs.
+- `amika host list` shows each host's runtimes.
+
+### Notes for each runtime
+
+- **`smol`:** smolvm needs `resize2fs` (from `e2fsprogs`) for disks under
+  20 GiB, and `/dev/kvm` on Linux. Setup warns you if either is missing.
+- **`lume`:** see [macOS rigs](/guides/macos-rigs).
+- **`bare_metal`:** see [Bare-metal rigs](/guides/bare-metal-rigs).
+
+## Sizes and images
+
+The config file sets the host's rig sizes, and the image each preset starts.
+Amika gets the sizes from the host, so edit them in the file. Then run
+`amika-hostd reload`.
+
+```toml
+[sizes.small]
+vcpus = 2
+memory_gib = 4
+disk_gib = 20
+
+[presets.coder.runtimes.smol]
+image = "ghcr.io/gofixpoint/amika-coder:latest"
+```
+
+`:latest` follows each release. To pin a version, use a 12-character commit
+SHA, such as `amika-coder:855d403678d5`.
+
+<Note>
+amika-hostd 0.7.0 and later won't start with the old `[preset_images]` table.
+Run `amika-hostd config upgrade` or `amika-hostd setup` to convert it.
+</Note>
+
+<Tip>
+Keep `disk_gib` at 20 or more. Below 20, smolvm doesn't cache the image, so
+every create downloads it again.
+</Tip>
+
+## Snapshots on your host
+
+You can [snapshot](/guides/create-a-snapshot) a rig on your host. The
+snapshot is a `.smolmachine` file on the host's disk, and only that host can
+use it.
+
+- **Only "snapshot and delete" is available.** The daemon stops the rig to
+  pack its disks, so **Snapshot everything** isn't offered.
+- **Default snapshots don't apply.** A host rig starts from its preset image,
+  unless you pick one of the host's snapshots.
+- **Snapshots are large**, several gigabytes each. Point `snapshot_dir` (or
+  `AMIKA_HOSTD_SNAPSHOT_DIR`) at a disk with space. The default is
+  `~/.local/state/amika-hostd/snapshots`.
+
+```toml
+snapshot_dir = "/var/lib/amika-hostd/snapshots"
+```
+
+`amika snapshot list --long` shows which host each snapshot belongs to.
+
+## Listen on a port
+
+By default the daemon connects out to Amika, so the host needs no open port.
+If you'd rather have Amika connect in, the daemon can listen on a port. You
+expose that port to the internet over HTTPS yourself, for example with
+[ngrok](https://ngrok.com) or
+[Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/).
+
+Add this line to the config file, above the first `[` line:
+
+```toml
+transport = "listen"
+```
+
+The daemon listens on `127.0.0.1:3020` by default. To change it, set `host`
+and `port` in the config file, or pass `--host` and `--port` to `up`.
+
+Expose the port, then start the daemon:
+
+```bash
+ngrok http 3020   # in another terminal; copy the https URL that it prints
+amika-hostd up    # paste the URL when it asks
+```
+
+If the URL changes, run `amika-hostd register-url https://<public-url>`. A free
+ngrok URL changes on every restart.
+
+<Warning>
+Register a bare HTTPS hostname, such as `https://hostd.example.com`, with no
+path or port. Otherwise browser [previews](/guides/byoc-previews) won't
+work. Creating and managing rigs still works.
+
+Browsers and `amika rig ssh` connect to that URL directly. Don't limit it to
+Amika's IP addresses or put it behind an access gate.
+</Warning>

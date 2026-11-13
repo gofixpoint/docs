@@ -1,0 +1,45 @@
+---
+title: "Previews and services"
+description: "Open a service on a host rig in a browser, or call it from a script."
+---
+
+This page covers [services](/reference/services) on rigs that run on your own
+[hosts](/guides/byoc).
+
+## Previews
+
+Each service on a host rig gets a preview link. Opening
+it asks you to sign in, and only your organization's members get in. The link
+holds no credential, so sharing it gives no access. The URL depends on the
+transport:
+
+| Transport                                                | Preview URL                                                                              |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `tunnel` (the default)                                   | Its own subdomain, `https://<service>--<rig>.r.<org>.o.amika.run/`                       |
+| [`listen`](/guides/byoc-configure-host#listen-on-a-port) | A path on your registered URL, `<registered-url>/v0beta1/rigs/<rig>/previews/<service>/` |
+
+On a listening host, all previews share one origin and one sign-in:
+
+- A page in one preview can act on other previews you opened there. Don't run
+  untrusted code on that host.
+- Open one preview at a time. Dev servers like Vite or Next.js load assets
+  from the preview you opened last.
+
+## Service tokens for scripts
+
+For scripts and tools like `curl`, get a service token from the HTTP API. It
+works only for rigs on your own hosts, and never for `amikad`.
+
+```bash
+curl -X POST \
+  "https://app.amika.dev/api/v0beta1/rigs/dev-box/services/web/tokens?ttl_seconds=900" \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
+```
+
+The response has the service's `url`, the `header` to send
+(`X-Amika-Authorization`), the `token`, and `expires_at`. A token lasts one
+hour by default, and one day at most.
+
+```bash
+curl -H "X-Amika-Authorization: Bearer $TOKEN" "$URL"
+```
