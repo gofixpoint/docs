@@ -48,8 +48,18 @@
               "guides/what-is-a-rig",
               "guides/create-a-rig",
               "guides/rig-lifecycle",
-              "guides/byoc",
               "guides/create-a-snapshot"
+            ]
+          },
+          {
+            "group": "Bring your own compute",
+            "pages": [
+              "guides/byoc",
+              "guides/byoc-configure-host",
+              "guides/macos-rigs",
+              "guides/bare-metal-rigs",
+              "guides/byoc-previews",
+              "guides/byoc-manage-hosts"
             ]
           },
           {
@@ -94,7 +104,6 @@
               "guides/programmatic-usage",
               "guides/mcp-integrations",
               "guides/github-authentication",
-              "guides/bare-metal-rigs",
               "guides/github-actions-runners"
             ]
           }
