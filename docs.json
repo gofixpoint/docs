@@ -160,18 +160,6 @@
             ]
           }
         ]
-      },
-      {
-        "tab": "Architecture",
-        "groups": [
-          {
-            "group": "System design",
-            "pages": [
-              "architecture/overview",
-              "architecture/roadmap"
-            ]
-          }
-        ]
       }
     ],
     "global": {

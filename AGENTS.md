@@ -38,7 +38,7 @@ documenting them. Don't invent.
 
 ## Navigation
 
-`docs.json` defines four tabs:
+`docs.json` defines three tabs:
 
 - **Guides** — getting started and how-tos. Groups: Get started, Rigs
   (machines), Bring your own compute, Configuration, Connecting to rigs,
@@ -50,13 +50,11 @@ documenting them. Don't invent.
 - **SDKs** — the TypeScript SDK reference.
 - **CLI and API Reference** — flag and config tables, endpoint lists,
   `.amika/config.toml` key lookup.
-- **Architecture** — system design, roadmap.
 
 Placement rules:
 
 - New how-to → Guides.
 - New flag table, config key, or endpoint → Reference.
-- New design direction → Architecture.
 - Adding a page is a deliberate choice — prefer editing existing pages.
 - Any new `.mdx` must be wired into `docs.json` to appear.
 - Conceptual/how-config-works content is canonical in the Guides
