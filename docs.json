@@ -82,6 +82,15 @@
             ]
           },
           {
+            "group": "Automations and CI",
+            "pages": [
+              "guides/programmatic-usage",
+              "guides/command-runs",
+              "guides/jobs",
+              "guides/github-actions-runners"
+            ]
+          },
+          {
             "group": "Connecting to rigs",
             "pages": [
               "guides/remote-control",
@@ -101,10 +110,8 @@
           {
             "group": "Advanced",
             "pages": [
-              "guides/programmatic-usage",
               "guides/mcp-integrations",
-              "guides/github-authentication",
-              "guides/github-actions-runners"
+              "guides/github-authentication"
             ]
           }
         ]
