@@ -156,7 +156,7 @@
               "sdks/typescript/client",
               "sdks/typescript/types",
               "sdks/typescript/errors",
-              "sdks/typescript/token-sources"
+              "sdks/typescript/authentication"
             ]
           }
         ]
@@ -183,6 +183,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/sdks/typescript/token-sources",
+      "destination": "/sdks/typescript/authentication"
+    },
     {
       "source": "/guides/ide-access",
       "destination": "/guides/open-in-editor"
