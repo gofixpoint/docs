@@ -1,0 +1,134 @@
+---
+title: "Command runs"
+description: "Queue shell commands on a rig, and let Amika run them in order and manage the rig."
+---
+
+A command run is one shell command that you queue on a rig. You send each
+command in one quick request, and Amika does the rest:
+
+- **It runs your commands in order.** Each command goes into a queue on the
+  rig, called a session. Commands in a session run one at a time, in the order
+  you sent them. The next command starts when the one before it finishes, also
+  if it failed. The default session is `default`. Use other sessions to run
+  commands in parallel on the same rig.
+- **It manages the rig for you.** If the rig is stopped, Amika starts it. When
+  the rig's last queued command finishes, Amika puts the rig back as it was. Or
+  you can tell Amika to keep the rig on, stop it, or delete it.
+- **It can create the rig.** A command can create a new rig and then run on
+  it, in the same request.
+- **It keeps the results.** Each run keeps its output and exit code, so you can
+  read them later.
+
+So you can send a series of commands to a rig without waiting for each one,
+and without starting or stopping the rig yourself.
+
+Each command starts a new shell. Files stay on the rig between commands, but
+`cd` and shell variables do not.
+
+Send command runs through the API with an
+[API key](https://app.amika.dev/settings/api-keys) in `AMIKA_API_KEY`. To run
+commands on a schedule, use [jobs](/guides/jobs). In the web UI, a rig's page
+lists its recent command runs. For every field and response, see the
+[API reference](https://app.amika.dev/api/docs).
+
+## Queue commands
+
+This example creates a rig, queues two commands on it, and deletes the rig
+when the second command finishes.
+
+```bash
+curl -X POST https://app.amika.dev/api/v0beta1/command-runs \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: ci-box-install" \
+  -d '{
+    "rig_create": { "name": "ci-box", "repo_url": "https://github.com/your-org/your-repo" },
+    "command": "pnpm install",
+    "timeout_ms": 600000
+  }'
+
+curl -X POST https://app.amika.dev/api/v0beta1/command-runs \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: ci-box-test" \
+  -d '{
+    "rig_name": "ci-box",
+    "command": "pnpm test",
+    "timeout_ms": 600000,
+    "rig_status_on_finish": "deleted"
+  }'
+```
+
+Both requests return at once, with the run in status `queued`. `pnpm test`
+starts when `pnpm install` finishes.
+
+- **Rig**: `rig_create` takes the same body as `POST /rigs`. To use an
+  existing rig, send `rig_name` or `rig_id`.
+- **`Idempotency-Key`**: required. It is any string unique to this run. If you
+  send the same key again, Amika queues the command only once.
+- **`command`**: runs with `bash -e -o pipefail` in the rig's repository
+  checkout. Set `cwd` to use a different directory.
+- **`timeout_ms`**: the maximum run time of the command.
+- **`session`**: the queue for the command. The default is `default`.
+- **`rig_status_on_finish`**: `active`, `stopped`, or `deleted` when the
+  rig's last queued command finishes. Without it, Amika puts the rig back as it
+  was. A rig that a command created stays on.
+
+## Check a run
+
+```bash
+curl https://app.amika.dev/api/v0beta1/command-runs/cr_abc123 \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
+```
+
+`status` is `queued`, `in_progress`, or `completed`. When the run is
+`completed`, `conclusion` gives the result, such as `success`, `failure`, or
+`timed_out`, and `exit_code` gives the command's exit code.
+
+## Read the output
+
+```bash
+curl "https://app.amika.dev/api/v0beta1/command-runs/cr_abc123/events?after=0" \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
+```
+
+Each event has a `stream` (`stdout` or `stderr`) and its `content`. To get new
+output, send the response's `next_sequence` as `after` in the next request.
+Stop when the run is `completed` and no new events come back.
+
+## List runs
+
+```bash
+curl "https://app.amika.dev/api/v0beta1/command-runs?rig=my-rig&status=in_progress" \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
+```
+
+Runs come newest first. Filter with `rig`, `session`, or `status`. To list the
+runs of a job, use `source_kind=job&source_id=<job ID>`.
+
+## Cancel a run
+
+```bash
+curl -X POST https://app.amika.dev/api/v0beta1/command-runs/cr_abc123/cancel \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
+```
+
+A queued run stops at once. A running command is stopped. The run stays, with
+conclusion `cancelled`.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Jobs" icon="clock" href="/guides/jobs">
+    Run commands on a rig on a cron schedule.
+  </Card>
+  <Card title="API reference" icon="book" href="https://app.amika.dev/api/docs">
+    Every field of the command run endpoints.
+  </Card>
+  <Card title="Rig lifecycle" icon="rotate" href="/guides/rig-lifecycle">
+    List, start, stop, and delete rigs.
+  </Card>
+  <Card title="Programmatic usage" icon="code" href="/guides/programmatic-usage">
+    Script a rig and an agent from the CLI or TypeScript.
+  </Card>
+</CardGroup>

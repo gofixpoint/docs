@@ -1,0 +1,112 @@
+---
+title: "Jobs"
+description: "Run commands on a rig on a cron schedule."
+---
+
+A job runs commands on a rig on a cron schedule. Create and manage jobs
+through the API with an [API key](https://app.amika.dev/settings/api-keys) in
+`AMIKA_API_KEY`. Every route takes the job's ID or its name.
+
+In the web UI, the **Jobs** page lists your jobs. You can also create, pause,
+and resume them there.
+
+For every field and response, see the
+[API reference](https://app.amika.dev/api/docs).
+
+## Create a job
+
+```bash
+curl -X POST https://app.amika.dev/api/v0beta1/jobs \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: nightly-deps-audit-1" \
+  -d '{
+    "name": "nightly-deps-audit",
+    "trigger": { "kind": "cron", "schedule": "0 9 * * 1-5", "timezone": "Europe/Warsaw" },
+    "steps": [
+      { "rig_name": "my-rig", "command": "pnpm install --frozen-lockfile", "timeout_ms": 600000 },
+      { "command": "pnpm audit --prod", "timeout_ms": 1800000 }
+    ],
+    "rig_status_on_finish": "stopped"
+  }'
+```
+
+The `Idempotency-Key` is any string unique to this job. If you send the same
+key again, Amika creates the job only once.
+
+- **`trigger.schedule`**: a 5-field cron expression, or `@hourly`, `@daily`,
+  or `@weekly`. Runs must be at least 5 minutes apart. `timezone` is an IANA
+  name. The default is `UTC`.
+- **`steps`**: 1 to 20 commands. They run in order, and a run stops at the
+  first failure. Step 0 names the rig with `rig_id`, `rig_name`, or
+  `rig_create` (a new rig for each run). Later steps run on the same rig. Each
+  step is a [command run](/guides/command-runs).
+- **`rig_status_on_finish`**: `active`, `stopped`, or `deleted` when a run ends.
+- **`overlap_policy`**: `skip` (the default) does not start a scheduled run
+  while the previous one runs. `allow` starts it.
+- **`enabled: false`**: creates the job paused.
+
+## Run a job now
+
+```bash
+curl -X POST https://app.amika.dev/api/v0beta1/job-runs \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: nightly-deps-audit-manual-1" \
+  -d '{ "job_name": "nightly-deps-audit" }'
+```
+
+A manual run does not wait for a running one to finish. Send an
+`Idempotency-Key` so that a retry starts the run only once.
+
+## List a job's runs
+
+```bash
+curl "https://app.amika.dev/api/v0beta1/job-runs?job_name=nightly-deps-audit&limit=20" \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
+```
+
+Runs come newest first. Filter with `status` or `trigger_kind`.
+
+Each run lists one command run per step in `command_run_ids`. To read a step's
+output, see [Command runs](/guides/command-runs).
+
+## Pause or resume a job
+
+```bash
+curl -X PATCH https://app.amika.dev/api/v0beta1/jobs/nightly-deps-audit \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "enabled": false }'
+```
+
+`"enabled": true` resumes the job. The same `PATCH` changes the schedule or the
+steps.
+
+## Delete a job
+
+```bash
+curl -X DELETE https://app.amika.dev/api/v0beta1/jobs/nightly-deps-audit \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
+```
+
+This deletes the job and its runs. The command runs stay. You cannot delete a
+job while one of its runs is pending or running. Pause the job, and try again
+when the run finishes.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Command runs" icon="play" href="/guides/command-runs">
+    Run one command on a rig, and read its output.
+  </Card>
+  <Card title="API reference" icon="book" href="https://app.amika.dev/api/docs">
+    Every field of the job and job run endpoints.
+  </Card>
+  <Card title="Create a rig" icon="cube" href="/guides/create-a-rig">
+    Set up the rig that a job runs on.
+  </Card>
+  <Card title="Programmatic usage" icon="code" href="/guides/programmatic-usage">
+    Script a rig and an agent from the CLI or TypeScript.
+  </Card>
+</CardGroup>
