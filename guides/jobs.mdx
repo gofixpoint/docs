@@ -56,8 +56,12 @@ curl -X POST https://app.amika.dev/api/v0beta1/job-runs \
   -d '{ "job_name": "nightly-deps-audit" }'
 ```
 
-A manual run does not wait for a running one to finish. Send an
-`Idempotency-Key` so that a retry starts the run only once.
+A manual run does not wait for a running one to finish, and does not change
+when the next scheduled run starts. Send an `Idempotency-Key` so that a retry
+starts the run only once. A retry with the same key returns the existing run.
+
+Name the job with exactly one of `job_name`, `job_id`, or `job_ref` (an ID or
+a name).
 
 ## List a job's runs
 
@@ -66,10 +70,38 @@ curl "https://app.amika.dev/api/v0beta1/job-runs?job_name=nightly-deps-audit&lim
   -H "Authorization: Bearer $AMIKA_API_KEY"
 ```
 
-Runs come newest first. Filter with `status` or `trigger_kind`.
+Runs come newest first. Filter by job with `job_name`, `job_id`, or
+`job_ref`, by rig with `rig`, or with `status` or `trigger_kind` (`cron` or
+`manual`). `limit` sets the number of runs, from 1 to 100. The default is 20.
 
-Each run lists one command run per step in `command_run_ids`. To read a step's
-output, see [Command runs](/guides/command-runs).
+To get only the latest run of each job, add `latest_per_job=true`. These
+results come in pages: send the response's `next_cursor` as `cursor` to get the
+next page. `next_cursor` is `null` on the last page.
+
+## Read a run
+
+```bash
+curl https://app.amika.dev/api/v0beta1/job-runs/jr_abc123 \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
+```
+
+`status` is one of:
+
+| `status` | Meaning |
+| --- | --- |
+| `pending` | The run is recorded, and no step has started |
+| `running` | A step, or the finish step, is still running |
+| `succeeded` | Every step succeeded |
+| `failed` | A step did not succeed. Later steps did not start |
+| `skipped` | `overlap_policy` dropped the run |
+
+`error` says why a run failed or was skipped. A run keeps a copy of the job's
+`steps` from when it started, so later changes to the job don't change it.
+
+Each run lists one command run per started step in `command_run_ids`, in step
+order. To read a step's output, see [Command runs](/guides/command-runs). When
+no step's command run could apply `rig_status_on_finish`, Amika starts an extra
+command run to apply it. Its ID is in `finish_command_run_id`.
 
 ## Pause or resume a job
 

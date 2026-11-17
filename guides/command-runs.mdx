@@ -63,15 +63,23 @@ Both requests return at once, with the run in status `queued`. `pnpm test`
 starts when `pnpm install` finishes.
 
 - **Rig**: `rig_create` takes the same body as `POST /rigs`. To use an
-  existing rig, send `rig_name` or `rig_id`.
+  existing rig, send `rig_name`, `rig_id`, or `rig_ref` (an ID or a name).
+  Send exactly one of these fields.
 - **`Idempotency-Key`**: required. It is any string unique to this run. If you
-  send the same key again, Amika queues the command only once.
+  send the same key and body again, Amika queues the command only once and
+  returns the existing run. The same key with a different body returns `409`
+  `command_run_idempotency_conflict`.
 - **`command`**: runs with `bash -e -o pipefail` in the rig's repository
   checkout. Set `cwd` to use a different directory.
-- **`timeout_ms`**: the maximum run time of the command.
+- **`timeout_ms`**: the maximum run time of the command, in milliseconds.
+  The clock starts when the command starts.
+- **`queue_timeout_ms`**: optional. The maximum wait before the command
+  starts, in milliseconds. The wait includes the session queue, starting the
+  rig, and setting up the workspace. Without it, there is no limit.
 - **`session`**: the queue for the command. The default is `default`.
 - **`rig_status_on_finish`**: `active`, `stopped`, or `deleted` when the
-  rig's last queued command finishes. Without it, Amika puts the rig back as it
+  rig's last queued command finishes. If more than one command sets it, the
+  command that started last decides. Without it, Amika puts the rig back as it
   was. A rig that a command created stays on.
 
 ## Check a run
@@ -82,8 +90,17 @@ curl https://app.amika.dev/api/v0beta1/command-runs/cr_abc123 \
 ```
 
 `status` is `queued`, `in_progress`, or `completed`. When the run is
-`completed`, `conclusion` gives the result, such as `success`, `failure`, or
-`timed_out`, and `exit_code` gives the command's exit code.
+`completed`, `conclusion` gives the result, and `exit_code` gives the
+command's exit code:
+
+| `conclusion` | Meaning |
+| --- | --- |
+| `success` | The command exited with code 0 |
+| `failure` | The command exited with a non-zero code |
+| `cancelled` | You cancelled the run |
+| `timed_out` | The command ran longer than `timeout_ms` |
+| `queue_timed_out` | The command did not start within `queue_timeout_ms` |
+| `error` | Amika could not run the command |
 
 ## Read the output
 
@@ -92,7 +109,9 @@ curl "https://app.amika.dev/api/v0beta1/command-runs/cr_abc123/events?after=0" \
   -H "Authorization: Bearer $AMIKA_API_KEY"
 ```
 
-Each event has a `stream` (`stdout` or `stderr`) and its `content`. To get new
+Each event has a `stream` and its `content`. The stream is `stdout` or
+`stderr` for the command's output, or `system` for messages from Amika about
+the run. To get new
 output, send the response's `next_sequence` as `after` in the next request.
 Stop when the run is `completed` and no new events come back.
 
@@ -104,7 +123,8 @@ curl "https://app.amika.dev/api/v0beta1/command-runs?rig=my-rig&status=in_progre
 ```
 
 Runs come newest first. Filter with `rig`, `session`, or `status`. To list the
-runs of a job, use `source_kind=job&source_id=<job ID>`.
+runs of a job, use `source_kind=job&source_id=<job ID>`. `limit` sets the
+number of runs, from 1 to 100. The default is 20.
 
 ## Cancel a run
 
