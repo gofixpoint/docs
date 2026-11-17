@@ -1,231 +1,265 @@
 ---
 title: "Programmatic usage"
-description: "Script the Amika CLI to spin up a rig, drive an agent non-interactively, and ship the result."
+description: "Script a rig from the CLI or TypeScript: create it, drive an agent, and open a pull request."
 ---
 
-The Amika CLI is shell-friendly, so you can wire it into bash scripts, CI jobs,
-and code-gen pipelines. This guide walks through a complete automated flow:
-push a credential, create a remote rig cloned from a git repo, drive Claude
-Code non-interactively to make a change and open a PR, then tear the rig
-down.
+You can drive Amika from a shell script, a CI job, or a TypeScript program.
+This guide shows one complete flow with the CLI and with the TypeScript SDK:
+
+1. Create a rig from a git repository.
+2. Send a prompt to Claude Code to change the code.
+3. Continue the same chat to commit the change and open a pull request.
+4. Delete the rig.
+
+To run shell commands without an agent, or to run them on a schedule, see
+[Command runs](/guides/command-runs) and [Jobs](/guides/jobs).
 
 ## Prerequisites
 
-- The CLI installed and logged in. See [Install](/install) and
-  [Authentication](/reference/auth).
-- A Claude API key on disk. See
-  [Manage secrets](/guides/manage-secrets) for how to push it to
-  the Amika secrets store.
-- Run from inside a git repository whose remote you want the agent to work
-  against.
-
-<Info>
-The pattern below uses `amika rig ssh` with heredocs to control the agent.
-Pair it with `--agent-credential-type` so the right credential is injected
-without an interactive picker. See
-[Inject credentials](/guides/inject-credentials).
-</Info>
+- An Amika API key in `AMIKA_API_KEY`. Create one at
+  [app.amika.dev/settings/api-keys](https://app.amika.dev/settings/api-keys).
+  See [Authentication](/reference/auth).
+- For the CLI: the CLI and `jq`. See [Install](/install). For TypeScript:
+  `npm install @amika/sdk`. See the
+  [TypeScript quickstart](/sdks/typescript/quickstart).
+- A Claude credential stored in Amika. This guide uses the name `ci-claude`.
+- GitHub access to the repository. A request with an API key has no GitHub
+  App connection, so the rig uses your organization's GitHub personal access
+  token (PAT). Save a PAT that can push to the repository and open pull
+  requests. See [GitHub authentication](/guides/github-authentication).
 
 ## Walkthrough
 
 <Steps>
-<Step title="Push your Claude API key to the Amika vault">
+<Step title="Store a Claude credential">
+
+Do this one time. Give the credential a name, so that the script can select
+it. See [Manage secrets](/guides/manage-secrets) for the other credential
+types.
 
 ```bash
 amika secret claude push \
   --type api_key \
-  --from-file /path/to/your/CLAUDE_API_KEY
+  --from-file /path/to/CLAUDE_API_KEY \
+  --name ci-claude
 ```
 
-`--from-file` reads the key without prompting, which keeps the script
-non-interactive.
+`--from-file` and `--name` keep the command non-interactive.
 
 </Step>
 
-<Step title="Create a remote rig cloned from the repo">
+<Step title="Create a rig">
 
-```bash
-amika rig create \
-  --agent-credential-type claude=api-key \
-  --name testing-claude-api
+<CodeGroup>
+
+```bash CLI
+amika rig create demo-rig \
+  --git https://github.com/your-org/your-repo \
+  --agent-credential claude=ci-claude \
+  --env GIT_AUTHOR_NAME="Amika Bot" --env GIT_AUTHOR_EMAIL=bot@example.com \
+  --env GIT_COMMITTER_NAME="Amika Bot" --env GIT_COMMITTER_EMAIL=bot@example.com
 ```
 
-Running the command inside a Git repository selects that repository.
-`--agent-credential-type claude=api-key` tells Amika to inject your stored
-API-key credential, which avoids the OAuth picker.
+```ts TypeScript
+import { AmikaClient } from "@amika/sdk";
+
+const client = new AmikaClient({ apiKey: process.env.AMIKA_API_KEY! });
+
+const gitAuthor = { name: "Amika Bot", email: "bot@example.com" };
+const rig = await client.rigs.create({
+  name: "demo-rig",
+  repoUrl: "https://github.com/your-org/your-repo",
+  agentCredentials: [{ kind: "claude", name: "ci-claude" }],
+  envVars: {
+    GIT_AUTHOR_NAME: gitAuthor.name,
+    GIT_AUTHOR_EMAIL: gitAuthor.email,
+    GIT_COMMITTER_NAME: gitAuthor.name,
+    GIT_COMMITTER_EMAIL: gitAuthor.email,
+  },
+});
+await rig.wait();
+```
+
+</CodeGroup>
+
+- `--agent-credential claude=ci-claude` (`agentCredentials`) injects the
+  stored credential by name. Without it, the rig gets no agent credential.
+- The `GIT_*` variables set the commit author. A rig that you create with an
+  API key has no git author, so commits fail without them.
+- The CLI returns when the rig is ready. In TypeScript, `rigs.create` returns
+  before setup finishes, so call `rig.wait()`.
 
 </Step>
 
-<Step title="Configure agent permissions inside the rig">
+<Step title="Send a prompt to the agent">
 
-Use a heredoc with `amika rig ssh` to write a Claude
-`settings.local.json`. The `$AMIKA_AGENT_CWD` env var resolves to the cloned
-repo root inside the rig.
+<CodeGroup>
 
-```bash
-export CLAUDE_SETTINGS='
-{
-    "permissions": {
-        "allow": [
-            "Bash(git:*)",
-            "Bash(gh:*)"
-        ]
-    }
-}'
-
-amika rig ssh testing-claude-api << EOF
-mkdir -p \$AMIKA_AGENT_CWD/.claude
-echo 'settings.local.json' > \$AMIKA_AGENT_CWD/.claude/.gitignore
-echo '$CLAUDE_SETTINGS' > \$AMIKA_AGENT_CWD/.claude/settings.local.json
-EOF
+```bash CLI
+FIRST=$(amika send --rig demo-rig --agent claude -o json \
+  "Add 'Hello from Amika' to the first heading of README.md. Do not ask questions.")
+SESSION_ID=$(echo "$FIRST" | jq -r .session_id)
 ```
 
-The unquoted `<< EOF` lets the host shell expand `$CLAUDE_SETTINGS` before
-ssh transmits the body. Guest-side variables like `$AMIKA_AGENT_CWD` are
-escaped with `\$` so they survive to the rig shell and resolve there.
+```ts TypeScript
+const first = await rig.send({
+  agent: "claude",
+  message:
+    "Add 'Hello from Amika' to the first heading of README.md. Do not ask questions.",
+});
+if (first.isError) throw new Error(first.response);
+```
 
-These permissions let the agent run `git` and `gh` commands. Adjust the
-allowlist to match what your script needs.
+</CodeGroup>
+
+The call returns when the agent turn finishes. With `-o json`, the CLI prints
+one JSON object. Keep its `session_id` (`sessionId`) to continue the chat.
+
+An agent failure sets `is_error` (`isError`) to `true`, also when the request
+succeeds. Check it before you continue.
 
 </Step>
 
-<Step title="Generate a session id so you can resume the agent run">
+<Step title="Continue the chat to open a pull request">
 
-```bash
-export CLAUDE_UUID=$(uuidgen)
+<CodeGroup>
+
+```bash CLI
+amika send --session-id "$SESSION_ID" -o json \
+  "Make a git branch and commit the change. Then push it and open a GitHub PR."
 ```
 
-Holding the session id lets you continue the same conversation across multiple
-agent invocations. This is useful when you want to break the work into phases.
+```ts TypeScript
+const second = await rig.send({
+  sessionId: first.sessionId,
+  message:
+    "Make a git branch and commit the change. Then push it and open a GitHub PR.",
+});
+if (second.isError) throw new Error(second.response);
+console.log(second.response);
+```
+
+</CodeGroup>
+
+The agent keeps the context of the first turn. Two short prompts are more
+reliable than one long prompt.
 
 </Step>
 
-<Step title="Run Claude non-interactively to make code changes">
+<Step title="Delete the rig">
 
-```bash
-export CLAUDE_PROMPT="Change the heading text to also include, 'Dylan was here!'
+<CodeGroup>
 
-Do not stop, do not ask me for clarification or questions.
-"
-
-amika rig ssh -t testing-claude-api << EOF
-cd \$AMIKA_AGENT_CWD && claude \
-  --dangerously-skip-permissions \
-  --session-id '$CLAUDE_UUID' \
-  -p '$CLAUDE_PROMPT' < /dev/null
-EOF
+```bash CLI
+amika rig delete --force demo-rig
 ```
 
-A few details that matter for scripting:
-
-- `-t` allocates a TTY so Claude renders correctly.
-- `--dangerously-skip-permissions` is safe here because the allowlist in
-  `settings.local.json` already constrains what the agent can do.
-- `< /dev/null` closes stdin so Claude exits when the prompt is done instead of
-  waiting for input.
-
-</Step>
-
-<Step title="Resume the same session to commit and open a PR">
-
-```bash
-amika rig ssh -t testing-claude-api << EOF
-cd \$AMIKA_AGENT_CWD && claude \
-  --dangerously-skip-permissions \
-  --resume '$CLAUDE_UUID' \
-  -p 'Make a git branch and commit the changes. Then make a Github PR' < /dev/null
-EOF
+```ts TypeScript
+await rig.delete();
 ```
 
-Splitting the code change and the git/PR work into two prompts is more
-reliable than asking the agent to do both at once.
+</CodeGroup>
 
-</Step>
-
-<Step title="Tear down the rig">
-
-```bash
-amika rig rm --force testing-claude-api
-```
-
-`--force` skips the confirmation prompt, which is what you want in a script.
+`--force` skips the confirmation prompt.
 
 </Step>
 </Steps>
 
 ## Full script
 
-Drop this into a file and run it end-to-end. Make sure
-`/path/to/your/CLAUDE_API_KEY` exists and that GitHub access is set up in
-[GitHub settings](https://app.amika.dev/settings/github) so the agent can
-push the branch and open the PR. See
-[GitHub authentication](/guides/github-authentication).
+Each script deletes the rig, also when a step fails.
 
-```bash
+<CodeGroup>
+
+```bash CLI
 #!/bin/bash
 set -euo pipefail
 
-errcho() { echo "$@" >&2; }
+RIG=demo-rig-$(date +%s)
 
-amika secret claude push \
-  --type api_key \
-  --from-file /path/to/your/CLAUDE_API_KEY
+amika rig create "$RIG" \
+  --git https://github.com/your-org/your-repo \
+  --agent-credential claude=ci-claude \
+  --env GIT_AUTHOR_NAME="Amika Bot" --env GIT_AUTHOR_EMAIL=bot@example.com \
+  --env GIT_COMMITTER_NAME="Amika Bot" --env GIT_COMMITTER_EMAIL=bot@example.com
+trap 'amika rig delete --force "$RIG"' EXIT
 
-errcho "Creating rig..."
-amika rig create \
-  --agent-credential-type claude=api-key \
-  --name testing-claude-api
+# Send a prompt and print the JSON result. Stop if the agent reports a failure.
+send() {
+  local out
+  out=$(amika send "$@" -o json)
+  if [ "$(echo "$out" | jq -r .is_error)" = "true" ]; then
+    echo "$out" | jq -r .response >&2
+    exit 1
+  fi
+  echo "$out"
+}
 
-export CLAUDE_SETTINGS='
-{
-    "permissions": {
-        "allow": [
-            "Bash(git:*)",
-            "Bash(gh:*)"
-        ]
-    }
-}'
+FIRST=$(send --rig "$RIG" --agent claude \
+  "Add 'Hello from Amika' to the first heading of README.md. Do not ask questions.")
+SESSION_ID=$(echo "$FIRST" | jq -r .session_id)
 
-errcho "Configuring Claude settings in rig..."
-amika rig ssh testing-claude-api << EOF
-mkdir -p \$AMIKA_AGENT_CWD/.claude
-echo "settings.local.json" > \$AMIKA_AGENT_CWD/.claude/.gitignore
-echo '$CLAUDE_SETTINGS' > \$AMIKA_AGENT_CWD/.claude/settings.local.json
-EOF
-
-export CLAUDE_UUID=$(uuidgen)
-export CLAUDE_PROMPT="Change the heading text to also include, 'Dylan was here!'
-
-Do not stop, do not ask me for clarification or questions.
-"
-
-errcho "Running Claude to make code changes..."
-amika rig ssh -t testing-claude-api << EOF
-cd \$AMIKA_AGENT_CWD && claude --dangerously-skip-permissions --session-id '$CLAUDE_UUID' -p '$CLAUDE_PROMPT' < /dev/null
-EOF
-
-errcho "Resuming Claude to create git branch and PR..."
-amika rig ssh -t testing-claude-api << EOF
-cd \$AMIKA_AGENT_CWD && claude --dangerously-skip-permissions --resume '$CLAUDE_UUID' -p 'Make a git branch and commit the changes. Then make a Github PR' < /dev/null
-EOF
-
-errcho "Removing rig..."
-amika rig rm --force testing-claude-api
+send --session-id "$SESSION_ID" \
+  "Make a git branch and commit the change. Then push it and open a GitHub PR." \
+  | jq -r .response
 ```
 
-<Tip>
-For long agent runs, drop `set -e` around the agent invocations or wrap them
-so a single failed run does not leak a rig. `amika rig rm --force`
-should always run, even on failure.
-</Tip>
+```ts TypeScript
+// Run as an ES module, e.g. `npx tsx script.ts`: it uses top-level await.
+import { AmikaClient } from "@amika/sdk";
+
+const client = new AmikaClient({ apiKey: process.env.AMIKA_API_KEY! });
+
+const gitAuthor = { name: "Amika Bot", email: "bot@example.com" };
+const rig = await client.rigs.create({
+  name: `demo-rig-${Date.now()}`,
+  repoUrl: "https://github.com/your-org/your-repo",
+  agentCredentials: [{ kind: "claude", name: "ci-claude" }],
+  envVars: {
+    GIT_AUTHOR_NAME: gitAuthor.name,
+    GIT_AUTHOR_EMAIL: gitAuthor.email,
+    GIT_COMMITTER_NAME: gitAuthor.name,
+    GIT_COMMITTER_EMAIL: gitAuthor.email,
+  },
+});
+
+try {
+  await rig.wait();
+
+  const first = await rig.send({
+    agent: "claude",
+    message:
+      "Add 'Hello from Amika' to the first heading of README.md. Do not ask questions.",
+  });
+  if (first.isError) throw new Error(first.response);
+
+  const second = await rig.send({
+    sessionId: first.sessionId,
+    message:
+      "Make a git branch and commit the change. Then push it and open a GitHub PR.",
+  });
+  if (second.isError) throw new Error(second.response);
+  console.log(second.response);
+} finally {
+  await rig.delete();
+}
+```
+
+</CodeGroup>
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Inject credentials" icon="key-round" href="/guides/inject-credentials">
-    Push and pin Claude or Codex credentials for rigs.
+  <Card title="Command runs" icon="play" href="/guides/command-runs">
+    Run shell commands on a rig through the API, without an agent.
   </Card>
-  <Card title="CLI reference" icon="square-terminal" href="/reference/cli">
-    Full flag listings for rig, secret, and ssh commands.
+  <Card title="Jobs" icon="clock" href="/guides/jobs">
+    Run commands on a rig on a cron schedule.
+  </Card>
+  <Card title="Send a message to an agent" icon="paper-plane" href="/guides/send-a-message-to-an-agent">
+    All options for agent prompts and chats.
+  </Card>
+  <Card title="TypeScript SDK" icon="code" href="/sdks/typescript/client">
+    Every collection and method on `AmikaClient`.
   </Card>
 </CardGroup>
