@@ -5,7 +5,9 @@ description: "Run commands on a rig on a cron schedule."
 
 A job runs commands on a rig on a cron schedule. Create and manage jobs
 through the API with an [API key](https://app.amika.dev/settings/api-keys) in
-`AMIKA_API_KEY`. Every route takes the job's ID or its name.
+`AMIKA_API_KEY`. Every route takes the job's ID or its name. If one job's
+name matches another job's ID, the request returns `409`
+`resource_ref_ambiguous`. Add `?by=id` or `?by=name` to say which you mean.
 
 In the web UI, the **Jobs** page lists your jobs. You can also create, pause,
 and resume them there.
@@ -31,8 +33,10 @@ curl -X POST https://app.amika.dev/api/v0beta1/jobs \
   }'
 ```
 
-The `Idempotency-Key` is any string unique to this job. If you send the same
-key again, Amika creates the job only once.
+The `Idempotency-Key` is required. It is any string unique to this job. If you
+send the same key and body again, Amika creates the job only once and returns
+the existing job. The same key with a different body returns `409`
+`job_idempotency_conflict`.
 
 - **`trigger.schedule`**: a 5-field cron expression, or `@hourly`, `@daily`,
   or `@weekly`. Runs must be at least 5 minutes apart. `timezone` is an IANA
@@ -45,6 +49,29 @@ key again, Amika creates the job only once.
 - **`overlap_policy`**: `skip` (the default) does not start a scheduled run
   while the previous one runs. `allow` starts it.
 - **`enabled: false`**: creates the job paused.
+- **`description`**: optional. Up to 4,096 characters.
+
+## List and read jobs
+
+```bash
+curl "https://app.amika.dev/api/v0beta1/jobs?enabled=true" \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
+```
+
+Jobs come sorted by name. `enabled=true` lists only enabled jobs, and
+`enabled=false` only paused ones. `limit` sets the number of jobs, from 1 to
+100. The default is 50. To get the next page, send the response's
+`next_cursor` as `cursor`. `next_cursor` is `null` on the last page.
+
+To read one job, send its ID or name:
+
+```bash
+curl https://app.amika.dev/api/v0beta1/jobs/nightly-deps-audit \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
+```
+
+`next_run_at` is the next time the schedule fires. Amika starts the run within
+30 seconds of it. While the job is paused, `next_run_at` is `null`.
 
 ## Run a job now
 
@@ -112,8 +139,15 @@ curl -X PATCH https://app.amika.dev/api/v0beta1/jobs/nightly-deps-audit \
   -d '{ "enabled": false }'
 ```
 
-`"enabled": true` resumes the job. The same `PATCH` changes the schedule or the
-steps.
+`"enabled": true` resumes the job at the next scheduled time. The times it
+missed while paused don't run.
+
+The same `PATCH` changes any other field. Send only the fields to change:
+
+- **`steps`** replaces the whole list. Runs that already started keep their
+  steps.
+- **`null`** for `description` or `rig_status_on_finish` clears it.
+- **`trigger`** on an enabled job recalculates `next_run_at`.
 
 ## Delete a job
 
