@@ -55,11 +55,28 @@ that forgets to name a user never sees every user's data.
 Add the `Amika-As-Principal` header with your ID for the user. The request
 runs as that user, with exactly that user's access.
 
+<Tabs>
+<Tab title="HTTP API">
+
 ```bash
 curl https://app.amika.dev/api/v0beta1/rigs \
   -H "Authorization: Bearer $AMIKA_API_KEY" \
   -H "Amika-As-Principal: end_user:user_123"
 ```
+
+</Tab>
+<Tab title="TypeScript SDK">
+
+```ts
+import { AmikaClient } from "@amika/sdk";
+
+const backend = new AmikaClient({ apiKey: process.env.AMIKA_API_KEY! });
+const asUser = backend.actAs("end_user:user_123");
+const rigs = await asUser.rigs.list();
+```
+
+</Tab>
+</Tabs>
 
 Without the header, the key gets `403` on every route except token minting
 and user disable.
@@ -72,6 +89,9 @@ and user disable.
 
 Create the rig with the act-as header. The user owns the rig.
 
+<Tabs>
+<Tab title="HTTP API">
+
 ```bash
 curl -X POST https://app.amika.dev/api/v0beta1/rigs \
   -H "Authorization: Bearer $AMIKA_API_KEY" \
@@ -79,6 +99,18 @@ curl -X POST https://app.amika.dev/api/v0beta1/rigs \
   -H "Content-Type: application/json" \
   -d '{"name": "user-123-dev"}'
 ```
+
+</Tab>
+<Tab title="TypeScript SDK">
+
+```ts
+const rig = await backend.actAs("end_user:user_123").rigs.create({
+  name: "user-123-dev",
+});
+```
+
+</Tab>
+</Tabs>
 
 A user's rig gets none of your organization's credentials: no API key, no
 secrets, no integrations, and no GitHub token. The create refuses fields that
@@ -91,6 +123,9 @@ If your user's own app or CLI talks to Amika directly, mint a short-lived
 **principal token** for that user. Send this request without the act-as
 header.
 
+<Tabs>
+<Tab title="HTTP API">
+
 ```bash
 curl -X POST https://app.amika.dev/api/v0beta1/iam/principal-tokens \
   -H "Authorization: Bearer $AMIKA_API_KEY" \
@@ -98,9 +133,38 @@ curl -X POST https://app.amika.dev/api/v0beta1/iam/principal-tokens \
   -d '{"principal": "end_user:user_123"}'
 ```
 
+</Tab>
+<Tab title="TypeScript SDK">
+
+```ts
+const { token, expiresAt } = await backend.principalTokens.mint({
+  principal: "end_user:user_123",
+});
+// Return { token, expiresAt } to your client app.
+```
+
+</Tab>
+</Tabs>
+
 The token can do only what the user can do. It lasts one hour by default,
-and 24 hours at most. The [TypeScript SDK](/sdks/overview) can get a new
-token from your backend before the old one expires.
+and 24 hours at most (`ttl_seconds`).
+
+In your client app, the TypeScript SDK can get a new token from your backend
+before the old one expires:
+
+```ts
+import { AmikaClient, refreshingTokenSource } from "@amika/sdk";
+
+const client = new AmikaClient({
+  tokenSource: refreshingTokenSource({
+    fetchToken: async () => {
+      const res = await fetch("/api/amika-token", { method: "POST" });
+      return res.json(); // { token, expiresAt }
+    },
+  }),
+});
+const rigs = await client.rigs.list(); // Only this user's rigs.
+```
 
 With a token, the user can:
 
@@ -181,16 +245,31 @@ Your team's rig, host, and snapshot lists show only your organization's own
 resources by default. To see users' resources, pass `owner=end_user` or
 `owner=any`. Each resource has an `owner` field that names the user.
 
+<Tabs>
+<Tab title="HTTP API">
+
 ```bash
 curl "https://app.amika.dev/api/v0beta1/rigs?owner=end_user" \
   -H "Authorization: Bearer $AMIKA_ORG_API_KEY"
 ```
 
+</Tab>
+<Tab title="TypeScript SDK">
+
+```ts
+const org = new AmikaClient({ apiKey: process.env.AMIKA_ORG_API_KEY! });
+const rigs = await org.rigs.list({ owner: "end_user" }); // Or "any".
+```
+
+</Tab>
+</Tabs>
+
 Use a key with `org:access` here, not your act-as key.
 
 ## Remove a user's access
 
-When a user leaves, disable them.
+When a user leaves, disable them. The TypeScript SDK has no call for this
+yet, so use the HTTP API.
 
 ```bash
 curl -X POST \
