@@ -123,6 +123,7 @@
             "group": "Embed Amika",
             "pages": [
               "platform/overview",
+              "platform/end-user-auth-model",
               "platform/end-user-access"
             ]
           }
