@@ -1,0 +1,111 @@
+---
+title: "End-user auth model"
+description: "How your backend acts for your users, and how your users get their own Amika tokens."
+---
+
+Your backend has one Amika API key with the `end-users:act-as` permission.
+This page calls it the **act-as key**. Keep the act-as key on your backend.
+Do not send it to your users.
+
+Your backend can use the act-as key in two ways:
+
+| Way             | Who calls Amika                  | What it sends to Amika                             | Use it when                            |
+| --------------- | -------------------------------- | -------------------------------------------------- | -------------------------------------- |
+| Act-as header   | Your backend                     | The act-as key and the `Amika-As-Principal` header | Your backend does work for an end-user |
+| Principal token | The end-user's machine or laptop | A principal token                                  | The end-user does work themselves      |
+
+To set up your backend and create rigs for your users, see
+[End-user access](/platform/end-user-access).
+
+## Act as an end-user with the `Amika-As-Principal` header
+
+Your backend sends two things on each HTTP API request:
+
+- The act-as key, in the `Authorization` header.
+- The header `Amika-As-Principal: end_user:<your user id>`.
+
+Amika does the request as that end-user. The end-user gets no credential.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant App as Your app (user A)
+    participant Backend as Your backend
+    participant Amika as Amika API
+
+    App->>Backend: Make a rig for me (your own login)
+    Backend->>Amika: POST /api/v0beta1/rigs<br/>Authorization: Bearer <act-as key><br/>Amika-As-Principal: end_user:user-a
+    Note over Amika: Check that the key has end-users:act-as.<br/>Find end-user user-a, or create it.
+    Amika-->>Backend: 202, rig owned by end-user user-a
+    Backend-->>App: Your rig is ready
+
+    Backend->>Amika: GET /api/v0beta1/rigs/user-b-rig<br/>Amika-As-Principal: end_user:user-a
+    Amika-->>Backend: 404, as if the rig does not exist
+```
+
+In the SDK, `actAs` returns a new client. The new client acts as the
+end-user:
+
+```ts
+import { AmikaClient } from "@amika/sdk";
+
+const backend = new AmikaClient({ apiKey: process.env.AMIKA_ACT_AS_KEY! });
+const userA = backend.actAs("end_user:user-a");
+await userA.rigs.create({ name: "user-a-rig" });
+```
+
+Rules:
+
+- Without the `Amika-As-Principal` header, the act-as key gets `403` on all
+  routes except three: mint a token, revoke a token, and disable an
+  end-user.
+- The act-as key cannot act as your organization.
+- After you disable an end-user, a request that acts as them gets `403`.
+
+## Give the end-user a principal token
+
+Your backend mints a **principal token** for one end-user. The end-user's
+machine and laptop send this token to Amika. The act-as key stays on your
+backend.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant User as User A (laptop)
+    participant Backend as Your backend
+    participant Amika as Amika API
+    participant Host as User A's machine (amika-hostd)
+
+    User->>Backend: Give me an Amika token (your own login)
+    Backend->>Amika: POST /api/v0beta1/iam/principal-tokens<br/>Authorization: Bearer <act-as key><br/>principal: end_user:user-a, ttl_seconds: 3600
+    Amika-->>Backend: id pt_..., token amk_pt_v1_..., expires_at
+    Backend-->>User: The token
+
+    User->>Host: amika-hostd setup (token on stdin), then amika-hostd up
+    Host->>Amika: Register the host with the token
+    Amika-->>Host: The host belongs to end-user user-a
+
+    User->>Amika: amika rig ssh user-a-rig<br/>AMIKA_API_KEY=<token>
+    Amika-->>User: SSH session to user-a-rig
+
+    Backend->>Amika: DELETE /api/v0beta1/iam/principal-tokens/pt_...
+    Note over Amika: The token stops working at once.
+```
+
+In the SDK:
+
+```ts
+const { id, token, expiresAt } = await backend.principalTokens.mint({
+  principal: "end_user:user-a",
+  ttlSeconds: 3600, // The default is 3600. The maximum is 86400 (24 hours).
+});
+await backend.principalTokens.revoke(id); // Revoke the token when you no longer need it.
+```
+
+Rules:
+
+- A principal token acts as one end-user. It cannot mint a token.
+- A principal token expires after its TTL. The maximum TTL is 24 hours. Mint
+  a new token before the old one expires. In an app, `refreshingTokenSource`
+  in the SDK does this for you.
+- When you disable an end-user, all of their tokens stop working at once.
