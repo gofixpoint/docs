@@ -18,8 +18,13 @@ For diagrams of how your backend and your users authenticate, see
 ## Each user owns their rigs
 
 An end-user owns the [rigs](/guides/what-is-a-rig) and [hosts](/guides/byoc)
-it creates. Only that user can use them: open SSH, run commands, read files,
-or open service ports.
+it creates. Only that user can use them: open SSH or open service ports.
+
+<Note>
+The API that runs a command on a rig, and the API that reads a rig's files,
+are not available to end-users yet. Until then, an end-user runs commands
+over SSH, for example `amika rig ssh <rig> -- <command>`.
+</Note>
 
 Other users can't see them at all. Your own team can see, stop, and delete
 them, for support and cleanup. Your team can't get into them: no SSH, no
@@ -44,8 +49,9 @@ organization.
 
 <Step title="Create an act-as key">
 
-An organization admin creates an API key with only the `end-users:act-as`
-permission, under **Settings → API Keys**. Store it on your backend only.
+An organization owner creates an API key with only the `end-users:act-as`
+permission, under **Settings → API Keys**. Admins and members cannot create
+this key. Store it on your backend only.
 
 This key can act for your users, but it can't read your organization's own
 data. A key can't have both `end-users:act-as` and `org:access`, so a request
