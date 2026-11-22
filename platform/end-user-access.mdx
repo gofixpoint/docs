@@ -1,0 +1,287 @@
+---
+title: "End-user access"
+description: "Give your users their own rigs, and control who can reach them."
+---
+
+When you [embed Amika](/platform/overview), each of your users is an
+**end-user** in your Amika organization. Your users don't need Amika
+accounts. Amika creates an end-user the first time your backend acts for it,
+using your own ID for that user.
+
+This guide sets up your backend, creates a rig for a user, and shows how to
+remove a user's access. The [API reference](/reference/api-reference) has
+every endpoint, field, and error code.
+
+## Each user owns their rigs
+
+An end-user owns the [rigs](/guides/what-is-a-rig) and [hosts](/guides/byoc)
+it creates. Only that user can use them: open SSH, run commands, read files,
+or open service ports.
+
+Other users can't see them at all. Your own team can see, stop, and delete
+them, for support and cleanup. Your team can't get into them: no SSH, no
+commands, no file reads. It also can't start a stopped rig, since starting
+runs code on it.
+
+| Who                    | A user's own rigs | Another user's rigs | Your org's rigs |
+| ---------------------- | ----------------- | ------------------- | --------------- |
+| That user              | Full use          | No access           | No access       |
+| Your team and API keys | See, stop, delete | See, stop, delete   | Full use        |
+
+## Set up your backend
+
+<Steps>
+
+<Step title="Turn on end-users">
+
+End-users are off by default. Contact Amika to turn them on for your
+organization.
+
+</Step>
+
+<Step title="Create an act-as key">
+
+An organization admin creates an API key with only the `end-users:act-as`
+permission, under **Settings → API Keys**. Store it on your backend only.
+
+This key can act for your users, but it can't read your organization's own
+data. A key can't have both `end-users:act-as` and `org:access`, so a request
+that forgets to name a user never sees every user's data.
+
+</Step>
+
+<Step title="Act as a user">
+
+Add the `Amika-As-Principal` header with your ID for the user. The request
+runs as that user, with exactly that user's access.
+
+<Tabs>
+<Tab title="HTTP API">
+
+```bash
+curl https://app.amika.dev/api/v0beta1/rigs \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Amika-As-Principal: end_user:user_123"
+```
+
+</Tab>
+<Tab title="TypeScript SDK">
+
+```ts
+import { AmikaClient } from "@amika/sdk";
+
+const backend = new AmikaClient({ apiKey: process.env.AMIKA_API_KEY! });
+const asUser = backend.actAs("end_user:user_123");
+const rigs = await asUser.rigs.list();
+```
+
+</Tab>
+</Tabs>
+
+Without the header, the key gets `403` on every route except token minting
+and user disable.
+
+</Step>
+
+</Steps>
+
+## Create a rig for a user
+
+Create the rig with the act-as header. The user owns the rig.
+
+<Tabs>
+<Tab title="HTTP API">
+
+```bash
+curl -X POST https://app.amika.dev/api/v0beta1/rigs \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Amika-As-Principal: end_user:user_123" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "user-123-dev"}'
+```
+
+</Tab>
+<Tab title="TypeScript SDK">
+
+```ts
+const rig = await backend.actAs("end_user:user_123").rigs.create({
+  name: "user-123-dev",
+});
+```
+
+</Tab>
+</Tabs>
+
+A user's rig gets none of your organization's credentials: no API key, no
+secrets, no integrations, and no GitHub token. The create refuses fields that
+would attach them, such as `secret_env_vars` or a `snapshot`. The user has
+root on the rig, so anything on it is theirs to read.
+
+## Give your app a token for the user
+
+If your user's own app or CLI talks to Amika directly, mint a short-lived
+**principal token** for that user. Send this request without the act-as
+header.
+
+<Tabs>
+<Tab title="HTTP API">
+
+```bash
+curl -X POST https://app.amika.dev/api/v0beta1/iam/principal-tokens \
+  -H "Authorization: Bearer $AMIKA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"principal": "end_user:user_123"}'
+```
+
+</Tab>
+<Tab title="TypeScript SDK">
+
+```ts
+const { token, expiresAt } = await backend.principalTokens.mint({
+  principal: "end_user:user_123",
+});
+// Return { token, expiresAt } to your client app.
+```
+
+</Tab>
+</Tabs>
+
+The token can do only what the user can do. It lasts one hour by default,
+and 24 hours at most (`ttl_seconds`).
+
+In your client app, the TypeScript SDK can get a new token from your backend
+before the old one expires:
+
+```ts
+import { AmikaClient, refreshingTokenSource } from "@amika/sdk";
+
+const client = new AmikaClient({
+  tokenSource: refreshingTokenSource({
+    fetchToken: async () => {
+      const res = await fetch("/api/amika-token", { method: "POST" });
+      return res.json(); // { token, expiresAt }
+    },
+  }),
+});
+const rigs = await client.rigs.list(); // Only this user's rigs.
+```
+
+With a token, the user can:
+
+- Create, list, stop, start, and delete their rigs.
+- Open SSH, and use their rigs' services and ports.
+- Add and delete their own SSH keys.
+- Connect their own machines as hosts. See the next section.
+
+The rest of the API, such as organization settings, secrets, and API keys, is
+closed to them. The web terminal isn't available on a user's rig yet.
+
+## Let users connect their own machines
+
+A user can run rigs on their own machine. They install the `amika-hostd`
+daemon there, and it registers the machine as a host that the user owns.
+Your team can see the host, but it can't use it or put rigs on it.
+
+<Steps>
+
+<Step title="Get a token for the user">
+
+Your backend [mints a principal token](#give-your-app-a-token-for-the-user)
+and gives it to the user, for example through your app or CLI. Don't give the
+user one of your organization's API keys.
+
+</Step>
+
+<Step title="Install the daemon">
+
+On the user's machine:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gofixpoint/amika/main/install-amika-hostd.sh | sh
+```
+
+</Step>
+
+<Step title="Set up and start the host">
+
+Pass the user's token in `AMIKA_HOSTD_API_KEY` for each command. Don't write
+it to a file.
+
+```bash
+AMIKA_HOSTD_API_KEY="$TOKEN" amika-hostd setup --non-interactive --hostname my-laptop --enable bare_metal
+AMIKA_HOSTD_API_KEY="$TOKEN" amika-hostd up
+```
+
+`up` registers the host to the user. The daemon keeps only its own host
+secret, not the user's token. With `bare_metal`, a rig is the machine
+itself. See [Bring your own compute](/guides/byoc) for the other runtimes and
+options.
+
+</Step>
+
+</Steps>
+
+The user, or your backend acting as the user, can now create rigs on the
+host. Host names are per user, so two users can each have a `my-laptop`.
+Your organization's own work never runs on a user's host.
+
+`amika-hostd up` registers the host each time it starts. To restart the
+daemon later, pass a new token, since tokens expire.
+
+## Rigs that create rigs
+
+Each user's rig gets its own credential, `AMIKA_RUNTIME_TOKEN`, so code on the
+rig can call Amika. With it, the rig can create more rigs for the same user,
+and connect to, stop, start, and delete the rigs it created. It can stop and
+delete itself, but it can't start itself or reach the user's other rigs.
+Amika replaces the credential each time the rig starts.
+
+To create a rig with no credential, pass `"rig_credential": "none"`. A
+bare-metal rig never gets one.
+
+## Find users' rigs in your organization
+
+Your team's rig, host, and snapshot lists show only your organization's own
+resources by default. To see users' resources, pass `owner=end_user` or
+`owner=any`. Each resource has an `owner` field that names the user.
+
+<Tabs>
+<Tab title="HTTP API">
+
+```bash
+curl "https://app.amika.dev/api/v0beta1/rigs?owner=end_user" \
+  -H "Authorization: Bearer $AMIKA_ORG_API_KEY"
+```
+
+</Tab>
+<Tab title="TypeScript SDK">
+
+```ts
+const org = new AmikaClient({ apiKey: process.env.AMIKA_ORG_API_KEY! });
+const rigs = await org.rigs.list({ owner: "end_user" }); // Or "any".
+```
+
+</Tab>
+</Tabs>
+
+Use a key with `org:access` here, not your act-as key.
+
+## Remove a user's access
+
+When a user leaves, disable them. The TypeScript SDK has no call for this
+yet, so use the HTTP API.
+
+```bash
+curl -X POST \
+  https://app.amika.dev/api/v0beta1/iam/end-users/user_123/disable \
+  -H "Authorization: Bearer $AMIKA_API_KEY"
+```
+
+Their tokens stop working, their open SSH sessions close, and their queued
+work doesn't run. Amika stops their running rigs within a few minutes. It's
+safe to call again. If it returns `502`, call it again to finish.
+
+<Note>
+Sharing a rig between users isn't available yet. Today each rig belongs to one
+user.
+</Note>

@@ -117,6 +117,18 @@
         ]
       },
       {
+        "tab": "Platform",
+        "groups": [
+          {
+            "group": "Embed Amika",
+            "pages": [
+              "platform/overview",
+              "platform/end-user-access"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "CLI and API Reference",
         "groups": [
           {
