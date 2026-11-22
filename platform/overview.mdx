@@ -1,0 +1,66 @@
+---
+title: "Embed Amika in your product"
+description: "Give your own users machines for coding agents, with Amika as the infrastructure."
+---
+
+Amika can be the machine layer inside your product. Your users get their own
+[rigs](/guides/what-is-a-rig): isolated machines where their coding agents,
+dev servers, and tools run. You build the product experience. Amika runs the
+machines, keeps each user's work apart, and gives you one API to control it.
+
+## Why embed Amika
+
+Running agent machines for many users is hard to do well. Each user needs a
+machine that boots fast, holds their code, and stays isolated from every
+other user. You also need SSH, preview URLs, and a way to cut off access when
+a user leaves.
+
+Amika gives you all of that as a platform:
+
+- **Machines per user.** Each of your users gets rigs that only they can use.
+  Other users can't see them, and your own team can't run code on them.
+- **Any agent, any model.** Run Claude Code, Codex, OpenCode, Pi, or your own
+  harness on the rig.
+- **Full machine control.** Each rig is a real VM with root, SSH, and
+  services. It is not a sandboxed function call.
+- **Their compute or yours.** Rigs run on Amika Cloud, or on machines your
+  users connect themselves with [bring your own compute](/guides/byoc).
+- **One API.** Your backend uses the same [HTTP API](/reference/http-api-overview)
+  and [TypeScript SDK](/sdks/overview) that Amika's own CLI uses.
+
+## Who embeds Amika
+
+- **Coding agent products.** Give each customer a persistent machine for your
+  agent, instead of building your own VM fleet.
+- **Developer platforms and IDEs.** Offer cloud dev environments that open in
+  seconds, with previews and SSH.
+- **Education and assessment.** Give each student or candidate a clean,
+  isolated machine, and remove access when the course or interview ends.
+- **Internal platforms.** Give each team or contractor their own machines, kept
+  apart from the rest of your organization.
+
+## How it fits together
+
+Your users never need an Amika account. Your organization holds the Amika
+account, and your users are **end-users** inside it:
+
+1. Your backend authenticates your user the way it does today.
+2. Your backend calls Amika with an API key, either acting as that user or
+   minting a short-lived token for your client app.
+3. Amika creates and runs the user's rigs, and enforces that only that user
+   can use them.
+
+End-users are off by default. To turn them on for your organization, contact
+Amika.
+
+[End-user access](/platform/end-user-access) explains the access model, the
+keys and tokens, and what each caller can do.
+
+<CardGroup cols={2}>
+  <Card title="End-user access" icon="users" href="/platform/end-user-access">
+    How your users create, own, and connect to their rigs.
+  </Card>
+  <Card title="What is a rig?" icon="server" href="/guides/what-is-a-rig">
+    What each user gets on their machine.
+  </Card>
+</CardGroup>

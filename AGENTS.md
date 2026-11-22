@@ -47,6 +47,8 @@ documenting them. Don't invent.
     is hidden: out of `docs.json` and marked `hidden`/`noindex`. We haven't
     productionized those features and aren't focusing on them. Don't link
     to these pages or re-add them to the nav until that changes.
+- **Platform** — embedding Amika in your own product: the overview and the
+  end-user access model.
 - **SDKs** — the TypeScript SDK reference.
 - **CLI and API Reference** — flag and config tables, endpoint lists,
   `.amika/config.toml` key lookup.
